@@ -285,7 +285,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
                 label="Rola w systemie"
                 MenuProps={{
                   PaperProps: {
-                    sx: { bgcolor: 'white' }
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
               >
@@ -310,7 +310,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
                 label="Firma"
                 MenuProps={{
                   PaperProps: {
-                    sx: { bgcolor: 'white' }
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
               >
@@ -368,7 +368,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
                 label="Stanowisko"
                 MenuProps={{
                   PaperProps: {
-                    sx: { bgcolor: 'white' }
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
               >
@@ -396,7 +396,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
               }}
               slotProps={{
                 paper: {
-                  sx: { bgcolor: 'white' }
+                  sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                 }
               }}
               renderInput={(params) => (
@@ -455,7 +455,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
                 label="Rodzaj konta"
                 MenuProps={{
                   PaperProps: {
-                    sx: { bgcolor: 'white' }
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
               >
@@ -480,7 +480,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
                 label="Status użytkownika"
                 MenuProps={{
                   PaperProps: {
-                    sx: { bgcolor: 'white' }
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
               >
@@ -534,6 +534,11 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
                 onChange={(_, newValue) => {
                   field.onChange(newValue.map((v) => v.value));
                 }}
+                slotProps={{
+                  paper: {
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                  }
+                }}
                 renderInput={(params) => (
                   <TextField {...params} label="Wybierz podmioty zarządzające" size="medium" />
                 )}
@@ -568,6 +573,11 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
                 value={ENTITIES.filter((e) => field.value?.includes(e.value))}
                 onChange={(_, newValue) => {
                   field.onChange(newValue.map((v) => v.value));
+                }}
+                slotProps={{
+                  paper: {
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                  }
                 }}
                 renderInput={(params) => (
                   <TextField {...params} label="Wybierz podmioty zależne" size="medium" />
