@@ -289,7 +289,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                 label="Rola w systemie"
                 MenuProps={{
                   PaperProps: {
-                    sx: { bgcolor: 'white' }
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
               >
@@ -314,7 +314,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                 label="Firma"
                 MenuProps={{
                   PaperProps: {
-                    sx: { bgcolor: 'white' }
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
               >
@@ -364,7 +364,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                   label="Stanowisko"
                   MenuProps={{
                     PaperProps: {
-                      sx: { bgcolor: 'white' }
+                      sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                     }
                   }}
                 >
@@ -398,7 +398,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                   label="Zgody marketingowe"
                   MenuProps={{
                     PaperProps: {
-                      sx: { bgcolor: 'white' }
+                      sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                     }
                   }}
                 >
@@ -428,7 +428,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                   label="Rodzaj konta"
                   MenuProps={{
                     PaperProps: {
-                      sx: { bgcolor: 'white' }
+                      sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                     }
                   }}
                 >
@@ -468,7 +468,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                 }}
                 slotProps={{
                   paper: {
-                    sx: { bgcolor: 'white' }
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
                 renderInput={(params) => (
@@ -515,7 +515,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                   label="Status użytkownika"
                   MenuProps={{
                     PaperProps: {
-                      sx: { bgcolor: 'white' }
+                      sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                     }
                   }}
                 >
@@ -570,6 +570,11 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                 onChange={(_, newValue) => {
                   field.onChange(newValue.map((v) => v.value));
                 }}
+                slotProps={{
+                  paper: {
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                  }
+                }}
                 renderInput={(params) => (
                   <TextField {...params} label="Wybierz podmioty zarządzające" size="medium" />
                 )}
@@ -604,6 +609,11 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                 value={ENTITIES.filter((e) => field.value?.includes(e.value))}
                 onChange={(_, newValue) => {
                   field.onChange(newValue.map((v) => v.value));
+                }}
+                slotProps={{
+                  paper: {
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                  }
                 }}
                 renderInput={(params) => (
                   <TextField {...params} label="Wybierz podmioty zależne" size="medium" />
