@@ -52,16 +52,14 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         vertical: 'top',
         horizontal: 'right'
       }}
-      slotProps={{
-        paper: {
-          sx: {
-            backgroundColor: '#FFFFFF',
-            borderRadius: 2,
-            minWidth: 240,
-            mt: 1,
-            boxShadow:
-              '0px 8px 10px -5px rgba(0,0,0,0.2), 0px 16px 24px 2px rgba(0,0,0,0.14), 0px 6px 30px 5px rgba(0,0,0,0.12)'
-          }
+      PaperProps={{
+        sx: {
+          backgroundColor: '#FFFFFF',
+          borderRadius: 2,
+          minWidth: 240,
+          mt: 1,
+          boxShadow:
+            '0px 8px 10px -5px rgba(0,0,0,0.2), 0px 16px 24px 2px rgba(0,0,0,0.14), 0px 6px 30px 5px rgba(0,0,0,0.12) !important'
         }
       }}
     >
