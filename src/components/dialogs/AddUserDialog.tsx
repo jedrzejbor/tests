@@ -108,7 +108,12 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
     const loadOptions = async () => {
       try {
         const response = await getUserCreateOptions();
-        setRoleOptions(response.roles || []);
+        // Backend may return roles as object {"1": {value,label}, ...} or array
+        const rawRoles = response.roles || [];
+        const normalizedRoles: RoleOption[] = Array.isArray(rawRoles)
+          ? rawRoles
+          : Object.values(rawRoles);
+        setRoleOptions(normalizedRoles);
         setCompanyOptions(response.companies || []);
         setCompetencyOptions(response.scopes_of_competence || []);
       } catch (error) {
