@@ -10,6 +10,8 @@ export const API_ENDPOINTS = {
   ME: '/api/me',
   PASSWORD_REQUEST: '/api/request',
   PASSWORD_CHANGE: '/api/change',
+  // User form options
+  USER_FORM: '/api/user/form',
   // Generic list endpoints
   USERS_TABLE: '/api/resource/users'
   // Tutaj dodawaj kolejne endpointy
