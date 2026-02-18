@@ -8,7 +8,11 @@ export interface AuthUser {
   firstname?: string;
   lastname?: string;
   position?: string;
+  phone?: string;
   createdAt?: string;
+  passwordLastChange?: string | null;
+  role?: string | null;
+  permissions?: string[];
   [key: string]: unknown;
 }
 
