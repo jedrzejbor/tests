@@ -354,7 +354,7 @@ const DeleteUserDialog: React.FC<DeleteUserDialogProps> = ({ open, onClose, user
             lineHeight: 1.6
           }}
         >
-          Potwierdź uśnięcie użytkownika
+          Potwierdź usunięcie użytkownika
         </Typography>
         <IconButton
           onClick={handleClose}
