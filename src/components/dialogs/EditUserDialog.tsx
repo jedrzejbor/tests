@@ -28,22 +28,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { editUserSchema, type EditUserFormValues } from '@/utils/formSchemas';
 import { generateSecurePassword } from '@/utils/passwordGenerator';
 import type { UserRecord } from '@/services/usersService';
-import { getUserCreateOptions, updateUser, type RoleOption } from '@/services/usersService';
+import {
+  getUserCreateOptions,
+  updateUser,
+  getUserDetails,
+  type RoleOption
+} from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
-
-// Extended user type with additional form fields
-interface ExtendedUserData extends UserRecord {
-  role?: string | number;
-  firstName?: string;
-  lastName?: string;
-  position?: string;
-  competencies?: string[];
-  marketingConsent?: string;
-  hasRelations?: boolean;
-  managingEntities?: string[];
-  dependentEntities?: string[];
-}
 
 export interface EditUserDialogProps {
   open: boolean;
@@ -149,29 +141,62 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
     loadOptions();
   }, [open, addToast]);
 
-  // Pre-populate form with user data when user prop changes
+  // Fetch full user details when dialog opens with a user
   useEffect(() => {
-    if (user) {
-      const extendedUser = user as ExtendedUserData;
-      // Map user data to form fields
-      reset({
-        role: extendedUser.role ?? '',
-        company: user.company || '',
-        firstName: extendedUser.firstName || user.full_name?.split(' ')[0] || '',
-        lastName: extendedUser.lastName || user.full_name?.split(' ').slice(1).join(' ') || '',
-        position: extendedUser.position || '',
-        competencies: extendedUser.competencies || [],
-        phone: user.phone || '',
-        email: user.email || '',
-        marketingConsent: extendedUser.marketingConsent || '',
-        accountType: user.account_type || '',
-        status: user.status || 'aktywny',
-        hasRelations: extendedUser.hasRelations || false,
-        managingEntities: extendedUser.managingEntities || [],
-        dependentEntities: extendedUser.dependentEntities || []
-      });
-    }
-  }, [user, reset]);
+    if (!open || !user?.id) return;
+
+    const fetchDetails = async () => {
+      try {
+        const response = await getUserDetails(user.id);
+        const userDetails = response.user;
+
+        // Map backend role to form value
+        // Backend may return role as string name (e.g. "Admin Cliffside Brokers") or numeric id
+        let roleValue: string | number = '';
+        if (userDetails.role !== null && userDetails.role !== undefined) {
+          if (typeof userDetails.role === 'string') {
+            // Find matching role option by label
+            const matchedRole = roleOptions.find((r) => r.label === userDetails.role);
+            roleValue = matchedRole ? matchedRole.value : '';
+          } else {
+            // Already numeric id
+            roleValue = userDetails.role;
+          }
+        }
+
+        reset({
+          role: roleValue,
+          company: userDetails.company || user.company || '',
+          firstName: userDetails.firstname || user.full_name?.split(' ')[0] || '',
+          lastName: userDetails.lastname || user.full_name?.split(' ').slice(1).join(' ') || '',
+          position: userDetails.position || '',
+          competencies: userDetails.scopes_of_competence || [],
+          phone: userDetails.phone || user.phone || '',
+          email: userDetails.email || user.email || '',
+          marketingConsent:
+            userDetails.marketing_consent === true
+              ? 'tak'
+              : userDetails.marketing_consent === false
+                ? 'nie'
+                : '',
+          accountType: user.account_type || '',
+          status: userDetails.status || user.status || 'aktywny',
+          hasRelations: false,
+          managingEntities: [],
+          dependentEntities: []
+        });
+      } catch (error) {
+        const apiError = error as ApiError;
+        addToast({
+          id: crypto.randomUUID(),
+          message: apiError?.message || 'Nie udało się pobrać szczegółów użytkownika',
+          severity: 'error'
+        });
+      }
+    };
+
+    fetchDetails();
+  }, [open, user, reset, addToast, roleOptions]);
 
   // Generate new password when toggle is enabled
   // Generate new password when button is clicked
@@ -356,6 +381,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             helperText={errors.firstName?.message}
             fullWidth
             size="medium"
+            InputLabelProps={{ shrink: true }}
           />
 
           <Controller
@@ -390,6 +416,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             helperText={errors.phone?.message}
             fullWidth
             size="medium"
+            InputLabelProps={{ shrink: true }}
           />
 
           <Controller
@@ -457,6 +484,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             helperText={errors.lastName?.message}
             fullWidth
             size="medium"
+            InputLabelProps={{ shrink: true }}
           />
 
           <Controller
@@ -507,6 +535,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             helperText={errors.email?.message}
             fullWidth
             size="medium"
+            InputLabelProps={{ shrink: true }}
           />
 
           <Controller

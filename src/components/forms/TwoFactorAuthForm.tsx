@@ -153,8 +153,9 @@ export const TwoFactorAuthForm: React.FC<TwoFactorAuthFormProps> = ({
     setLoading(true);
     try {
       // Ponownie wywołaj endpoint logowania aby wysłać nowy kod
-      const { login } = await import('@/services/authService');
-      await login({ email: pendingAuth.email, password: pendingAuth.password });
+      const { resendTwoFactor } = await import('@/services/authService');
+      // Wywołujemy resend z flagą reset=true po stronie backendu
+      await resendTwoFactor({ email: pendingAuth.email, password: pendingAuth.password });
 
       addToast({
         id: crypto.randomUUID(),
