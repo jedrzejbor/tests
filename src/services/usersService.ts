@@ -24,6 +24,11 @@ export interface UserDetailsApiUser {
   position?: string;
   created_at?: string;
   password_last_change_at?: string;
+  role?: string | number | null;
+  company?: string;
+  scopes_of_competence?: string[];
+  status?: string;
+  marketing_consent?: boolean | null;
 }
 
 export interface UserDetailsResponse {
@@ -76,7 +81,7 @@ export interface UpdateUserResponse {
 }
 
 export interface UserCreateOptionsResponse {
-  roles: RoleOption[];
+  roles: RoleOption[] | Record<string, RoleOption>;
   companies: string[];
   scopes_of_competence: string[];
   statuses?: string[];
@@ -158,7 +163,7 @@ export const updateUser = async (
  * Fetch available options for create/edit user
  */
 export const getUserCreateOptions = async (): Promise<UserCreateOptionsResponse> => {
-  return apiClient.get<UserCreateOptionsResponse>('/api/user/create');
+  return apiClient.get<UserCreateOptionsResponse>('/api/user/form');
 };
 
 /**

@@ -23,6 +23,8 @@ export interface ApiUser {
   password_last_change_at?: string;
   phone?: string;
   created_at: string;
+  role?: string | null;
+  permissions?: string[];
 }
 
 export interface LoginResponse {
@@ -46,6 +48,9 @@ export interface AuthUser {
   position: string;
   phone?: string;
   createdAt: string;
+  passwordLastChange?: string | null;
+  role?: string | null;
+  permissions?: string[];
   [key: string]: unknown;
 }
 
@@ -111,7 +116,9 @@ const mapApiUserToAuthUser = (apiUser: ApiUser, email: string): AuthUser => ({
   position: apiUser.position,
   phone: apiUser.phone,
   createdAt: apiUser.created_at,
-  passwordLastChange: apiUser.password_last_change_at ?? null
+  passwordLastChange: apiUser.password_last_change_at ?? null,
+  role: apiUser.role ?? null,
+  permissions: apiUser.permissions ?? []
 });
 
 const extractMeUser = (response: GetMeResponse): ApiUser => {
@@ -150,6 +157,25 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
       throw new Error('Za dużo prób logowania, proszę poczekać');
     }
     throw new Error(apiError.message || 'Niepoprawne dane logowania. Spróbuj ponownie.');
+  }
+};
+
+/**
+ * Wymuś ponowne wysłanie kodu 2FA. Wysyła `reset: true` razem z danymi logowania.
+ */
+export const resendTwoFactor = async (credentials: LoginCredentials): Promise<LoginResponse> => {
+  try {
+    const payload = { ...credentials, reset: true } as unknown as Record<string, unknown>;
+    const response = await apiClient.post<LoginResponse>(API_ENDPOINTS.LOGIN, payload, {
+      skipAuth: true
+    });
+    return response;
+  } catch (error) {
+    const apiError = error as ApiError;
+    if (apiError.status === 401) {
+      throw new Error('Nieprawidłowe dane logowania');
+    }
+    throw new Error(apiError.message || 'Nie udało się ponownie wysłać kodu 2FA.');
   }
 };
 
