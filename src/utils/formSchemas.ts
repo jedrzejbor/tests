@@ -86,7 +86,10 @@ export const addUserSchema = z.object({
     (value) => (value === '' || value === null ? undefined : Number(value)),
     z.number().int().min(1, 'Wybierz rolę w systemie')
   ),
-  company: z.string().min(1, 'Wybierz firmę'),
+  company: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z.number().int().min(1, 'Wybierz firmę')
+  ),
 
   // Dane użytkownika
   firstName: z.string().min(1, 'Imię jest wymagane').min(2, 'Imię musi mieć co najmniej 2 znaki'),
@@ -119,7 +122,10 @@ export const editUserSchema = z.object({
     (value) => (value === '' || value === null ? undefined : Number(value)),
     z.number().int().min(1, 'Wybierz rolę w systemie')
   ),
-  company: z.string().min(1, 'Wybierz firmę'),
+  company: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z.number().int().min(1, 'Wybierz firmę')
+  ),
 
   // Dane użytkownika
   firstName: z.string().min(1, 'Imię jest wymagane').min(2, 'Imię musi mieć co najmniej 2 znaki'),
