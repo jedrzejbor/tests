@@ -12,6 +12,9 @@ export const API_ENDPOINTS = {
   PASSWORD_CHANGE: '/api/change',
   // User form options
   USER_FORM: '/api/user/form',
+  // Impersonation
+  IMPERSONATE: '/api/impersonate', // POST /api/impersonate/{userId}
+  IMPERSONATE_LEAVE: '/api/impersonate/leave',
   // Generic list endpoints
   USERS_TABLE: '/api/resource/users'
   // Tutaj dodawaj kolejne endpointy
