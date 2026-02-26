@@ -11,7 +11,7 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PageTitle from '@/components/PageTitle';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
@@ -19,21 +19,60 @@ import FormModal from '@/components/modals/FormModal';
 import EditAccountDataForm from '@/components/forms/EditAccountDataForm';
 import ChangePasswordForm from '@/components/forms/ChangePasswordForm';
 import type { EditAccountDataFormValues, ChangePasswordFormValues } from '@/utils/formSchemas';
-import { updateMe } from '@/services/authService';
+import { getMe, updateMe } from '@/services/authService';
 
 const SettingsPage = () => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const token = useAuthStore((state) => state.token);
   const { addToast } = useUiStore();
+  const hasFetchedMe = useRef(false);
 
   // Modal states
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!token || hasFetchedMe.current) return;
+    hasFetchedMe.current = true;
+
+    const loadMe = async () => {
+      try {
+        const fetchedUser = await getMe();
+        const firstname = fetchedUser.firstname ?? user?.firstname;
+        const lastname = fetchedUser.lastname ?? user?.lastname;
+        const mergedUser = {
+          ...(user ?? {}),
+          ...fetchedUser,
+          email: fetchedUser.email || user?.email,
+          name: `${firstname ?? ''} ${lastname ?? ''}`.trim()
+        };
+        setUser(mergedUser);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Nie udało się pobrać danych konta';
+        addToast({ id: crypto.randomUUID(), message, severity: 'error' });
+      }
+    };
+
+    loadMe();
+  }, [token, user, setUser, addToast]);
+
   // Mock user data for display (replace with real data from your auth store or API)
+  const formatDate = (iso?: string | null) => {
+    if (!iso) return '-';
+    // Convert "YYYY-MM-DD hh:mm:ss" to ISO by replacing space with 'T'
+    const isoString = iso.includes('T') ? iso : iso.replace(' ', 'T');
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return iso;
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  };
   const userData: {
     firstName: string;
     lastName: string;
@@ -49,7 +88,9 @@ const SettingsPage = () => {
     status: 'Aktywny',
     phone: String(user?.phone ?? '+48 123 123 123'),
     email: user?.email || 'joannakowalska@cliffsidebrokers.com',
-    lastPasswordChange: '2.11.2025'
+    lastPasswordChange: formatDate(
+      String(user?.passwordLastChange ?? user?.password_last_change_at ?? '')
+    )
   };
 
   const handleEdit = () => {

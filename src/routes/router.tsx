@@ -5,6 +5,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import LoginPage from '@/pages/LoginPage';
 import TwoFactorAuthPage from '@/pages/TwoFactorAuthPage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import UnavailablePage from '@/pages/UnavailablePage';
 import SettingsPage from '@/pages/SettingsPage';
 import UsersPage from '@/pages/UsersPage';
 import UserDetailsPage from '@/pages/UserDetailsPage';
@@ -91,7 +92,7 @@ export const router = createBrowserRouter([
         path: '/app/policies',
         element: (
           <ProtectedRoute>
-            <DashboardPage />
+            <UnavailablePage />
           </ProtectedRoute>
         )
       },
@@ -99,7 +100,7 @@ export const router = createBrowserRouter([
         path: '/app/claims',
         element: (
           <ProtectedRoute>
-            <DashboardPage />
+            <UnavailablePage />
           </ProtectedRoute>
         )
       },
@@ -107,7 +108,7 @@ export const router = createBrowserRouter([
         path: '/app/payments',
         element: (
           <ProtectedRoute>
-            <DashboardPage />
+            <UnavailablePage />
           </ProtectedRoute>
         )
       },
@@ -115,7 +116,7 @@ export const router = createBrowserRouter([
         path: '/app/documents',
         element: (
           <ProtectedRoute>
-            <DashboardPage />
+            <UnavailablePage />
           </ProtectedRoute>
         )
       },
@@ -131,7 +132,7 @@ export const router = createBrowserRouter([
         path: '/app/support',
         element: (
           <ProtectedRoute>
-            <DashboardPage />
+            <UnavailablePage />
           </ProtectedRoute>
         )
       },
@@ -156,6 +157,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '/app/*',
+        element: (
+          <ProtectedRoute>
+            <UnavailablePage />
           </ProtectedRoute>
         )
       }

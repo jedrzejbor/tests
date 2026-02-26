@@ -3,14 +3,14 @@ import { Box } from '@mui/material';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NotFoundContent from '@/components/NotFoundContent';
 
-const NotFoundPage = () => {
+const UnavailablePage = () => {
   return (
-    <Box component="main" px={2} py={4}>
-      <ListPlaceholderLayout title="Nie znaleziono strony">
+    <Box component="main" pb={4}>
+      <ListPlaceholderLayout title="Funkcjonalność jeszcze niedostępna">
         <NotFoundContent />
       </ListPlaceholderLayout>
     </Box>
   );
 };
 
-export default NotFoundPage;
+export default UnavailablePage;

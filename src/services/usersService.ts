@@ -24,11 +24,21 @@ export interface UserDetailsApiUser {
   position?: string;
   created_at?: string;
   password_last_change_at?: string;
+  role?: string | number | null;
+  company?: string;
+  scopes_of_competence?: string[];
+  status?: string;
+  marketing_consent?: boolean | null;
 }
 
 export interface UserDetailsResponse {
   user: UserDetailsApiUser;
   actions?: { type: string; label: string; handler: string }[];
+}
+
+export interface RoleOption {
+  value: number;
+  label: string;
 }
 
 export interface CreateUserPayload {
@@ -38,7 +48,7 @@ export interface CreateUserPayload {
   phone: string;
   email: string;
   password?: string;
-  role: string;
+  role: number;
   status: 'active' | 'inactive';
   scopes_of_competence?: string[];
   company?: string;
@@ -53,7 +63,7 @@ export interface UpdateUserPayload {
   email?: string | null;
   password?: string;
   password_confirmation?: string;
-  role?: string | null;
+  role?: number | null;
   status?: 'active' | 'inactive' | null;
   scopes_of_competence?: string[] | null;
   company?: string | null;
@@ -62,6 +72,7 @@ export interface UpdateUserPayload {
 
 export interface CreateUserResponse {
   user: UserDetailsApiUser;
+  generated_password?: string;
   password?: string;
 }
 
@@ -70,7 +81,7 @@ export interface UpdateUserResponse {
 }
 
 export interface UserCreateOptionsResponse {
-  roles: string[];
+  roles: RoleOption[] | Record<string, RoleOption>;
   companies: string[];
   scopes_of_competence: string[];
   statuses?: string[];
@@ -152,7 +163,7 @@ export const updateUser = async (
  * Fetch available options for create/edit user
  */
 export const getUserCreateOptions = async (): Promise<UserCreateOptionsResponse> => {
-  return apiClient.get<UserCreateOptionsResponse>('/api/user/create');
+  return apiClient.get<UserCreateOptionsResponse>('/api/user/form');
 };
 
 /**
