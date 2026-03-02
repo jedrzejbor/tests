@@ -35,6 +35,7 @@ import type {
   RowHandler,
   GeneralHandler
 } from '@/types/genericList';
+import { normalizeFilterOptions } from '@/types/genericList';
 
 export const GenericListView = <T extends GenericRecord = GenericRecord>({
   title,
@@ -44,7 +45,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   bulkHandlers,
   rowKey = 'id',
   initialPerPage = 10,
-  refreshKey
+  refreshKey,
+  extraRowActions = []
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -418,6 +420,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               onToggleAllSelection={toggleAllSelection}
               onRowAction={handleRowAction}
               getRowId={getRowId}
+              extraRowActions={extraRowActions}
             />
           </Box>
 
@@ -577,12 +580,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               const currentValue = filters[filterDef.key] || (filterDef.is_multiple ? [] : '');
 
               if (filterDef.type === 'select') {
-                // Normalize options to array (backend can send object or array)
-                const optionsArray = Array.isArray(filterDef.options)
-                  ? filterDef.options
-                  : filterDef.options
-                    ? Object.values(filterDef.options)
-                    : [];
+                // Normalize options from any backend format
+                const optionsArray = normalizeFilterOptions(filterDef.options);
 
                 return (
                   <FormControl key={filterDef.key} fullWidth size="small" sx={{ mb: 2 }}>
@@ -725,6 +724,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               loading={loading}
               onRowAction={handleRowAction}
               getRowId={getRowId}
+              extraRowActions={extraRowActions}
             />
 
             {/* Mobile Pagination */}

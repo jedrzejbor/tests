@@ -24,7 +24,7 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
-import type { ColumnDef, GenericRecord, ActionDef } from '@/types/genericList';
+import type { ColumnDef, GenericRecord, ActionDef, ExtraRowAction } from '@/types/genericList';
 
 interface DesktopTableRendererProps<T extends GenericRecord = GenericRecord> {
   columns: ColumnDef[];
@@ -37,6 +37,8 @@ interface DesktopTableRendererProps<T extends GenericRecord = GenericRecord> {
   onToggleAllSelection: () => void;
   onRowAction: (handler: string, row: T) => void;
   getRowId: (row: T) => string;
+  /** Frontend-defined actions appended after backend actions in the kebab menu */
+  extraRowActions?: ExtraRowAction<T>[];
 }
 
 // Map action types to icons
@@ -257,7 +259,8 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
   onToggleRowSelection,
   onToggleAllSelection,
   onRowAction,
-  getRowId
+  getRowId,
+  extraRowActions = []
 }: DesktopTableRendererProps<T>) => {
   const showSelection = false;
 
@@ -575,6 +578,67 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
             )}
           </React.Fragment>
         ))}
+
+        {/* Frontend-defined extra actions */}
+        {menuRow &&
+          extraRowActions
+            .filter((ea) => !ea.show || ea.show(menuRow))
+            .map((ea, index) => (
+              <React.Fragment key={ea.handler}>
+                {/* Divider before first extra action when backend actions exist */}
+                {index === 0 && (menuRow.actions?.length ?? 0) > 0 && (
+                  <Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.12)', my: '0 !important', mx: 0 }} />
+                )}
+                <MenuItem
+                  onClick={() => handleActionClick(ea.handler)}
+                  sx={{
+                    color: '#1E1F21',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    lineHeight: '24px',
+                    letterSpacing: '0.4px',
+                    py: 1,
+                    px: 0,
+                    gap: 1,
+                    minHeight: 'auto',
+                    '&:hover': { bgcolor: 'transparent' }
+                  }}
+                >
+                  {ea.icon && (
+                    <ListItemIcon
+                      sx={{
+                        color: '#8E9098',
+                        minWidth: 'auto',
+                        width: 16,
+                        height: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        '& svg': { fontSize: 20 }
+                      }}
+                    >
+                      {ea.icon}
+                    </ListItemIcon>
+                  )}
+                  <ListItemText
+                    primary={ea.label}
+                    primaryTypographyProps={{
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      lineHeight: '24px',
+                      letterSpacing: '0.4px',
+                      color: '#1E1F21'
+                    }}
+                    sx={{ m: 0 }}
+                  />
+                </MenuItem>
+                {index <
+                  extraRowActions.filter((e) => !e.show || (menuRow && e.show(menuRow))).length -
+                    1 && (
+                  <Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.12)', my: '0 !important', mx: 0 }} />
+                )}
+              </React.Fragment>
+            ))}
       </Menu>
     </>
   );
