@@ -11,7 +11,7 @@ import {
   Divider
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import type { ColumnDef, GenericRecord, ActionDef } from '@/types/genericList';
+import type { ColumnDef, GenericRecord, ActionDef, ExtraRowAction } from '@/types/genericList';
 
 interface MobileCardListRendererProps<T extends GenericRecord = GenericRecord> {
   columns: ColumnDef[];
@@ -19,6 +19,8 @@ interface MobileCardListRendererProps<T extends GenericRecord = GenericRecord> {
   loading: boolean;
   onRowAction: (handler: string, row: T) => void;
   getRowId: (row: T) => string;
+  /** Frontend-defined actions appended after backend actions in the kebab menu */
+  extraRowActions?: ExtraRowAction<T>[];
 }
 
 // Get status chip styles
@@ -61,7 +63,8 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
   data,
   loading,
   onRowAction,
-  getRowId
+  getRowId,
+  extraRowActions = []
 }: MobileCardListRendererProps<T>) => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [menuRow, setMenuRow] = useState<T | null>(null);
@@ -363,6 +366,32 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
             {action.label}
           </MenuItem>
         ))}
+
+        {/* Frontend-defined extra actions */}
+        {menuRow && extraRowActions.filter((ea) => !ea.show || ea.show(menuRow)).length > 0 && (
+          <Divider sx={{ my: 0.5 }} />
+        )}
+        {menuRow &&
+          extraRowActions
+            .filter((ea) => !ea.show || ea.show(menuRow))
+            .map((ea) => (
+              <MenuItem
+                key={ea.handler}
+                onClick={() => handleMenuAction(ea.handler)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  color: '#32343A',
+                  fontSize: '14px',
+                  py: 1.5,
+                  '&:hover': { bgcolor: '#F9FAFB' }
+                }}
+              >
+                {ea.icon}
+                {ea.label}
+              </MenuItem>
+            ))}
       </Menu>
     </>
   );
