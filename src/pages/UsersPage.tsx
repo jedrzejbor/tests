@@ -2,9 +2,12 @@ import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import CheckBoxOutlinedIcon from '@mui/icons-material/CheckBoxOutlined';
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import { GenericListView } from '@/components/lists';
 import { fetchUsersTable, restoreUser, UserRecord } from '@/services/usersService';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
+import { impersonateUser } from '@/services/impersonationService';
 import AddUserDialog from '@/components/dialogs/AddUserDialog';
 import EditUserDialog from '@/components/dialogs/EditUserDialog';
 import DeleteUserDialog from '@/components/dialogs/DeleteUserDialog';
@@ -14,6 +17,10 @@ import type { AddUserFormValues, EditUserFormValues } from '@/utils/formSchemas'
 const UsersPage: React.FC = () => {
   const navigate = useNavigate();
   const { addToast } = useUiStore();
+  const setToken = useAuthStore((s) => s.setToken);
+  const setUser = useAuthStore((s) => s.setUser);
+  const setImpersonator = useAuthStore((s) => s.setImpersonator);
+  const currentUser = useAuthStore((s) => s.user);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [editUserDialogOpen, setEditUserDialogOpen] = useState(false);
   const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
@@ -84,6 +91,44 @@ const UsersPage: React.FC = () => {
   const handleCreateUser = useCallback(() => {
     setAddUserDialogOpen(true);
   }, []);
+
+  const handleImpersonateUser = useCallback(
+    async (row: UserRecord) => {
+      if (!row.id) return;
+      try {
+        const response = await impersonateUser(row.id);
+        // Save original admin as impersonator before switching token
+        if (currentUser) {
+          setImpersonator(currentUser);
+        }
+        // Switch to impersonated user's token and data
+        setToken(response.token);
+        setUser({
+          id: String(response.persona.user.id),
+          name: `${response.persona.user.firstname} ${response.persona.user.lastname}`,
+          email: response.persona.user.email ?? '',
+          firstname: response.persona.user.firstname,
+          lastname: response.persona.user.lastname,
+          position: response.persona.user.position,
+          phone: response.persona.user.phone,
+          createdAt: response.persona.user.created_at,
+          role: response.persona.user.role ?? null,
+          permissions: response.persona.user.permissions ?? []
+        });
+        addToast({
+          id: crypto.randomUUID(),
+          message: `Impersonujesz: ${response.persona.user.firstname} ${response.persona.user.lastname}`,
+          severity: 'success'
+        });
+        navigate('/app/dashboard');
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Nie udało się rozpocząć impersonacji';
+        addToast({ id: crypto.randomUUID(), message, severity: 'error' });
+      }
+    },
+    [currentUser, setToken, setUser, setImpersonator, addToast, navigate]
+  );
 
   // Handle dialog close
   const handleAddUserDialogClose = useCallback(() => {
@@ -199,9 +244,22 @@ const UsersPage: React.FC = () => {
     'delete-user': handleDeleteUser,
     'restore-user': handleRestoreUser,
     'force-delete-user': handleForceDeleteUser,
+    // Impersonation
+    'impersonate-user': handleImpersonateUser,
     // General actions (from backend generalActions[])
     'create-user': handleCreateUser
   };
+
+  // Frontend-defined extra row actions (not returned by backend)
+  const extraRowActions = [
+    {
+      handler: 'impersonate-user',
+      label: 'Zaloguj jako użytkownik',
+      icon: <ManageAccountsOutlinedIcon sx={{ fontSize: 18 }} />,
+      // Hide for deleted users (deleted_at !== null means soft-deleted)
+      show: (row: UserRecord) => !row.deleted_at
+    }
+  ];
 
   // Bulk handlers map
   const bulkHandlers = {
@@ -229,6 +287,7 @@ const UsersPage: React.FC = () => {
         rowKey={(row) => String(row.id || row.email)}
         initialPerPage={10}
         refreshKey={refreshKey}
+        extraRowActions={extraRowActions}
       />
 
       <AddUserDialog

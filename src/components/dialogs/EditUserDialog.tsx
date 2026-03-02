@@ -32,7 +32,8 @@ import {
   getUserCreateOptions,
   updateUser,
   getUserDetails,
-  type RoleOption
+  type RoleOption,
+  type CompanyOption
 } from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
@@ -79,7 +80,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
   const { addToast } = useUiStore();
 
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
-  const [companyOptions, setCompanyOptions] = useState<string[]>([]);
+  const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
   const [competencyOptions, setCompetencyOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState('');
@@ -114,59 +115,66 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
 
   const hasRelations = watch('hasRelations');
 
+  // Single effect: load form options AND user details together so company/role
+  // lookups always have fresh options available (avoids race condition where
+  // fetchDetails ran before loadOptions finished setting state).
   useEffect(() => {
-    if (!open) return;
+    if (!open || !user?.id) return;
 
-    const loadOptions = async () => {
+    const loadOptionsAndDetails = async () => {
       try {
-        const response = await getUserCreateOptions();
-        // Backend may return roles as object {"1": {value,label}, ...} or array
-        const rawRoles = response.roles || [];
+        // Fetch both in parallel
+        const [optionsResponse, detailsResponse] = await Promise.all([
+          getUserCreateOptions(),
+          getUserDetails(user.id)
+        ]);
+
+        // --- Normalize options ---
+        const rawRoles = optionsResponse.roles || [];
         const normalizedRoles: RoleOption[] = Array.isArray(rawRoles)
           ? rawRoles
           : Object.values(rawRoles);
         setRoleOptions(normalizedRoles);
-        setCompanyOptions(response.companies || []);
-        setCompetencyOptions(response.scopes_of_competence || []);
-      } catch (error) {
-        const apiError = error as ApiError;
-        addToast({
-          id: crypto.randomUUID(),
-          message: apiError?.message || 'Nie udało się pobrać opcji formularza',
-          severity: 'error'
-        });
-      }
-    };
 
-    loadOptions();
-  }, [open, addToast]);
+        const rawCompanies = optionsResponse.companies || [];
+        const normalizedCompanies: CompanyOption[] = Array.isArray(rawCompanies)
+          ? rawCompanies.map((c) => (typeof c === 'string' ? { value: 0, label: c } : c))
+          : Object.values(rawCompanies);
+        setCompanyOptions(normalizedCompanies);
 
-  // Fetch full user details when dialog opens with a user
-  useEffect(() => {
-    if (!open || !user?.id) return;
+        setCompetencyOptions(optionsResponse.scopes_of_competence || []);
 
-    const fetchDetails = async () => {
-      try {
-        const response = await getUserDetails(user.id);
-        const userDetails = response.user;
+        // --- Map user details using freshly loaded options ---
+        const userDetails = detailsResponse.user;
 
-        // Map backend role to form value
-        // Backend may return role as string name (e.g. "Admin Cliffside Brokers") or numeric id
+        // Role: backend returns numeric id or string label
         let roleValue: string | number = '';
         if (userDetails.role !== null && userDetails.role !== undefined) {
           if (typeof userDetails.role === 'string') {
-            // Find matching role option by label
-            const matchedRole = roleOptions.find((r) => r.label === userDetails.role);
-            roleValue = matchedRole ? matchedRole.value : '';
+            const matched = normalizedRoles.find((r) => r.label === userDetails.role);
+            roleValue = matched ? matched.value : '';
           } else {
-            // Already numeric id
             roleValue = userDetails.role;
+          }
+        }
+
+        // Company: prefer client_id (numeric) returned directly by backend;
+        // fall back to matching string company name against options list.
+        let companyValue: string | number = '';
+        if (userDetails.client_id !== null && userDetails.client_id !== undefined) {
+          companyValue = userDetails.client_id;
+        } else if (userDetails.company !== null && userDetails.company !== undefined) {
+          if (typeof userDetails.company === 'string') {
+            const matched = normalizedCompanies.find((c) => c.label === userDetails.company);
+            companyValue = matched ? matched.value : '';
+          } else {
+            companyValue = userDetails.company;
           }
         }
 
         reset({
           role: roleValue,
-          company: userDetails.company || user.company || '',
+          company: companyValue,
           firstName: userDetails.firstname || user.full_name?.split(' ')[0] || '',
           lastName: userDetails.lastname || user.full_name?.split(' ').slice(1).join(' ') || '',
           position: userDetails.position || '',
@@ -189,14 +197,14 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
         const apiError = error as ApiError;
         addToast({
           id: crypto.randomUUID(),
-          message: apiError?.message || 'Nie udało się pobrać szczegółów użytkownika',
+          message: apiError?.message || 'Nie udało się pobrać danych użytkownika',
           severity: 'error'
         });
       }
     };
 
-    fetchDetails();
-  }, [open, user, reset, addToast, roleOptions]);
+    loadOptionsAndDetails();
+  }, [open, user, reset, addToast]);
 
   // Generate new password when toggle is enabled
   // Generate new password when button is clicked
@@ -229,7 +237,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
         role: Number(data.role),
         status,
         scopes_of_competence: data.competencies?.length ? data.competencies : undefined,
-        company: data.company || undefined,
+        company: data.company ? Number(data.company) : undefined,
         marketing_consent:
           data.marketingConsent === 'tak' ? true : data.marketingConsent === 'nie' ? false : null,
         ...(generatedPassword
@@ -349,8 +357,8 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                 }}
               >
                 {companyOptions.map((company) => (
-                  <MenuItem key={company} value={company}>
-                    {company}
+                  <MenuItem key={company.value} value={company.value}>
+                    {company.label}
                   </MenuItem>
                 ))}
               </Select>

@@ -30,6 +30,7 @@ import type {
   FiltersState,
   BulkAction
 } from '@/types/genericList';
+import { normalizeFilterOptions } from '@/types/genericList';
 
 interface ListToolbarProps {
   // Search
@@ -112,12 +113,8 @@ export const ListToolbar = ({
       const currentValue = filters[filterDef.key] || (filterDef.is_multiple ? [] : '');
 
       if (filterDef.type === 'select') {
-        // Normalize options to array (backend can send object or array)
-        const optionsArray = Array.isArray(filterDef.options)
-          ? filterDef.options
-          : filterDef.options
-            ? Object.values(filterDef.options)
-            : [];
+        // Normalize options from any backend format
+        const optionsArray = normalizeFilterOptions(filterDef.options);
 
         return (
           <FormControl key={filterDef.key} fullWidth size="small" sx={{ mb: 2 }}>

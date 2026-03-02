@@ -13,6 +13,7 @@ export interface UserRecord extends GenericRecord {
   phone: string;
   account_type: string;
   status: string;
+  deleted_at?: string | null;
 }
 
 export interface UserDetailsApiUser {
@@ -25,7 +26,10 @@ export interface UserDetailsApiUser {
   created_at?: string;
   password_last_change_at?: string;
   role?: string | number | null;
-  company?: string;
+  /** Numeric client/company ID returned by backend (client_id column) */
+  client_id?: number | null;
+  /** Legacy string field – kept for backwards compatibility */
+  company?: string | number | null;
   scopes_of_competence?: string[];
   status?: string;
   marketing_consent?: boolean | null;
@@ -41,6 +45,11 @@ export interface RoleOption {
   label: string;
 }
 
+export interface CompanyOption {
+  value: number;
+  label: string;
+}
+
 export interface CreateUserPayload {
   firstname: string;
   lastname: string;
@@ -51,7 +60,7 @@ export interface CreateUserPayload {
   role: number;
   status: 'active' | 'inactive';
   scopes_of_competence?: string[];
-  company?: string;
+  company?: number;
   marketing_consent?: boolean;
 }
 
@@ -66,7 +75,7 @@ export interface UpdateUserPayload {
   role?: number | null;
   status?: 'active' | 'inactive' | null;
   scopes_of_competence?: string[] | null;
-  company?: string | null;
+  company?: number | null;
   marketing_consent?: boolean | null;
 }
 
@@ -82,7 +91,7 @@ export interface UpdateUserResponse {
 
 export interface UserCreateOptionsResponse {
   roles: RoleOption[] | Record<string, RoleOption>;
-  companies: string[];
+  companies: CompanyOption[] | Record<string, CompanyOption> | string[];
   scopes_of_competence: string[];
   statuses?: string[];
 }

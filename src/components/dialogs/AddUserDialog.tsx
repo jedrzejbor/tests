@@ -26,7 +26,12 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addUserSchema, type AddUserFormValues } from '@/utils/formSchemas';
-import { createUser, getUserCreateOptions, type RoleOption } from '@/services/usersService';
+import {
+  createUser,
+  getUserCreateOptions,
+  type RoleOption,
+  type CompanyOption
+} from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
 
@@ -70,7 +75,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [createdEmail, setCreatedEmail] = useState('');
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
-  const [companyOptions, setCompanyOptions] = useState<string[]>([]);
+  const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
   const [competencyOptions, setCompetencyOptions] = useState<string[]>([]);
 
   const {
@@ -114,7 +119,12 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           ? rawRoles
           : Object.values(rawRoles);
         setRoleOptions(normalizedRoles);
-        setCompanyOptions(response.companies || []);
+        // Backend may return companies as object or array of {value,label} or strings
+        const rawCompanies = response.companies || [];
+        const normalizedCompanies: CompanyOption[] = Array.isArray(rawCompanies)
+          ? rawCompanies.map((c) => (typeof c === 'string' ? { value: 0, label: c } : c))
+          : Object.values(rawCompanies);
+        setCompanyOptions(normalizedCompanies);
         setCompetencyOptions(response.scopes_of_competence || []);
       } catch (error) {
         const apiError = error as ApiError;
@@ -143,7 +153,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         role: Number(data.role),
         status,
         scopes_of_competence: data.competencies?.length ? data.competencies : undefined,
-        company: data.company || undefined
+        company: data.company ? Number(data.company) : undefined
       };
 
       const response = await createUser(payload);
@@ -320,8 +330,8 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
                 }}
               >
                 {companyOptions.map((company) => (
-                  <MenuItem key={company} value={company}>
-                    {company}
+                  <MenuItem key={company.value} value={company.value}>
+                    {company.label}
                   </MenuItem>
                 ))}
               </Select>
