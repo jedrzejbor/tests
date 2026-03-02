@@ -29,12 +29,66 @@ export interface FilterOption {
   value: string;
 }
 
+/**
+ * Backend can return filter options in many formats:
+ * - Array of {value, label} objects
+ * - Object keyed by id with {value, label} objects
+ * - Object keyed by id with plain string values  e.g. {"1": "Admin", "2": "Broker"}
+ * - Array of plain strings e.g. ["active", "inactive"]
+ * - value can be number or string
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RawFilterOptions = FilterOption[] | Record<string, any> | string[];
+
 export interface FilterDef {
   type: 'select' | 'text' | 'date' | 'date_range';
   key: string;
   label: string;
-  options?: FilterOption[] | Record<string, FilterOption>;
+  options?: RawFilterOptions;
   is_multiple: boolean;
+}
+
+/**
+ * Normalize filter options from any backend format into a consistent FilterOption[] array.
+ * Handles:
+ *  - Already normalized array of {value, label}
+ *  - Object of {value, label} (e.g. {"1": {value: 1, label: "Admin"}})
+ *  - Object of plain strings (e.g. {"admin": "Administrator", "broker": "Broker"})
+ *  - Array of plain strings (e.g. ["active", "inactive"])
+ *  - Numeric values — always coerced to string for Select compatibility
+ */
+export function normalizeFilterOptions(raw: RawFilterOptions | undefined): FilterOption[] {
+  if (!raw) return [];
+
+  // Already an array
+  if (Array.isArray(raw)) {
+    return raw.map((item) => {
+      // Plain string
+      if (typeof item === 'string') {
+        return { value: item, label: item };
+      }
+      // Object with value + label
+      if (item && typeof item === 'object' && 'value' in item && 'label' in item) {
+        return { value: String(item.value), label: String(item.label) };
+      }
+      // Fallback
+      return { value: String(item), label: String(item) };
+    });
+  }
+
+  // Object — iterate entries
+  return Object.entries(raw).map(([key, val]) => {
+    // val is a {value, label} object
+    if (val && typeof val === 'object' && 'label' in val) {
+      return { value: String(val.value ?? key), label: String(val.label) };
+    }
+    // val is a plain string (key→label mapping)
+    if (typeof val === 'string') {
+      return { value: key, label: val };
+    }
+    // Fallback
+    return { value: key, label: String(val) };
+  });
 }
 
 export type FiltersState = Record<string, string | string[]>;
@@ -102,6 +156,22 @@ export interface BulkAction {
   icon?: React.ReactNode;
 }
 
+/**
+ * Frontend-defined row action added on top of backend actions[].
+ * Rendered in the same kebab-menu, below backend actions.
+ */
+export interface ExtraRowAction<T extends GenericRecord = GenericRecord> {
+  /** Unique handler key (also used as key in handlers map) */
+  handler: string;
+  label: string;
+  /** Icon rendered in the menu item */
+  icon?: React.ReactNode;
+  /** MUI action type — controls icon and colour */
+  type?: ActionType;
+  /** Optional predicate — return false to hide action for a specific row */
+  show?: (row: T) => boolean;
+}
+
 export interface FetcherParams {
   page: number;
   perPage: number;
@@ -127,6 +197,8 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
   initialPerPage?: number;
   /** Change to trigger refetch */
   refreshKey?: string | number;
+  /** Frontend-defined row actions appended after backend actions in the kebab menu */
+  extraRowActions?: ExtraRowAction<T>[];
 }
 
 // ================== CONTROLLER STATE ==================
