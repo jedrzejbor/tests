@@ -98,7 +98,7 @@ export const addUserSchema = z.object({
     .min(1, 'Nazwisko jest wymagane')
     .min(2, 'Nazwisko musi mieć co najmniej 2 znaki'),
   position: z.string().optional(),
-  competencies: z.array(z.string()).optional(),
+  competencies: z.array(z.number()).optional(),
   phone: z
     .string()
     .min(1, 'Numer telefonu jest wymagany')
@@ -134,7 +134,7 @@ export const editUserSchema = z.object({
     .min(1, 'Nazwisko jest wymagane')
     .min(2, 'Nazwisko musi mieć co najmniej 2 znaki'),
   position: z.string().optional(),
-  competencies: z.array(z.string()).optional(),
+  competencies: z.array(z.number()).optional(),
   phone: z
     .string()
     .min(1, 'Numer telefonu jest wymagany')
