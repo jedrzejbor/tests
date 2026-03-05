@@ -30,7 +30,7 @@ export interface UserDetailsApiUser {
   client_id?: number | null;
   /** Legacy string field – kept for backwards compatibility */
   company?: string | number | null;
-  scopes_of_competence?: string[];
+  scopes_of_competence?: ScopeOption[] | number[] | string[];
   status?: string;
   marketing_consent?: boolean | null;
 }
@@ -50,6 +50,11 @@ export interface CompanyOption {
   label: string;
 }
 
+export interface ScopeOption {
+  value: number;
+  label: string;
+}
+
 export interface CreateUserPayload {
   firstname: string;
   lastname: string;
@@ -59,7 +64,7 @@ export interface CreateUserPayload {
   password?: string;
   role: number;
   status: 'active' | 'inactive';
-  scopes_of_competence?: string[];
+  scopes_of_competence?: number[];
   company?: number;
   marketing_consent?: boolean;
 }
@@ -74,7 +79,7 @@ export interface UpdateUserPayload {
   password_confirmation?: string;
   role?: number | null;
   status?: 'active' | 'inactive' | null;
-  scopes_of_competence?: string[] | null;
+  scopes_of_competence?: number[] | null;
   company?: number | null;
   marketing_consent?: boolean | null;
 }
@@ -92,7 +97,7 @@ export interface UpdateUserResponse {
 export interface UserCreateOptionsResponse {
   roles: RoleOption[] | Record<string, RoleOption>;
   companies: CompanyOption[] | Record<string, CompanyOption> | string[];
-  scopes_of_competence: string[];
+  scopes_of_competence: ScopeOption[] | Record<string, ScopeOption>;
   statuses?: string[];
 }
 

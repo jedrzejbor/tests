@@ -8,6 +8,7 @@ import { fetchUsersTable, restoreUser, UserRecord } from '@/services/usersServic
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { impersonateUser } from '@/services/impersonationService';
+import { usePermission } from '@/hooks/usePermission';
 import AddUserDialog from '@/components/dialogs/AddUserDialog';
 import EditUserDialog from '@/components/dialogs/EditUserDialog';
 import DeleteUserDialog from '@/components/dialogs/DeleteUserDialog';
@@ -17,6 +18,7 @@ import type { AddUserFormValues, EditUserFormValues } from '@/utils/formSchemas'
 const UsersPage: React.FC = () => {
   const navigate = useNavigate();
   const { addToast } = useUiStore();
+  const { hasPermission } = usePermission();
   const setToken = useAuthStore((s) => s.setToken);
   const setUser = useAuthStore((s) => s.setUser);
   const setImpersonator = useAuthStore((s) => s.setImpersonator);
@@ -256,8 +258,8 @@ const UsersPage: React.FC = () => {
       handler: 'impersonate-user',
       label: 'Zaloguj jako użytkownik',
       icon: <ManageAccountsOutlinedIcon sx={{ fontSize: 18 }} />,
-      // Hide for deleted users (deleted_at !== null means soft-deleted)
-      show: (row: UserRecord) => !row.deleted_at
+      // Only show for non-deleted users when current user has impersonation permission
+      show: (row: UserRecord) => !row.deleted_at && hasPermission('user can-impersonate')
     }
   ];
 
