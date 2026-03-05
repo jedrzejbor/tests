@@ -30,7 +30,8 @@ import {
   createUser,
   getUserCreateOptions,
   type RoleOption,
-  type CompanyOption
+  type CompanyOption,
+  type ScopeOption
 } from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
@@ -76,7 +77,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
   const [createdEmail, setCreatedEmail] = useState('');
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
-  const [competencyOptions, setCompetencyOptions] = useState<string[]>([]);
+  const [competencyOptions, setCompetencyOptions] = useState<ScopeOption[]>([]);
 
   const {
     register,
@@ -125,7 +126,11 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           ? rawCompanies.map((c) => (typeof c === 'string' ? { value: 0, label: c } : c))
           : Object.values(rawCompanies);
         setCompanyOptions(normalizedCompanies);
-        setCompetencyOptions(response.scopes_of_competence || []);
+        const rawScopes = response.scopes_of_competence || [];
+        const normalizedScopes: ScopeOption[] = Array.isArray(rawScopes)
+          ? rawScopes
+          : Object.values(rawScopes);
+        setCompetencyOptions(normalizedScopes);
       } catch (error) {
         const apiError = error as ApiError;
         addToast({
@@ -404,10 +409,11 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
             <Autocomplete
               multiple
               options={competencyOptions}
-              getOptionLabel={(option) => option}
-              value={competencyOptions.filter((c) => field.value?.includes(c))}
+              getOptionLabel={(option) => option.label}
+              isOptionEqualToValue={(option, value) => option.value === value.value}
+              value={competencyOptions.filter((c) => field.value?.includes(c.value))}
               onChange={(_, newValue) => {
-                field.onChange(newValue);
+                field.onChange(newValue.map((v) => v.value));
               }}
               slotProps={{
                 paper: {
@@ -420,10 +426,10 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
                   <Chip
-                    label={option}
+                    label={option.label}
                     size="small"
                     {...getTagProps({ index })}
-                    key={option}
+                    key={option.value}
                     sx={{
                       borderRadius: '16px',
                       border: '1px solid rgba(0, 0, 0, 0.5)',

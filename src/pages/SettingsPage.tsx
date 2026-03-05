@@ -20,6 +20,7 @@ import EditAccountDataForm from '@/components/forms/EditAccountDataForm';
 import ChangePasswordForm from '@/components/forms/ChangePasswordForm';
 import type { EditAccountDataFormValues, ChangePasswordFormValues } from '@/utils/formSchemas';
 import { getMe, updateMe } from '@/services/authService';
+import { usePermission } from '@/hooks/usePermission';
 
 const SettingsPage = () => {
   const theme = useTheme();
@@ -29,6 +30,18 @@ const SettingsPage = () => {
   const token = useAuthStore((state) => state.token);
   const { addToast } = useUiStore();
   const hasFetchedMe = useRef(false);
+  const { hasPermission, hasAnyPermission } = usePermission();
+
+  // Permission checks for account editing
+  const canEditName = hasPermission('account edit-name');
+  const canEditPhone = hasPermission('account edit-phone');
+  const canEditEmail = hasPermission('account edit-email');
+  const canEditPassword = hasPermission('account edit-password');
+  const canEditAnyAccountData = hasAnyPermission([
+    'account edit-name',
+    'account edit-phone',
+    'account edit-email'
+  ]);
 
   // Modal states
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -273,7 +286,7 @@ const SettingsPage = () => {
             >
               Dane konta:
             </Typography>
-            {isMdUp && (
+            {isMdUp && canEditAnyAccountData && (
               <Button
                 variant="contained"
                 startIcon={<EditOutlinedIcon />}
@@ -400,16 +413,18 @@ const SettingsPage = () => {
                 <Typography variant="body3">{userData.email}</Typography>
               </Stack>
               {/* Mobile: Edit button at bottom */}
-              <Box sx={{ mt: 1 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditOutlinedIcon />}
-                  onClick={handleEdit}
-                  sx={{ borderRadius: 1 }}
-                >
-                  Edytuj
-                </Button>
-              </Box>
+              {canEditAnyAccountData && (
+                <Box sx={{ mt: 1 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditOutlinedIcon />}
+                    onClick={handleEdit}
+                    sx={{ borderRadius: 1 }}
+                  >
+                    Edytuj
+                  </Button>
+                </Box>
+              )}
             </Stack>
           )}
         </CardContent>
@@ -456,7 +471,7 @@ const SettingsPage = () => {
             >
               Ustawienia hasła :
             </Typography>
-            {isMdUp && (
+            {isMdUp && canEditPassword && (
               <Button
                 variant="contained"
                 startIcon={<EditOutlinedIcon />}
@@ -517,16 +532,18 @@ const SettingsPage = () => {
                 </Typography>
               </Stack>
               {/* Mobile: Change password button at bottom */}
-              <Box sx={{ mt: 1 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditOutlinedIcon />}
-                  onClick={handleChangePassword}
-                  sx={{ borderRadius: 1 }}
-                >
-                  Zmiana hasła
-                </Button>
-              </Box>
+              {canEditPassword && (
+                <Box sx={{ mt: 1 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditOutlinedIcon />}
+                    onClick={handleChangePassword}
+                    sx={{ borderRadius: 1 }}
+                  >
+                    Zmiana hasła
+                  </Button>
+                </Box>
+              )}
             </Stack>
           )}
         </CardContent>
@@ -624,6 +641,12 @@ const SettingsPage = () => {
           onSubmit={handleEditSubmit}
           onCancel={() => setEditModalOpen(false)}
           loading={loading}
+          disabledFields={{
+            firstName: !canEditName,
+            lastName: !canEditName,
+            email: !canEditEmail,
+            phone: !canEditPhone
+          }}
         />
       </FormModal>
 

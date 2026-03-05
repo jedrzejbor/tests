@@ -9,13 +9,21 @@ export interface EditAccountDataFormProps {
   onSubmit: (data: EditAccountDataFormValues) => void;
   onCancel: () => void;
   loading?: boolean;
+  /** Per-field disabled state based on permissions */
+  disabledFields?: {
+    firstName?: boolean;
+    lastName?: boolean;
+    email?: boolean;
+    phone?: boolean;
+  };
 }
 
 const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
   initialValues,
   onSubmit,
   onCancel,
-  loading = false
+  loading = false,
+  disabledFields = {}
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -61,6 +69,7 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
             helperText={errors.firstName?.message}
             fullWidth
             size="medium"
+            disabled={disabledFields.firstName}
           />
           <TextField
             label="Email*"
@@ -70,6 +79,7 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
             helperText={errors.email?.message}
             fullWidth
             size="medium"
+            disabled={disabledFields.email}
           />
           <TextField
             label="Nazwisko*"
@@ -78,6 +88,7 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
             helperText={errors.lastName?.message}
             fullWidth
             size="medium"
+            disabled={disabledFields.lastName}
           />
           <TextField
             label="Telefon*"
@@ -86,6 +97,7 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
             helperText={errors.phone?.message}
             fullWidth
             size="medium"
+            disabled={disabledFields.phone}
           />
         </Stack>
       ) : (
@@ -100,6 +112,7 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
               helperText={errors.firstName?.message}
               fullWidth
               size="medium"
+              disabled={disabledFields.firstName}
             />
             <TextField
               label="Email*"
@@ -109,6 +122,7 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
               helperText={errors.email?.message}
               fullWidth
               size="medium"
+              disabled={disabledFields.email}
             />
           </Stack>
 
@@ -122,6 +136,7 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
               helperText={errors.lastName?.message}
               fullWidth
               size="medium"
+              disabled={disabledFields.lastName}
             />
             <TextField
               label="Telefon*"
@@ -130,6 +145,7 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
               helperText={errors.phone?.message}
               fullWidth
               size="medium"
+              disabled={disabledFields.phone}
             />
           </Stack>
         </Stack>

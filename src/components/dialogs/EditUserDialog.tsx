@@ -33,10 +33,12 @@ import {
   updateUser,
   getUserDetails,
   type RoleOption,
-  type CompanyOption
+  type CompanyOption,
+  type ScopeOption
 } from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
+import { usePermission } from '@/hooks/usePermission';
 
 export interface EditUserDialogProps {
   open: boolean;
@@ -78,10 +80,17 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { addToast } = useUiStore();
+  const { hasPermission } = usePermission();
+
+  // Permission-based field disabling
+  const canEditName = hasPermission('user edit-name');
+  const canEditPhone = hasPermission('user edit-phone');
+  const canEditEmail = hasPermission('user edit-email');
+  const canEditPassword = hasPermission('user edit-password');
 
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
-  const [competencyOptions, setCompetencyOptions] = useState<string[]>([]);
+  const [competencyOptions, setCompetencyOptions] = useState<ScopeOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState('');
 
@@ -142,7 +151,11 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
           : Object.values(rawCompanies);
         setCompanyOptions(normalizedCompanies);
 
-        setCompetencyOptions(optionsResponse.scopes_of_competence || []);
+        const rawScopes = optionsResponse.scopes_of_competence || [];
+        const normalizedScopes: ScopeOption[] = Array.isArray(rawScopes)
+          ? rawScopes
+          : Object.values(rawScopes);
+        setCompetencyOptions(normalizedScopes);
 
         // --- Map user details using freshly loaded options ---
         const userDetails = detailsResponse.user;
@@ -178,7 +191,13 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
           firstName: userDetails.firstname || user.full_name?.split(' ')[0] || '',
           lastName: userDetails.lastname || user.full_name?.split(' ').slice(1).join(' ') || '',
           position: userDetails.position || '',
-          competencies: userDetails.scopes_of_competence || [],
+          competencies: Array.isArray(userDetails.scopes_of_competence)
+            ? userDetails.scopes_of_competence.map((s) =>
+                typeof s === 'object' && s !== null && 'value' in s
+                  ? (s as { value: number }).value
+                  : Number(s)
+              )
+            : [],
           phone: userDetails.phone || user.phone || '',
           email: userDetails.email || user.email || '',
           marketingConsent:
@@ -389,6 +408,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             helperText={errors.firstName?.message}
             fullWidth
             size="medium"
+            disabled={!canEditName}
             InputLabelProps={{ shrink: true }}
           />
 
@@ -424,6 +444,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             helperText={errors.phone?.message}
             fullWidth
             size="medium"
+            disabled={!canEditPhone}
             InputLabelProps={{ shrink: true }}
           />
 
@@ -492,6 +513,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             helperText={errors.lastName?.message}
             fullWidth
             size="medium"
+            disabled={!canEditName}
             InputLabelProps={{ shrink: true }}
           />
 
@@ -502,10 +524,11 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
               <Autocomplete
                 multiple
                 options={competencyOptions}
-                getOptionLabel={(option) => option}
-                value={competencyOptions.filter((c) => field.value?.includes(c))}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                value={competencyOptions.filter((c) => field.value?.includes(c.value))}
                 onChange={(_, newValue) => {
-                  field.onChange(newValue);
+                  field.onChange(newValue.map((v) => v.value));
                 }}
                 slotProps={{
                   paper: {
@@ -518,10 +541,10 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                 renderTags={(value, getTagProps) =>
                   value.map((option, index) => (
                     <Chip
-                      label={option}
+                      label={option.label}
                       size="small"
                       {...getTagProps({ index })}
-                      key={option}
+                      key={option.value}
                       sx={{
                         borderRadius: '16px',
                         border: '1px solid rgba(0, 0, 0, 0.5)',
@@ -543,6 +566,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             helperText={errors.email?.message}
             fullWidth
             size="medium"
+            disabled={!canEditEmail}
             InputLabelProps={{ shrink: true }}
           />
 
@@ -689,6 +713,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
         <Button
           variant="outlined"
           onClick={handleGeneratePassword}
+          disabled={!canEditPassword}
           startIcon={<LockIcon />}
           sx={{
             borderColor: '#D0D5DD',
