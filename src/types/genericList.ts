@@ -95,7 +95,13 @@ export type FiltersState = Record<string, string | string[]>;
 
 // ================== ACTION DEFINITIONS ==================
 
-export type ActionType = 'button_primary' | 'button_secondary' | 'button_delete' | 'button_icon';
+export type ActionType =
+  | 'button_primary'
+  | 'button_secondary'
+  | 'button_delete'
+  | 'button_archive'
+  | 'button_restore'
+  | 'button_icon';
 
 export interface ActionDef {
   type: ActionType;
@@ -134,6 +140,16 @@ export interface ListMeta {
 export interface GenericRecord {
   [key: string]: unknown;
   actions?: ActionDef[];
+  meta?: {
+    columns?: Record<
+      string,
+      {
+        tooltip?: {
+          content: string[];
+        };
+      }
+    >;
+  };
 }
 
 export interface GenericListResponse<T extends GenericRecord = GenericRecord> {
