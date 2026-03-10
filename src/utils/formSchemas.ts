@@ -151,3 +151,67 @@ export const editUserSchema = z.object({
 });
 
 export type EditUserFormValues = z.input<typeof editUserSchema>;
+
+// ================== CLIENT SCHEMAS ==================
+
+const phoneOptional = z
+  .string()
+  .regex(/^[0-9+() -]{7,20}$/, 'Podaj prawidłowy numer telefonu')
+  .or(z.literal(''))
+  .optional();
+
+const nipOptional = z
+  .string()
+  .regex(/^[0-9]{10}$/, 'NIP musi składać się z dokładnie 10 cyfr')
+  .or(z.literal(''))
+  .optional();
+
+const regonOrKrsOptional = z
+  .string()
+  .regex(/^[0-9]{9,14}$/, 'Wartość musi składać się z 9–14 cyfr')
+  .or(z.literal(''))
+  .optional();
+
+export const addClientSchema = z.object({
+  name: z.string().min(1, 'Nazwa jest wymagana'),
+  authority_scope: z.string().min(1, 'Wybierz zakres umocowania'),
+  type: z.string().optional(),
+  nip: nipOptional,
+  regon: regonOrKrsOptional,
+  krs: regonOrKrsOptional,
+  website: z.string().optional(),
+  street: z.string().optional(),
+  street_no: z.string().optional(),
+  city: z.string().optional(),
+  postal: z.string().optional(),
+  phone: phoneOptional,
+  status: z.string().min(1, 'Wybierz status klienta'),
+  // Powiązania
+  hasRelations: z.boolean(),
+  parentClientIds: z.array(z.number()).optional(),
+  childClientIds: z.array(z.number()).optional()
+});
+
+export type AddClientFormValues = z.input<typeof addClientSchema>;
+
+export const editClientSchema = z.object({
+  name: z.string().min(1, 'Nazwa jest wymagana'),
+  authority_scope: z.string().min(1, 'Wybierz zakres umocowania'),
+  type: z.string().optional(),
+  nip: nipOptional,
+  regon: regonOrKrsOptional,
+  krs: regonOrKrsOptional,
+  website: z.string().optional(),
+  street: z.string().optional(),
+  street_no: z.string().optional(),
+  city: z.string().optional(),
+  postal: z.string().optional(),
+  phone: phoneOptional,
+  status: z.string().min(1, 'Wybierz status klienta'),
+  // Powiązania
+  hasRelations: z.boolean(),
+  parentClientIds: z.array(z.number()).optional(),
+  childClientIds: z.array(z.number()).optional()
+});
+
+export type EditClientFormValues = z.input<typeof editClientSchema>;
