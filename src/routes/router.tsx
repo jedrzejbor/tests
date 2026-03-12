@@ -9,6 +9,8 @@ import UnavailablePage from '@/pages/UnavailablePage';
 import SettingsPage from '@/pages/SettingsPage';
 import UsersPage from '@/pages/UsersPage';
 import UserDetailsPage from '@/pages/UserDetailsPage';
+import ClientsPage from '@/pages/ClientsPage';
+import ClientDetailsPage from '@/pages/ClientDetailsPage';
 import ResetPasswordTokenPage from '@/pages/ResetPasswordTokenPage';
 import AppErrorBoundary from '@/routes/AppErrorBoundary';
 import ProtectedRoute from '@/routes/ProtectedRoute';
@@ -133,6 +135,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <UnavailablePage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '/app/clients',
+        element: (
+          <ProtectedRoute>
+            <ClientsPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '/app/clients/:clientId',
+        element: (
+          <ProtectedRoute>
+            <ClientDetailsPage />
           </ProtectedRoute>
         )
       },

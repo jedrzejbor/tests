@@ -16,7 +16,10 @@ export const API_ENDPOINTS = {
   IMPERSONATE: '/api/impersonate', // POST /api/impersonate/{userId}
   IMPERSONATE_LEAVE: '/api/impersonate/leave',
   // Generic list endpoints
-  USERS_TABLE: '/api/resource/users'
+  USERS_TABLE: '/api/resource/users',
+  CLIENTS_TABLE: '/api/resource/clients',
+  // Client form options
+  CLIENT_FORM: '/api/client/form'
   // Tutaj dodawaj kolejne endpointy
 } as const;
 

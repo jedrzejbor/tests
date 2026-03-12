@@ -188,7 +188,7 @@ export const addClientSchema = z.object({
   status: z.string().min(1, 'Wybierz status klienta'),
   // Powiązania
   hasRelations: z.boolean(),
-  parentClientIds: z.array(z.number()).optional(),
+  parentClientId: z.number().optional(),
   childClientIds: z.array(z.number()).optional()
 });
 
@@ -210,7 +210,7 @@ export const editClientSchema = z.object({
   status: z.string().min(1, 'Wybierz status klienta'),
   // Powiązania
   hasRelations: z.boolean(),
-  parentClientIds: z.array(z.number()).optional(),
+  parentClientId: z.number().optional(),
   childClientIds: z.array(z.number()).optional()
 });
 
