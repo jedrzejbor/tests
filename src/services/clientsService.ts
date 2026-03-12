@@ -41,8 +41,7 @@ export interface ClientDetailsApiClient {
   bank_account?: string;
   website?: string;
   client_parent_id?: number | null;
-  parent_client_ids?: number[];
-  child_client_ids?: number[];
+  client_children_ids?: number[];
   parent_client_name?: string;
   child_client_name?: string;
   status?: string;
@@ -80,8 +79,8 @@ export interface ClientFormOptionsResponse {
 
 export interface CreateClientPayload {
   name: string;
-  parent_client_ids?: number[];
-  child_client_ids?: number[];
+  client_parent_id?: number | null;
+  client_children_ids?: number[];
   authority_scope: string;
   type: string;
   nip?: string;
@@ -98,8 +97,8 @@ export interface CreateClientPayload {
 
 export interface UpdateClientPayload {
   name?: string | null;
-  parent_client_ids?: number[] | null;
-  child_client_ids?: number[] | null;
+  client_parent_id?: number | null;
+  client_children_ids?: number[] | null;
   authority_scope?: string | null;
   type?: string | null;
   nip?: string | null;

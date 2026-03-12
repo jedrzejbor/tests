@@ -8,10 +8,32 @@ import {
   Skeleton,
   Menu,
   MenuItem,
-  Divider
+  Divider,
+  Tooltip
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { ColumnDef, GenericRecord, ActionDef, ExtraRowAction } from '@/types/genericList';
+
+/**
+ * Extract tooltip items from row meta for a given column property.
+ * Backend sends content as either [] (empty array) or { "1": "...", "2": "..." } (object).
+ */
+const getTooltipItems = (row: GenericRecord, property: string | null): string[] => {
+  if (!property) return [];
+  const meta = row.meta as
+    | { columns?: Record<string, { tooltip?: { content?: unknown } }> }
+    | undefined;
+  const content = meta?.columns?.[property]?.tooltip?.content;
+  if (!content) return [];
+  if (Array.isArray(content)) return content.filter((v): v is string => typeof v === 'string');
+  if (typeof content === 'object' && content !== null) {
+    return Object.values(content as Record<string, string>).filter(
+      (v): v is string => typeof v === 'string'
+    );
+  }
+  return [];
+};
 
 interface MobileCardListRendererProps<T extends GenericRecord = GenericRecord> {
   columns: ColumnDef[];
@@ -137,24 +159,31 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
     );
   }
 
-  // Find title column (full_name or first text column)
+  // Find title column (full_name, name, or first text column)
   const titleColumn =
-    columns.find((c) => c.type === 'full_name') || columns.find((c) => c.type === 'text');
+    columns.find((c) => c.type === 'full_name') ||
+    columns.find((c) => c.property === 'name') ||
+    columns.find((c) => c.type === 'text');
 
-  // Find subtitle column (company or second column)
-  const subtitleColumn = columns.find((c) => c.property === 'company' || c.property === 'position');
+  // Find subtitle column (company, parent_client, or position)
+  const subtitleColumn = columns.find(
+    (c) => c.property === 'company' || c.property === 'parent_client' || c.property === 'position'
+  );
 
-  // Find email column
-  const emailColumn = columns.find((c) => c.property === 'email');
+  // Find email or child_client column
+  const emailColumn = columns.find((c) => c.property === 'email' || c.property === 'child_client');
 
-  // Find phone column
-  const phoneColumn = columns.find((c) => c.property === 'phone');
+  // Find phone or nip column
+  const phoneColumn = columns.find((c) => c.property === 'phone' || c.property === 'nip');
 
   // Find status column
   const statusColumn = columns.find((c) => c.type === 'status' || c.property === 'status');
 
-  // Find account_type column
-  const accountTypeColumn = columns.find((c) => c.property === 'account_type');
+  // Find account_type, type, or authority_scope column
+  const accountTypeColumn = columns.find(
+    (c) =>
+      c.property === 'account_type' || c.property === 'type' || c.property === 'authority_scope'
+  );
 
   return (
     <>
@@ -178,6 +207,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
             : '';
           const emailValue = emailColumn?.property ? String(row[emailColumn.property] || '') : '';
           const phoneValue = phoneColumn?.property ? String(row[phoneColumn.property] || '') : '';
+          const cityValue = row.city ? String(row.city) : '';
           const statusValue = statusColumn?.property
             ? String(row[statusColumn.property] || '')
             : '';
@@ -231,19 +261,49 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                   </Typography>
                 )}
 
-                {/* Email */}
+                {/* Email / child_client */}
                 {emailValue && (
-                  <Typography
-                    sx={{
-                      color: '#74767F',
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      fontWeight: 400,
-                      mt: 0.5
-                    }}
-                  >
-                    {emailColumn?.label || 'Email'}: {emailValue}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                    <Typography
+                      sx={{
+                        color: '#74767F',
+                        fontSize: '14px',
+                        lineHeight: '20px',
+                        fontWeight: 400
+                      }}
+                    >
+                      {emailColumn?.label || 'Email'}: {emailValue}
+                    </Typography>
+                    {emailColumn?.property === 'child_client' &&
+                      (() => {
+                        const tooltipItems = getTooltipItems(row, 'child_client');
+                        return tooltipItems.length > 0 ? (
+                          <Tooltip
+                            title={
+                              <Box>
+                                {tooltipItems.map((item, i) => (
+                                  <Typography key={i} variant="body2" sx={{ fontSize: '13px' }}>
+                                    {item}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            }
+                            arrow
+                            enterTouchDelay={0}
+                            leaveTouchDelay={3000}
+                          >
+                            <InfoOutlinedIcon
+                              sx={{
+                                fontSize: 16,
+                                color: '#9CA3AF',
+                                cursor: 'pointer',
+                                '&:hover': { color: '#6B7280' }
+                              }}
+                            />
+                          </Tooltip>
+                        ) : null;
+                      })()}
+                  </Box>
                 )}
 
                 {/* Phone */}
@@ -258,6 +318,21 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                     }}
                   >
                     {phoneColumn?.label || 'Telefon'}: {phoneValue}
+                  </Typography>
+                )}
+
+                {/* City (for clients) */}
+                {cityValue && (
+                  <Typography
+                    sx={{
+                      color: '#74767F',
+                      fontSize: '14px',
+                      lineHeight: '20px',
+                      fontWeight: 400,
+                      mt: 0.5
+                    }}
+                  >
+                    Miasto: {cityValue}
                   </Typography>
                 )}
 
@@ -355,7 +430,14 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
             key={action.handler}
             onClick={() => handleMenuAction(action.handler)}
             sx={{
-              color: action.type === 'button_delete' ? '#EF4444' : '#32343A',
+              color:
+                action.type === 'button_delete'
+                  ? '#EF4444'
+                  : action.type === 'button_archive'
+                    ? '#F59E0B'
+                    : action.type === 'button_restore'
+                      ? '#10B981'
+                      : '#32343A',
               fontSize: '14px',
               py: 1.5,
               '&:hover': {

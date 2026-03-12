@@ -242,9 +242,14 @@ const UsersPage: React.FC = () => {
     'view-user': handleViewUser,
     edit: handleEditUser,
     'edit-user': handleEditUser,
-    delete: handleDeleteUser,
-    'delete-user': handleDeleteUser,
+    // Active users — archive (soft delete)
+    'archive-user': handleDeleteUser,
+    // Archived users — permanent delete
+    'delete-user': handleForceDeleteUser,
+    // Archived users — restore
     'restore-user': handleRestoreUser,
+    // Legacy handlers (backwards compat)
+    delete: handleDeleteUser,
     'force-delete-user': handleForceDeleteUser,
     // Impersonation
     'impersonate-user': handleImpersonateUser,

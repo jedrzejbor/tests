@@ -271,7 +271,7 @@ const UserDetailsPage: React.FC = () => {
           status: data.status,
           role: (data.role as string) ?? previous.role,
           position: data.position,
-          competencies: data.competencies,
+          competencies: data.competencies as unknown as string[],
           company: (data.company as string) ?? previous.company,
           account_type: data.accountType,
           managingEntities: data.managingEntities,

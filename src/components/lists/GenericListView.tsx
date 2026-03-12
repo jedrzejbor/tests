@@ -231,18 +231,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               {/* Add button from general actions or default "create-user" handler */}
               {(() => {
                 const generalActions = meta?.generalActions || [];
-                // Add default "Dodaj" action if create-user handler exists and not in generalActions
-                const hasCreateAction = generalActions.some((a) => a.handler === 'create-user');
-                const actionsToShow = hasCreateAction
-                  ? generalActions
-                  : [
-                      ...generalActions,
-                      {
-                        type: 'button_primary' as const,
-                        label: 'Dodaj',
-                        handler: 'create-user'
-                      }
-                    ];
+                // Show only generalActions from backend (includes create-user / create-client etc.)
+                const actionsToShow = generalActions;
 
                 return actionsToShow
                   .filter((action) => action.type === 'button_primary')

@@ -17,14 +17,39 @@ import {
   Skeleton,
   Box,
   Typography,
-  Divider
+  Divider,
+  Tooltip
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
+import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { ColumnDef, GenericRecord, ActionDef, ExtraRowAction } from '@/types/genericList';
+
+/**
+ * Extract tooltip items from row meta for a given column property.
+ * Backend sends content as either [] (empty array) or { "1": "...", "2": "..." } (object).
+ * This helper normalises both formats into a string[].
+ */
+const getTooltipItems = (row: GenericRecord, property: string | null): string[] => {
+  if (!property) return [];
+  const meta = row.meta as
+    | { columns?: Record<string, { tooltip?: { content?: unknown } }> }
+    | undefined;
+  const content = meta?.columns?.[property]?.tooltip?.content;
+  if (!content) return [];
+  if (Array.isArray(content)) return content.filter((v): v is string => typeof v === 'string');
+  if (typeof content === 'object' && content !== null) {
+    return Object.values(content as Record<string, string>).filter(
+      (v): v is string => typeof v === 'string'
+    );
+  }
+  return [];
+};
 
 interface DesktopTableRendererProps<T extends GenericRecord = GenericRecord> {
   columns: ColumnDef[];
@@ -50,6 +75,10 @@ const getActionIcon = (type: string) => {
       return <EditOutlinedIcon fontSize="small" />;
     case 'button_delete':
       return <DeleteOutlineIcon fontSize="small" />;
+    case 'button_archive':
+      return <ArchiveOutlinedIcon fontSize="small" />;
+    case 'button_restore':
+      return <RestoreOutlinedIcon fontSize="small" />;
     case 'button_download':
       return <DownloadOutlinedIcon fontSize="small" />;
     default:
@@ -77,6 +106,147 @@ const renderCell = <T extends GenericRecord>(column: ColumnDef, row: T) => {
 
   const value = row[column.property];
   const stringValue = value !== null && value !== undefined ? String(value) : '—';
+
+  // ===== CLIENT TABLE CUSTOM RENDERING =====
+  // Nazwa Klienta, Podmioty zarządzające, NIP, Miasto → jak email (Link)
+  if (
+    column.property === 'name' ||
+    column.property === 'parent_client' ||
+    column.property === 'nip' ||
+    column.property === 'city'
+  ) {
+    return (
+      <Link
+        sx={{
+          color: 'text.primary',
+          textDecoration: 'none',
+          fontSize: '14px',
+          fontWeight: 400,
+          cursor: 'default',
+          '&:hover': { textDecoration: 'underline' }
+        }}
+      >
+        {stringValue.length > 35 ? `${stringValue.slice(0, 32)}...` : stringValue}
+      </Link>
+    );
+  }
+
+  // Podmioty zależne (child_client) → value + info icon with tooltip listing all child clients
+  if (column.property === 'child_client') {
+    const tooltipItems = getTooltipItems(row, column.property);
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Link
+          sx={{
+            color: 'text.primary',
+            textDecoration: 'none',
+            fontSize: '14px',
+            fontWeight: 400,
+            cursor: 'default',
+            '&:hover': { textDecoration: 'underline' }
+          }}
+        >
+          {stringValue.length > 30 ? `${stringValue.slice(0, 27)}...` : stringValue}
+        </Link>
+        {tooltipItems.length > 0 && (
+          <Tooltip
+            title={
+              <Box>
+                {tooltipItems.map((item, i) => (
+                  <Typography key={i} variant="body2" sx={{ fontSize: '13px' }}>
+                    {item}
+                  </Typography>
+                ))}
+              </Box>
+            }
+            arrow
+            placement="top"
+          >
+            <InfoOutlinedIcon
+              sx={{
+                fontSize: 16,
+                color: '#9CA3AF',
+                cursor: 'pointer',
+                '&:hover': { color: '#6B7280' }
+              }}
+            />
+          </Tooltip>
+        )}
+      </Box>
+    );
+  }
+
+  // Rodzaj klienta (type) → jak rodzaj konta (Chip with badge style)
+  if (column.property === 'type' && row.type) {
+    return (
+      <Chip
+        label={stringValue}
+        size="small"
+        variant="filled"
+        sx={{
+          borderRadius: '20px',
+          fontWeight: 400,
+          fontSize: '12px',
+          textTransform: 'capitalize',
+          color: '#111827',
+          height: 28,
+          bgcolor: '#F3F4F6',
+          px: '0',
+          lineHeight: '18px'
+        }}
+      />
+    );
+  }
+
+  // Zakres umocowania (authority_scope) → jak rodzaj konta (Chip)
+  if (column.property === 'authority_scope') {
+    return (
+      <Chip
+        label={stringValue}
+        size="small"
+        variant="filled"
+        sx={{
+          borderRadius: '20px',
+          fontWeight: 400,
+          fontSize: '12px',
+          textTransform: 'capitalize',
+          color: '#111827',
+          height: 28,
+          bgcolor: '#F3F4F6',
+          px: '0',
+          lineHeight: '18px'
+        }}
+      />
+    );
+  }
+
+  // // Status (status) → jak status z użytkowników (dot + text)
+  // if (column.property === 'status' && row.status) {
+  //   const statusColorMap: Record<string, string> = {
+  //     success: '#10B981',
+  //     error: '#EF4444',
+  //     warning: '#F59E0B',
+  //     default: '#6B7280'
+  //   };
+  //   const statusColor = getStatusColor(stringValue);
+  //   const dotColor = statusColorMap[statusColor] || statusColorMap.default;
+
+  //   return (
+  //     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+  //       <Box
+  //         sx={{
+  //           width: 6,
+  //           height: 6,
+  //           borderRadius: '50%',
+  //           bgcolor: dotColor
+  //         }}
+  //       />
+  //       <Typography sx={{ fontSize: '14px', color: '#32343A', fontWeight: 400 }}>
+  //         {stringValue}
+  //       </Typography>
+  //     </Box>
+  //   );
+  // }
 
   // Special handling for company/firma column with icon
   if (column.property === 'company' || column.property === 'firma') {
@@ -525,7 +695,14 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
             <MenuItem
               onClick={() => handleActionClick(action.handler)}
               sx={{
-                color: '#1E1F21',
+                color:
+                  action.type === 'button_delete'
+                    ? '#EF4444'
+                    : action.type === 'button_archive'
+                      ? '#F59E0B'
+                      : action.type === 'button_restore'
+                        ? '#10B981'
+                        : '#1E1F21',
                 fontSize: '14px',
                 fontWeight: 500,
                 lineHeight: '24px',
@@ -541,7 +718,14 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
             >
               <ListItemIcon
                 sx={{
-                  color: '#8E9098',
+                  color:
+                    action.type === 'button_delete'
+                      ? '#EF4444'
+                      : action.type === 'button_archive'
+                        ? '#F59E0B'
+                        : action.type === 'button_restore'
+                          ? '#10B981'
+                          : '#8E9098',
                   minWidth: 'auto',
                   width: 16,
                   height: 20,

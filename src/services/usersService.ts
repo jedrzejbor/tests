@@ -181,19 +181,24 @@ export const getUserCreateOptions = async (): Promise<UserCreateOptionsResponse>
 };
 
 /**
- * Delete user by ID
+ * Archive (soft delete) user by ID
  */
-export const deleteUser = async (userId: string | number, password: string): Promise<void> => {
-  await apiClient.delete(`/api/user/${userId}`, {
+export const archiveUser = async (userId: string | number, password: string): Promise<void> => {
+  await apiClient.delete(`/api/user/${userId}/archive`, {
     body: JSON.stringify({ password })
   });
 };
 
 /**
- * Force delete user by ID
+ * @deprecated Use archiveUser instead — kept for backwards compatibility
+ */
+export const deleteUser = archiveUser;
+
+/**
+ * Force delete user by ID (permanent)
  */
 export const forceDeleteUser = async (userId: string | number, password: string): Promise<void> => {
-  await apiClient.delete(`/api/user/${userId}/force-delete`, {
+  await apiClient.delete(`/api/user/${userId}/force`, {
     body: JSON.stringify({ password })
   });
 };
