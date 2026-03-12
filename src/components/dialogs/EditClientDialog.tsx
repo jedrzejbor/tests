@@ -9,6 +9,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Switch,
+  Chip,
+  Autocomplete,
   useMediaQuery,
   useTheme,
   IconButton,
@@ -25,7 +28,6 @@ import {
   getClientDetails,
   updateClient,
   type AuthorityScopeOption,
-  type ClientTypeOption,
   type ParentClientOption,
   type ClientRecord
 } from '@/services/clientsService';
@@ -56,13 +58,13 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [authorityScopeOptions, setAuthorityScopeOptions] = useState<AuthorityScopeOption[]>([]);
-  const [typeOptions, setTypeOptions] = useState<ClientTypeOption[]>([]);
   const [parentClientOptions, setParentClientOptions] = useState<ParentClientOption[]>([]);
 
   const {
     register,
     handleSubmit,
     control,
+    watch,
     reset,
     setError,
     formState: { errors }
@@ -70,20 +72,25 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
     resolver: zodResolver(editClientSchema),
     defaultValues: {
       name: '',
-      client_parent_id: '',
       authority_scope: '',
-      type: '',
+      type: 'company',
       nip: '',
       regon: '',
       krs: '',
+      website: '',
       street: '',
       street_no: '',
       city: '',
       postal: '',
       phone: '',
-      status: 'active'
+      status: 'active',
+      hasRelations: false,
+      parentClientId: undefined,
+      childClientIds: []
     }
   });
+
+  const hasRelations = watch('hasRelations');
 
   // Load form options + client details in parallel
   useEffect(() => {
@@ -98,7 +105,6 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
 
         // Options
         setAuthorityScopeOptions(optionsResp.authority_scope || []);
-        setTypeOptions(optionsResp.type || []);
         const rawClients = optionsResp.clients || [];
         const normalizedClients: ParentClientOption[] = Array.isArray(rawClients)
           ? rawClients
@@ -119,18 +125,21 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
 
         reset({
           name: c.name || '',
-          client_parent_id: c.client_parent_id ?? '',
           authority_scope: c.authority_scope || '',
-          type: c.type || '',
+          type: c.type || 'company',
           nip: c.nip || '',
           regon: c.regon || '',
           krs: c.krs || '',
+          website: c.website || '',
           street: c.street || '',
           street_no: c.street_no || '',
           city: c.city || '',
           postal: c.postal || '',
           phone: c.phone || '',
-          status: statusValue
+          status: statusValue,
+          hasRelations: !!(c.client_parent_id || c.client_children_ids?.length),
+          parentClientId: c.client_parent_id ?? undefined,
+          childClientIds: c.client_children_ids || []
         });
       } catch (error) {
         const apiError = error as ApiError;
@@ -160,12 +169,15 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
 
       const payload = {
         name: data.name,
-        client_parent_id: data.client_parent_id ? Number(data.client_parent_id) : null,
+        client_parent_id: data.hasRelations && data.parentClientId ? data.parentClientId : null,
+        client_children_ids:
+          data.hasRelations && data.childClientIds?.length ? data.childClientIds : [],
         authority_scope: data.authority_scope,
-        type: data.type,
+        type: 'company',
         nip: data.nip || undefined,
         regon: data.regon || undefined,
         krs: data.krs || undefined,
+        website: data.website || undefined,
         street: data.street || undefined,
         street_no: data.street_no || undefined,
         city: data.city || undefined,
@@ -223,11 +235,11 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         '& .MuiOutlinedInput-notchedOutline': { borderRadius: '4px' }
       }}
     >
-      {/* ——— Dane podstawowe ——— */}
+      {/* ——— Dane firmy ——— */}
       <Typography
         sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.6)', letterSpacing: '0.17px', mb: 2.5 }}
       >
-        Dane podstawowe
+        Dane firmy
       </Typography>
 
       <Stack spacing={2.5} sx={{ mb: 2.5 }}>
@@ -243,35 +255,14 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <Controller
-            name="type"
-            control={control}
-            render={({ field }) => (
-              <FormControl fullWidth size="medium" error={Boolean(errors.type)}>
-                <InputLabel>Typ klienta</InputLabel>
-                <Select
-                  {...field}
-                  label="Typ klienta"
-                  MenuProps={{ PaperProps: { sx: menuPaperSx } }}
-                >
-                  {typeOptions.map((t) => (
-                    <MenuItem key={t.value} value={t.value}>
-                      {t.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-
-          <Controller
             name="authority_scope"
             control={control}
             render={({ field }) => (
               <FormControl fullWidth size="medium" error={Boolean(errors.authority_scope)}>
-                <InputLabel>Zakres pełnomocnictwa</InputLabel>
+                <InputLabel>Zakres umocowania</InputLabel>
                 <Select
                   {...field}
-                  label="Zakres pełnomocnictwa"
+                  label="Zakres umocowania"
                   MenuProps={{ PaperProps: { sx: menuPaperSx } }}
                 >
                   {authorityScopeOptions.map((a) => (
@@ -279,34 +270,6 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
                       {a.label}
                     </MenuItem>
                   ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-        </Stack>
-
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <Controller
-            name="client_parent_id"
-            control={control}
-            render={({ field }) => (
-              <FormControl fullWidth size="medium">
-                <InputLabel>Podmiot zarządzający</InputLabel>
-                <Select
-                  {...field}
-                  label="Podmiot zarządzający"
-                  MenuProps={{ PaperProps: { sx: menuPaperSx } }}
-                >
-                  <MenuItem value="">
-                    <em>Brak</em>
-                  </MenuItem>
-                  {parentClientOptions
-                    .filter((c) => c.value !== Number(client?.id))
-                    .map((c) => (
-                      <MenuItem key={c.value} value={c.value}>
-                        {c.label}
-                      </MenuItem>
-                    ))}
                 </Select>
               </FormControl>
             )}
@@ -342,6 +305,8 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         <TextField
           label="NIP"
           {...register('nip')}
+          error={Boolean(errors.nip)}
+          helperText={errors.nip?.message}
           fullWidth
           size="medium"
           InputLabelProps={{ shrink: true }}
@@ -349,6 +314,8 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         <TextField
           label="REGON"
           {...register('regon')}
+          error={Boolean(errors.regon)}
+          helperText={errors.regon?.message}
           fullWidth
           size="medium"
           InputLabelProps={{ shrink: true }}
@@ -356,6 +323,8 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         <TextField
           label="KRS"
           {...register('krs')}
+          error={Boolean(errors.krs)}
+          helperText={errors.krs?.message}
           fullWidth
           size="medium"
           InputLabelProps={{ shrink: true }}
@@ -378,7 +347,7 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           InputLabelProps={{ shrink: true }}
         />
         <TextField
-          label="Nr budynku"
+          label="Nr budynku/lokalu"
           {...register('street_no')}
           fullWidth
           size="medium"
@@ -413,8 +382,98 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         fullWidth
         size="medium"
         InputLabelProps={{ shrink: true }}
-        sx={{ mb: 3 }}
+        sx={{ mb: 2.5 }}
       />
+
+      <TextField
+        label="Strona www (opcjonalnie)"
+        {...register('website')}
+        fullWidth
+        size="medium"
+        InputLabelProps={{ shrink: true }}
+        sx={{ mb: 2.5 }}
+      />
+
+      {/* ——— Podmiot ma powiązania ——— */}
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography sx={{ fontSize: '16px', color: '#000', letterSpacing: '0.15px' }}>
+          Podmiot ma powiązania
+        </Typography>
+        <Controller
+          name="hasRelations"
+          control={control}
+          render={({ field }) => (
+            <Switch
+              checked={field.value}
+              onChange={(e) => field.onChange(e.target.checked)}
+              sx={{
+                '& .MuiSwitch-switchBase.Mui-checked': { color: '#1E1F21' },
+                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                  backgroundColor: '#1E1F21'
+                }
+              }}
+            />
+          )}
+        />
+      </Stack>
+
+      {hasRelations && (
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+          <Controller
+            name="parentClientId"
+            control={control}
+            render={({ field }) => (
+              <Autocomplete
+                options={parentClientOptions.filter((c) => c.value !== Number(client?.id))}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                value={parentClientOptions.find((c) => c.value === field.value) ?? null}
+                onChange={(_, newValue) => field.onChange(newValue?.value ?? undefined)}
+                slotProps={{ paper: { sx: { bgcolor: 'white', border: '1px solid #D0D5DD' } } }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Podmiot zarządzający" size="medium" />
+                )}
+                sx={{ flex: 1 }}
+              />
+            )}
+          />
+
+          <Controller
+            name="childClientIds"
+            control={control}
+            render={({ field }) => (
+              <Autocomplete
+                multiple
+                options={parentClientOptions.filter((c) => c.value !== Number(client?.id))}
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                value={parentClientOptions.filter((c) => field.value?.includes(c.value))}
+                onChange={(_, newValue) => field.onChange(newValue.map((v) => v.value))}
+                slotProps={{ paper: { sx: { bgcolor: 'white', border: '1px solid #D0D5DD' } } }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Podmioty zależne" size="medium" />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      label={option.label}
+                      size="small"
+                      {...getTagProps({ index })}
+                      key={option.value}
+                      sx={{
+                        borderRadius: '16px',
+                        border: '1px solid rgba(0,0,0,0.5)',
+                        bgcolor: 'transparent'
+                      }}
+                    />
+                  ))
+                }
+                sx={{ flex: 1 }}
+              />
+            )}
+          />
+        </Stack>
+      )}
 
       {/* ——— Przyciski ——— */}
       <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
