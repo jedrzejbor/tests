@@ -171,10 +171,15 @@ export const fetchClientsTable = async (
 };
 
 /**
- * Fetch form options for create/edit client
+ * Fetch form options for create/edit client.
+ * Without clientId — returns all clients (for parent select in create form).
+ * With clientId — returns only children of that client (for edit form).
  */
-export const getClientFormOptions = async (): Promise<ClientFormOptionsResponse> => {
-  return apiClient.get<ClientFormOptionsResponse>(API_ENDPOINTS.CLIENT_FORM);
+export const getClientFormOptions = async (
+  clientId?: string | number
+): Promise<ClientFormOptionsResponse> => {
+  const url = clientId ? `${API_ENDPOINTS.CLIENT_FORM}/${clientId}` : API_ENDPOINTS.CLIENT_FORM;
+  return apiClient.get<ClientFormOptionsResponse>(url);
 };
 
 /**

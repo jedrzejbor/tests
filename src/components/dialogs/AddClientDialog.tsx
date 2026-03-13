@@ -12,6 +12,7 @@ import {
   Switch,
   Chip,
   Autocomplete,
+  Tooltip,
   useMediaQuery,
   useTheme,
   IconButton,
@@ -367,40 +368,49 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
             )}
           />
 
-          <Controller
-            name="childClientIds"
-            control={control}
-            render={({ field }) => (
-              <Autocomplete
-                multiple
-                options={parentClientOptions}
-                getOptionLabel={(option) => option.label}
-                isOptionEqualToValue={(option, value) => option.value === value.value}
-                value={parentClientOptions.filter((c) => field.value?.includes(c.value))}
-                onChange={(_, newValue) => field.onChange(newValue.map((v) => v.value))}
-                slotProps={{ paper: { sx: { bgcolor: 'white', border: '1px solid #D0D5DD' } } }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Podmioty zależne" size="medium" />
+          <Tooltip
+            title="Przypisanie podmiotu zależnego jest niedostępne, możliwe tylko poprzez edycję innego podmiotu i przypisanie mu podmiotu zarządzającego"
+            placement="top"
+            arrow
+          >
+            <span style={{ flex: 1 }}>
+              <Controller
+                name="childClientIds"
+                control={control}
+                render={({ field }) => (
+                  <Autocomplete
+                    multiple
+                    disabled
+                    options={parentClientOptions}
+                    getOptionLabel={(option) => option.label}
+                    isOptionEqualToValue={(option, value) => option.value === value.value}
+                    value={parentClientOptions.filter((c) => field.value?.includes(c.value))}
+                    onChange={(_, newValue) => field.onChange(newValue.map((v) => v.value))}
+                    slotProps={{ paper: { sx: { bgcolor: 'white', border: '1px solid #D0D5DD' } } }}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Podmioty zależne" size="medium" />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          label={option.label}
+                          size="small"
+                          {...getTagProps({ index })}
+                          key={option.value}
+                          sx={{
+                            borderRadius: '16px',
+                            border: '1px solid rgba(0,0,0,0.5)',
+                            bgcolor: 'transparent'
+                          }}
+                        />
+                      ))
+                    }
+                    sx={{ flex: 1, width: '100%' }}
+                  />
                 )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      label={option.label}
-                      size="small"
-                      {...getTagProps({ index })}
-                      key={option.value}
-                      sx={{
-                        borderRadius: '16px',
-                        border: '1px solid rgba(0,0,0,0.5)',
-                        bgcolor: 'transparent'
-                      }}
-                    />
-                  ))
-                }
-                sx={{ flex: 1 }}
               />
-            )}
-          />
+            </span>
+          </Tooltip>
         </Stack>
       )}
 
