@@ -9,7 +9,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Switch,
   Chip,
   Divider,
   Autocomplete,
@@ -69,12 +68,7 @@ const STATUSES = [
   { value: 'nieaktywny', label: 'Nieaktywny' }
 ];
 
-const ENTITIES = [
-  { value: 'maspex', label: 'Maspex' },
-  { value: 'kubus', label: 'Kubuś' },
-  { value: 'twix', label: 'Twix' },
-  { value: 'lubella', label: 'Lubella' }
-];
+// ENTITIES removed (not used anymore)
 
 const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, onSuccess }) => {
   const theme = useTheme();
@@ -98,7 +92,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
     register,
     handleSubmit,
     control,
-    watch,
     reset,
     setError,
     formState: { errors }
@@ -115,14 +108,9 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
       email: '',
       marketingConsent: '',
       accountType: '',
-      status: 'aktywny',
-      hasRelations: false,
-      managingEntities: [],
-      dependentEntities: []
+      status: 'aktywny'
     }
   });
-
-  const hasRelations = watch('hasRelations');
 
   // Single effect: load form options AND user details together so company/role
   // lookups always have fresh options available (avoids race condition where
@@ -207,10 +195,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
                 ? 'nie'
                 : '',
           accountType: user.account_type || '',
-          status: userDetails.status || user.status || 'aktywny',
-          hasRelations: false,
-          managingEntities: [],
-          dependentEntities: []
+          status: userDetails.status || user.status || 'aktywny'
         });
       } catch (error) {
         const apiError = error as ApiError;
@@ -597,114 +582,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
         </Box>
       </Stack>
 
-      {/* Podmiot ma powiązania */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography sx={{ fontSize: '16px', color: '#000', letterSpacing: '0.15px' }}>
-          Podmiot ma powiązania
-        </Typography>
-        <Controller
-          name="hasRelations"
-          control={control}
-          render={({ field }) => (
-            <Switch
-              checked={field.value}
-              onChange={(e) => field.onChange(e.target.checked)}
-              sx={{
-                '& .MuiSwitch-switchBase.Mui-checked': {
-                  color: '#1E1F21'
-                },
-                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                  backgroundColor: '#1E1F21'
-                }
-              }}
-            />
-          )}
-        />
-      </Stack>
-
-      {hasRelations && (
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-          <Controller
-            name="managingEntities"
-            control={control}
-            render={({ field }) => (
-              <Autocomplete
-                multiple
-                options={ENTITIES}
-                getOptionLabel={(option) => option.label}
-                value={ENTITIES.filter((e) => field.value?.includes(e.value))}
-                onChange={(_, newValue) => {
-                  field.onChange(newValue.map((v) => v.value));
-                }}
-                slotProps={{
-                  paper: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Wybierz podmioty zarządzające" size="medium" />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      label={option.label}
-                      size="small"
-                      {...getTagProps({ index })}
-                      key={option.value}
-                      sx={{
-                        borderRadius: '16px',
-                        border: '1px solid rgba(0, 0, 0, 0.5)',
-                        bgcolor: 'transparent'
-                      }}
-                    />
-                  ))
-                }
-                sx={{ flex: 1 }}
-              />
-            )}
-          />
-
-          <Controller
-            name="dependentEntities"
-            control={control}
-            render={({ field }) => (
-              <Autocomplete
-                multiple
-                options={ENTITIES}
-                getOptionLabel={(option) => option.label}
-                value={ENTITIES.filter((e) => field.value?.includes(e.value))}
-                onChange={(_, newValue) => {
-                  field.onChange(newValue.map((v) => v.value));
-                }}
-                slotProps={{
-                  paper: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Wybierz podmioty zależne" size="medium" />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      label={option.label}
-                      size="small"
-                      {...getTagProps({ index })}
-                      key={option.value}
-                      sx={{
-                        borderRadius: '16px',
-                        border: '1px solid rgba(0, 0, 0, 0.5)',
-                        bgcolor: 'transparent'
-                      }}
-                    />
-                  ))
-                }
-                sx={{ flex: 1 }}
-              />
-            )}
-          />
-        </Stack>
-      )}
+      {/* Removed 'Podmiot ma powiązania' section per request */}
 
       <Divider sx={{ my: 3 }} />
 

@@ -105,12 +105,7 @@ export const addUserSchema = z.object({
     .regex(/^[0-9+() -]{7,20}$/, 'Podaj prawidłowy numer telefonu'),
   email: emailField,
   accountType: z.string().min(1, 'Wybierz rodzaj konta'),
-  status: z.string().min(1, 'Wybierz status użytkownika'),
-
-  // Powiązania
-  hasRelations: z.boolean(),
-  managingEntities: z.array(z.string()).optional(),
-  dependentEntities: z.array(z.string()).optional()
+  status: z.string().min(1, 'Wybierz status użytkownika')
 });
 
 export type AddUserFormValues = z.input<typeof addUserSchema>;
@@ -142,12 +137,7 @@ export const editUserSchema = z.object({
   email: emailField,
   marketingConsent: z.string().min(1, 'Wybierz zgodę marketingową'),
   accountType: z.string().min(1, 'Wybierz rodzaj konta'),
-  status: z.string().min(1, 'Wybierz status użytkownika'),
-
-  // Powiązania
-  hasRelations: z.boolean(),
-  managingEntities: z.array(z.string()).optional(),
-  dependentEntities: z.array(z.string()).optional()
+  status: z.string().min(1, 'Wybierz status użytkownika')
 });
 
 export type EditUserFormValues = z.input<typeof editUserSchema>;
