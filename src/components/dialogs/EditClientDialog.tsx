@@ -431,6 +431,11 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
                 value={parentClientOptions.find((c) => c.value === field.value) ?? null}
                 onChange={(_, newValue) => field.onChange(newValue?.value ?? undefined)}
                 slotProps={{ paper: { sx: { bgcolor: 'white', border: '1px solid #D0D5DD' } } }}
+                renderOption={(props, option) => (
+                  <li {...props} key={option.value}>
+                    {option.label}
+                  </li>
+                )}
                 renderInput={(params) => (
                   <TextField {...params} label="Podmiot zarządzający" size="medium" />
                 )}
@@ -453,11 +458,22 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
                     multiple
                     disabled
                     options={parentClientOptions.filter((c) => c.value !== Number(client?.id))}
+                    onOpen={() =>
+                      console.log(
+                        parentClientOptions.filter((c) => c.value !== Number(client?.id)),
+                        'test'
+                      )
+                    }
                     getOptionLabel={(option) => option.label}
                     isOptionEqualToValue={(option, value) => option.value === value.value}
                     value={parentClientOptions.filter((c) => field.value?.includes(c.value))}
                     onChange={(_, newValue) => field.onChange(newValue.map((v) => v.value))}
                     slotProps={{ paper: { sx: { bgcolor: 'white', border: '1px solid #D0D5DD' } } }}
+                    renderOption={(props, option) => (
+                      <li {...props} key={option.value}>
+                        {option.label}
+                      </li>
+                    )}
                     renderInput={(params) => (
                       <TextField {...params} label="Podmioty zależne" size="medium" />
                     )}
