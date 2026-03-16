@@ -365,13 +365,31 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           size="medium"
           InputLabelProps={{ shrink: true }}
         />
-        <TextField
-          label="Kod pocztowy"
-          {...register('postal')}
-          fullWidth
-          size="medium"
-          InputLabelProps={{ shrink: true }}
-          sx={{ maxWidth: { md: 200 } }}
+        <Controller
+          name="postal"
+          control={control}
+          render={({ field }) => {
+            const formatPostal = (value: string) => {
+              const digits = (value || '').replace(/\D/g, '').slice(0, 5);
+              if (digits.length <= 2) return digits;
+              return digits.slice(0, 2) + '-' + digits.slice(2);
+            };
+
+            return (
+              <TextField
+                label="Kod pocztowy"
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(formatPostal(e.target.value))}
+                onBlur={field.onBlur}
+                fullWidth
+                size="medium"
+                InputLabelProps={{ shrink: true }}
+                sx={{ maxWidth: { md: 200 } }}
+                error={Boolean(errors.postal)}
+                helperText={errors.postal?.message}
+              />
+            );
+          }}
         />
       </Stack>
 
