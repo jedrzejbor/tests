@@ -5,7 +5,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
@@ -677,26 +676,7 @@ const ClientDetailsPage: React.FC = () => {
           >
             Usuń klienta
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<NotificationsNoneOutlinedIcon />}
-            sx={{
-              bgcolor: '#1E1F21',
-              color: 'white',
-              borderRadius: '8px',
-              px: 2.25,
-              py: 1,
-              fontSize: '14px',
-              fontWeight: 500,
-              textTransform: 'none',
-              boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
-              '&:hover': {
-                bgcolor: '#32343A'
-              }
-            }}
-          >
-            Wyślij powiadomienie
-          </Button>
+          {/* 'Wyślij powiadomienie' button removed per request */}
         </Stack>
       </Stack>
 
