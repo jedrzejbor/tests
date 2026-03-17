@@ -72,6 +72,7 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
       regon: '',
       krs: '',
       website: '',
+      bank_account: '',
       street: '',
       street_no: '',
       city: '',
@@ -126,6 +127,7 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
         regon: data.regon || undefined,
         krs: data.krs || undefined,
         website: data.website || undefined,
+        bank_account: data.bank_account || undefined,
         street: data.street || undefined,
         street_no: data.street_no || undefined,
         city: data.city || undefined,
@@ -336,6 +338,14 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
       <TextField
         label="Strona www (opcjonalnie)"
         {...register('website')}
+        fullWidth
+        size="medium"
+        sx={{ mb: 2.5 }}
+      />
+
+      <TextField
+        label="Nr konta bankowego"
+        {...register('bank_account')}
         fullWidth
         size="medium"
         sx={{ mb: 2.5 }}

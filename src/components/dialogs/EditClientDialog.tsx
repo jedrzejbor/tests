@@ -132,6 +132,7 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           regon: c.regon || '',
           krs: c.krs || '',
           website: c.website || '',
+          bank_account: c.bank_account || '',
           street: c.street || '',
           street_no: c.street_no || '',
           city: c.city || '',
@@ -178,7 +179,11 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         nip: data.nip || undefined,
         regon: data.regon || undefined,
         krs: data.krs || undefined,
-        website: data.website || undefined,
+        // Send the website value as-is for edits — if the input is empty string,
+        // send it so the backend will clear the stored website. Previously we
+        // used `|| undefined` which omitted empty string and prevented deletion.
+        website: data.website,
+        bank_account: data.bank_account,
         street: data.street || undefined,
         street_no: data.street_no || undefined,
         city: data.city || undefined,
@@ -413,6 +418,14 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         sx={{ mb: 2.5 }}
       />
 
+      <TextField
+        label="Nr konta bankowego"
+        {...register('bank_account')}
+        fullWidth
+        size="medium"
+        InputLabelProps={{ shrink: true }}
+        sx={{ mb: 2.5 }}
+      />
       {/* ——— Podmiot ma powiązania ——— */}
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography sx={{ fontSize: '16px', color: '#000', letterSpacing: '0.15px' }}>
