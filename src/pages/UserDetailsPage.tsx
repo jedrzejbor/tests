@@ -39,8 +39,8 @@ interface UserDetailsData {
   role?: string;
   position?: string;
   competencies?: string[];
-  managingEntities?: string[];
-  dependentEntities?: string[];
+  managingEntities?: (string | number)[];
+  dependentEntities?: (string | number)[];
 }
 
 // Reusable field component for desktop grid (same pattern as SettingsPage)
