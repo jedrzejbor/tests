@@ -154,15 +154,23 @@ const phoneOptional = z
   .or(z.literal(''))
   .optional();
 
-const nipOptional = z
+/** NIP: accepts XXX-XXX-XX-XX or 10 digits without dashes */
+const nipRegex = /^(\d{3}-\d{3}-\d{2}-\d{2}|\d{10})$/;
+const nipMessage = 'NIP musi mieć format XXX-XXX-XX-XX lub 10 cyfr';
+
+const nipRequired = z.string().min(1, 'NIP jest wymagany').regex(nipRegex, nipMessage);
+
+const nipOptional = z.string().regex(nipRegex, nipMessage).or(z.literal('')).optional();
+
+const regonOptional = z
   .string()
-  .regex(/^[0-9]{10}$/, 'NIP musi składać się z dokładnie 10 cyfr')
+  .regex(/^[0-9]{9,14}$/, 'REGON musi składać się z 9–14 cyfr')
   .or(z.literal(''))
   .optional();
 
-const regonOrKrsOptional = z
+const krsOptional = z
   .string()
-  .regex(/^[0-9]{9,14}$/, 'Wartość musi składać się z 9–14 cyfr')
+  .regex(/^[0-9]{10}$/, 'KRS musi składać się z dokładnie 10 cyfr')
   .or(z.literal(''))
   .optional();
 
@@ -170,9 +178,9 @@ export const addClientSchema = z.object({
   name: z.string().min(1, 'Nazwa jest wymagana'),
   authority_scope: z.string().min(1, 'Wybierz zakres umocowania'),
   type: z.string().optional(),
-  nip: nipOptional,
-  regon: regonOrKrsOptional,
-  krs: regonOrKrsOptional,
+  nip: nipRequired,
+  regon: regonOptional,
+  krs: krsOptional,
   website: z.string().optional(),
   bank_account: z.string().optional(),
   street: z.string().optional(),
@@ -194,8 +202,8 @@ export const editClientSchema = z.object({
   authority_scope: z.string().min(1, 'Wybierz zakres umocowania'),
   type: z.string().optional(),
   nip: nipOptional,
-  regon: regonOrKrsOptional,
-  krs: regonOrKrsOptional,
+  regon: regonOptional,
+  krs: krsOptional,
   website: z.string().optional(),
   bank_account: z.string().optional(),
   street: z.string().optional(),
