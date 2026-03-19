@@ -46,7 +46,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   rowKey = 'id',
   initialPerPage = 10,
   refreshKey,
-  extraRowActions = []
+  extraRowActions = [],
+  disabledColumns,
+  disabledFilters
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -59,7 +61,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   const controller = useGenericListController<T>({
     fetcher,
     rowKey,
-    initialPerPage
+    initialPerPage,
+    disabledColumns,
+    disabledFilters
   });
 
   const {

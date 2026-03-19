@@ -138,6 +138,10 @@ const buildQueryString = (params: FetcherParams): string => {
     }
   });
 
+  // disabled-columns[] and disabled-filters[]
+  params.disabledColumns?.forEach((col) => query.append('disabled-columns[]', col));
+  params.disabledFilters?.forEach((f) => query.append('disabled-filters[]', f));
+
   return query.toString();
 };
 

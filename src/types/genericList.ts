@@ -195,6 +195,10 @@ export interface FetcherParams {
   sortProperty: string;
   sortOrder: 'asc' | 'desc';
   filters: FiltersState;
+  /** Column properties to exclude from backend response */
+  disabledColumns?: string[];
+  /** Filter keys to exclude from backend response */
+  disabledFilters?: string[];
 }
 
 export type Fetcher<T extends GenericRecord = GenericRecord> = (
@@ -215,6 +219,10 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
   refreshKey?: string | number;
   /** Frontend-defined row actions appended after backend actions in the kebab menu */
   extraRowActions?: ExtraRowAction<T>[];
+  /** Column properties to exclude from backend response */
+  disabledColumns?: string[];
+  /** Filter keys to exclude from backend response */
+  disabledFilters?: string[];
 }
 
 // ================== CONTROLLER STATE ==================

@@ -11,6 +11,10 @@ interface UseGenericListControllerOptions<T extends GenericRecord> {
   fetcher: Fetcher<T>;
   rowKey?: keyof T | ((row: T) => string);
   initialPerPage?: number;
+  /** Column properties to exclude from backend response */
+  disabledColumns?: string[];
+  /** Filter keys to exclude from backend response */
+  disabledFilters?: string[];
 }
 
 /**
@@ -20,7 +24,7 @@ interface UseGenericListControllerOptions<T extends GenericRecord> {
 export function useGenericListController<T extends GenericRecord = GenericRecord>(
   options: UseGenericListControllerOptions<T>
 ): UseGenericListController<T> {
-  const { fetcher, rowKey = 'id', initialPerPage = 10 } = options;
+  const { fetcher, rowKey = 'id', initialPerPage = 10, disabledColumns, disabledFilters } = options;
 
   // Data state
   const [data, setData] = useState<T[]>([]);
@@ -93,7 +97,9 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
         search,
         sortProperty,
         sortOrder,
-        filters
+        filters,
+        disabledColumns,
+        disabledFilters
       });
 
       setData(response.data);
@@ -115,7 +121,17 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
     } finally {
       setLoading(false);
     }
-  }, [fetcher, page, perPage, search, sortProperty, sortOrder, filters]);
+  }, [
+    fetcher,
+    page,
+    perPage,
+    search,
+    sortProperty,
+    sortOrder,
+    filters,
+    disabledColumns,
+    disabledFilters
+  ]);
 
   // Initial fetch and refetch on params change
   useEffect(() => {
