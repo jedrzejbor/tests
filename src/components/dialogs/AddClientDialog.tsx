@@ -123,7 +123,7 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
           data.hasRelations && data.childClientIds?.length ? data.childClientIds : undefined,
         authority_scope: data.authority_scope,
         type: 'company',
-        nip: data.nip || undefined,
+        nip: data.nip,
         regon: data.regon || undefined,
         krs: data.krs || undefined,
         website: data.website || undefined,
@@ -253,13 +253,41 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
       </Typography>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
-        <TextField
-          label="NIP"
-          {...register('nip')}
-          error={Boolean(errors.nip)}
-          helperText={errors.nip?.message}
-          fullWidth
-          size="medium"
+        <Controller
+          name="nip"
+          control={control}
+          render={({ field }) => {
+            const formatNip = (value: string) => {
+              const digits = (value || '').replace(/\D/g, '').slice(0, 10);
+              if (digits.length <= 3) return digits;
+              if (digits.length <= 6) return digits.slice(0, 3) + '-' + digits.slice(3);
+              if (digits.length <= 8)
+                return digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6);
+              return (
+                digits.slice(0, 3) +
+                '-' +
+                digits.slice(3, 6) +
+                '-' +
+                digits.slice(6, 8) +
+                '-' +
+                digits.slice(8)
+              );
+            };
+
+            return (
+              <TextField
+                label="NIP *"
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(formatNip(e.target.value))}
+                onBlur={field.onBlur}
+                error={Boolean(errors.nip)}
+                helperText={errors.nip?.message}
+                fullWidth
+                size="medium"
+                placeholder="XXX-XXX-XX-XX"
+              />
+            );
+          }}
         />
         <TextField
           label="REGON"

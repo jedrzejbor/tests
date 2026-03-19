@@ -176,14 +176,13 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           data.hasRelations && data.childClientIds?.length ? data.childClientIds : [],
         authority_scope: data.authority_scope,
         type: 'company',
-        nip: data.nip || undefined,
-        regon: data.regon || undefined,
-        krs: data.krs || undefined,
-        // Send the website value as-is for edits — if the input is empty string,
-        // send it so the backend will clear the stored website. Previously we
-        // used `|| undefined` which omitted empty string and prevented deletion.
-        website: data.website,
-        bank_account: data.bank_account,
+        nip: data.nip || null,
+        regon: data.regon || null,
+        krs: data.krs || null,
+        // Send null for empty strings so backend clears the stored value.
+        // Backend accepts `sometimes|nullable|string` for these fields.
+        website: data.website || null,
+        bank_account: data.bank_account || null,
         street: data.street || undefined,
         street_no: data.street_no || undefined,
         city: data.city || undefined,
@@ -308,14 +307,42 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
       </Typography>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
-        <TextField
-          label="NIP"
-          {...register('nip')}
-          error={Boolean(errors.nip)}
-          helperText={errors.nip?.message}
-          fullWidth
-          size="medium"
-          InputLabelProps={{ shrink: true }}
+        <Controller
+          name="nip"
+          control={control}
+          render={({ field }) => {
+            const formatNip = (value: string) => {
+              const digits = (value || '').replace(/\D/g, '').slice(0, 10);
+              if (digits.length <= 3) return digits;
+              if (digits.length <= 6) return digits.slice(0, 3) + '-' + digits.slice(3);
+              if (digits.length <= 8)
+                return digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6);
+              return (
+                digits.slice(0, 3) +
+                '-' +
+                digits.slice(3, 6) +
+                '-' +
+                digits.slice(6, 8) +
+                '-' +
+                digits.slice(8)
+              );
+            };
+
+            return (
+              <TextField
+                label="NIP"
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(formatNip(e.target.value))}
+                onBlur={field.onBlur}
+                error={Boolean(errors.nip)}
+                helperText={errors.nip?.message}
+                fullWidth
+                size="medium"
+                InputLabelProps={{ shrink: true }}
+                placeholder="XXX-XXX-XX-XX"
+              />
+            );
+          }}
         />
         <TextField
           label="REGON"

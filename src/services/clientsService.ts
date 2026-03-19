@@ -83,10 +83,11 @@ export interface CreateClientPayload {
   client_children_ids?: number[];
   authority_scope: string;
   type: string;
-  nip?: string;
+  nip: string;
   regon?: string;
   krs?: string;
   website?: string;
+  bank_account?: string;
   street?: string;
   street_no?: string;
   city?: string;
@@ -105,6 +106,7 @@ export interface UpdateClientPayload {
   regon?: string | null;
   krs?: string | null;
   website?: string | null;
+  bank_account?: string | null;
   street?: string | null;
   street_no?: string | null;
   city?: string | null;
@@ -150,6 +152,10 @@ const buildQueryString = (params: FetcherParams): string => {
       }
     }
   });
+
+  // disabled-columns[] and disabled-filters[]
+  params.disabledColumns?.forEach((col) => query.append('disabled-columns[]', col));
+  params.disabledFilters?.forEach((f) => query.append('disabled-filters[]', f));
 
   return query.toString();
 };
