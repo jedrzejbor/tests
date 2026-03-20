@@ -148,7 +148,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
                     letterSpacing: '0.4px'
                   }}
                 >
-                  Copyright © 2024 Cliffsidebroekrs
+                  Copyright © 2024 Cliffsidebrokers
                 </Typography>
               </Box>
             </Box>
@@ -288,7 +288,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
                 letterSpacing: '0.4px'
               }}
             >
-              Copyright © 2024 Cliffsidebroekrs
+              Copyright © 2024 Cliffsidebrokers
             </Typography>
           </Box>
         </Container>
