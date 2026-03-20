@@ -25,6 +25,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addUserSchema, type AddUserFormValues } from '@/utils/formSchemas';
+import { onlyDigitsKeyDown, translateServerError } from '@/utils/formErrorHelpers';
 import {
   createUser,
   getUserCreateOptions,
@@ -173,7 +174,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           if (formField) {
             setError(formField, {
               type: 'server',
-              message: messages?.[0] || 'Nieprawidłowa wartość'
+              message: translateServerError(messages?.[0] || 'Nieprawidłowa wartość')
             });
           }
         });
@@ -440,6 +441,8 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           helperText={errors.phone?.message}
           fullWidth
           size="medium"
+          inputProps={{ inputMode: 'numeric', maxLength: 11, pattern: '[0-9]*' }}
+          onKeyDown={onlyDigitsKeyDown}
         />
         <TextField
           label="Email"

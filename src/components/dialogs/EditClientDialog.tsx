@@ -24,6 +24,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { editClientSchema, type EditClientFormValues } from '@/utils/formSchemas';
+import { onlyDigitsKeyDown, translateServerError } from '@/utils/formErrorHelpers';
 import {
   getClientFormOptions,
   getClientDetails,
@@ -203,7 +204,7 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           if (formField) {
             setError(formField, {
               type: 'server',
-              message: messages?.[0] || 'Nieprawidłowa wartość'
+              message: translateServerError(messages?.[0] || 'Nieprawidłowa wartość')
             });
           }
         });
@@ -315,6 +316,8 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           fullWidth
           size="medium"
           InputLabelProps={{ shrink: true }}
+          inputProps={{ inputMode: 'numeric', maxLength: 10, pattern: '[0-9]*' }}
+          onKeyDown={onlyDigitsKeyDown}
         />
         <TextField
           label="REGON"
@@ -324,6 +327,8 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           fullWidth
           size="medium"
           InputLabelProps={{ shrink: true }}
+          inputProps={{ inputMode: 'numeric', maxLength: 14, pattern: '[0-9]*' }}
+          onKeyDown={onlyDigitsKeyDown}
         />
         <TextField
           label="KRS"
@@ -333,6 +338,8 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           fullWidth
           size="medium"
           InputLabelProps={{ shrink: true }}
+          inputProps={{ inputMode: 'numeric', maxLength: 10, pattern: '[0-9]*' }}
+          onKeyDown={onlyDigitsKeyDown}
         />
       </Stack>
 
@@ -406,6 +413,8 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         size="medium"
         InputLabelProps={{ shrink: true }}
         sx={{ mb: 2.5 }}
+        inputProps={{ inputMode: 'numeric', maxLength: 11, pattern: '[0-9]*' }}
+        onKeyDown={onlyDigitsKeyDown}
       />
 
       <TextField

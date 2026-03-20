@@ -43,7 +43,7 @@ export const profileSchema = z.object({
   phone: z
     .string()
     .min(1, 'Numer telefonu jest wymagany')
-    .regex(/^[0-9+() -]{7,20}$/, 'Podaj prawidłowy numer telefonu'),
+    .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)'),
   currentPassword: z.string().min(8, 'Hasło musi mieć co najmniej 8 znaków').optional()
 });
 
@@ -60,7 +60,7 @@ export const editAccountDataSchema = z.object({
   phone: z
     .string()
     .min(1, 'Numer telefonu jest wymagany')
-    .regex(/^[0-9+() -]{7,20}$/, 'Podaj prawidłowy numer telefonu')
+    .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)')
 });
 
 export type EditAccountDataFormValues = z.infer<typeof editAccountDataSchema>;
@@ -104,7 +104,7 @@ export const addUserSchema = z.object({
   phone: z
     .string()
     .min(1, 'Numer telefonu jest wymagany')
-    .regex(/^[0-9+() -]{7,20}$/, 'Podaj prawidłowy numer telefonu'),
+    .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)'),
   email: emailField,
   accountType: z.string().min(1, 'Wybierz rodzaj konta'),
   status: z.string().min(1, 'Wybierz status użytkownika')
@@ -137,7 +137,7 @@ export const editUserSchema = z.object({
   phone: z
     .string()
     .min(1, 'Numer telefonu jest wymagany')
-    .regex(/^[0-9+() -]{7,20}$/, 'Podaj prawidłowy numer telefonu'),
+    .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)'),
   email: emailField,
   marketingConsent: z.string().min(1, 'Wybierz zgodę marketingową'),
   accountType: z.string().min(1, 'Wybierz rodzaj konta'),
@@ -150,13 +150,13 @@ export type EditUserFormValues = z.input<typeof editUserSchema>;
 
 const phoneOptional = z
   .string()
-  .regex(/^[0-9+() -]{7,20}$/, 'Podaj prawidłowy numer telefonu')
+  .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)')
   .or(z.literal(''))
   .optional();
 
-/** NIP: accepts XXX-XXX-XX-XX or 10 digits without dashes */
-const nipRegex = /^(\d{3}-\d{3}-\d{2}-\d{2}|\d{10})$/;
-const nipMessage = 'NIP musi mieć format XXX-XXX-XX-XX lub 10 cyfr';
+/** NIP: exactly 10 digits */
+const nipRegex = /^[0-9]{10}$/;
+const nipMessage = 'NIP musi mieć dokładnie 10 cyfr';
 
 const nipRequired = z.string().min(1, 'NIP jest wymagany').regex(nipRegex, nipMessage);
 

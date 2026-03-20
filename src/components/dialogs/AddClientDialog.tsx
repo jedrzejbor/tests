@@ -25,6 +25,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addClientSchema, type AddClientFormValues } from '@/utils/formSchemas';
+import { onlyDigitsKeyDown, translateServerError } from '@/utils/formErrorHelpers';
 import {
   createClient,
   getClientFormOptions,
@@ -148,7 +149,7 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
           if (formField) {
             setError(formField, {
               type: 'server',
-              message: messages?.[0] || 'Nieprawidłowa wartość'
+              message: translateServerError(messages?.[0] || 'Nieprawidłowa wartość')
             });
           }
         });
@@ -260,6 +261,8 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
           helperText={errors.nip?.message}
           fullWidth
           size="medium"
+          inputProps={{ inputMode: 'numeric', maxLength: 10, pattern: '[0-9]*' }}
+          onKeyDown={onlyDigitsKeyDown}
         />
         <TextField
           label="REGON"
@@ -268,6 +271,8 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
           helperText={errors.regon?.message}
           fullWidth
           size="medium"
+          inputProps={{ inputMode: 'numeric', maxLength: 14, pattern: '[0-9]*' }}
+          onKeyDown={onlyDigitsKeyDown}
         />
         <TextField
           label="KRS"
@@ -276,6 +281,8 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
           helperText={errors.krs?.message}
           fullWidth
           size="medium"
+          inputProps={{ inputMode: 'numeric', maxLength: 10, pattern: '[0-9]*' }}
+          onKeyDown={onlyDigitsKeyDown}
         />
       </Stack>
 
@@ -333,6 +340,8 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
         fullWidth
         size="medium"
         sx={{ mb: 2.5 }}
+        inputProps={{ inputMode: 'numeric', maxLength: 11, pattern: '[0-9]*' }}
+        onKeyDown={onlyDigitsKeyDown}
       />
 
       <TextField

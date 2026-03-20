@@ -25,6 +25,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { editUserSchema, type EditUserFormValues } from '@/utils/formSchemas';
+import { onlyDigitsKeyDown, translateServerError } from '@/utils/formErrorHelpers';
 import { generateSecurePassword } from '@/utils/passwordGenerator';
 import type { UserRecord } from '@/services/usersService';
 import {
@@ -269,7 +270,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
           if (formField) {
             setError(formField, {
               type: 'server',
-              message: messages?.[0] || 'Nieprawidłowa wartość'
+              message: translateServerError(messages?.[0] || 'Nieprawidłowa wartość')
             });
           }
         });
@@ -431,6 +432,8 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             size="medium"
             disabled={!canEditPhone}
             InputLabelProps={{ shrink: true }}
+            inputProps={{ inputMode: 'numeric', maxLength: 11, pattern: '[0-9]*' }}
+            onKeyDown={onlyDigitsKeyDown}
           />
 
           <Controller

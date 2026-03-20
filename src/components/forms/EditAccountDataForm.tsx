@@ -3,6 +3,7 @@ import { Box, Button, Stack, TextField, Typography, useMediaQuery, useTheme } fr
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { editAccountDataSchema, type EditAccountDataFormValues } from '@/utils/formSchemas';
+import { onlyDigitsKeyDown } from '@/utils/formErrorHelpers';
 
 export interface EditAccountDataFormProps {
   initialValues?: EditAccountDataFormValues;
@@ -98,6 +99,8 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
             fullWidth
             size="medium"
             disabled={disabledFields.phone}
+            inputProps={{ inputMode: 'numeric', maxLength: 11, pattern: '[0-9]*' }}
+            onKeyDown={onlyDigitsKeyDown}
           />
         </Stack>
       ) : (
@@ -146,6 +149,8 @@ const EditAccountDataForm: React.FC<EditAccountDataFormProps> = ({
               fullWidth
               size="medium"
               disabled={disabledFields.phone}
+              inputProps={{ inputMode: 'numeric', maxLength: 11, pattern: '[0-9]*' }}
+              onKeyDown={onlyDigitsKeyDown}
             />
           </Stack>
         </Stack>
