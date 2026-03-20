@@ -23,12 +23,14 @@ export interface LoginFormProps {
   onSuccess?: () => void;
   onForgotPassword?: () => void;
   onBecomeClient?: () => void;
+  onLinkClick?: () => void;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   onSuccess,
   onForgotPassword,
-  onBecomeClient
+  onBecomeClient,
+  onLinkClick
 }) => {
   const {
     handleSubmit,
@@ -175,7 +177,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       >
         <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
           <Link
-            href="#"
+            component="button"
+            type="button"
+            onClick={onLinkClick}
             underline="always"
             sx={{
               color: '#8F6D5F',
@@ -187,7 +191,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             Regulaminy
           </Link>
           <Link
-            href="#"
+            component="button"
+            type="button"
+            onClick={onLinkClick}
             underline="always"
             sx={{
               color: '#8F6D5F',

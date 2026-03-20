@@ -702,6 +702,14 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
               }}
             >
               Dodaj nowego użytkownika
+              {step === 2 && (
+                <Typography
+                  component="span"
+                  sx={{ color: '#D32F2F', fontSize: '13px', fontWeight: 400, ml: 1 }}
+                >
+                  (funkcjonalność w trakcie przeróbek)
+                </Typography>
+              )}
             </Typography>
             <IconButton onClick={handleClose} size="small" aria-label="Zamknij">
               <CloseIcon sx={{ color: '#8E9098' }} />
@@ -745,6 +753,14 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
             }}
           >
             Dodaj nowego użytkownika
+            {step === 2 && (
+              <Typography
+                component="span"
+                sx={{ color: '#D32F2F', fontSize: '13px', fontWeight: 400, ml: 1 }}
+              >
+                (funkcjonalność w trakcie przeróbek)
+              </Typography>
+            )}
           </Typography>
           <IconButton onClick={handleClose} size="medium" aria-label="Zamknij">
             <CloseIcon sx={{ color: '#8E9098' }} />

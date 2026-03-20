@@ -6,7 +6,7 @@ import {
   CardContent,
   Chip,
   Stack,
-  Switch,
+  // Switch,
   Typography,
   useMediaQuery,
   useTheme
@@ -550,7 +550,7 @@ const SettingsPage = () => {
       </Card>
 
       {/* Push Notifications Section */}
-      <Card
+      {/* <Card
         sx={{
           borderRadius: 1,
           boxShadow: 'none',
@@ -559,7 +559,6 @@ const SettingsPage = () => {
         }}
       >
         <CardContent sx={{ p: 2 }}>
-          {/* Header */}
           <Box
             sx={{
               borderBottom: '1px solid',
@@ -594,7 +593,7 @@ const SettingsPage = () => {
             </Typography>
           </Box>
 
-          {/* Content */}
+
           <Box sx={{ px: 1.5, py: 1 }}>
             <Typography
               variant="body2"
@@ -623,7 +622,7 @@ const SettingsPage = () => {
             </Stack>
           </Box>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Edit Account Data Modal */}
       <FormModal
