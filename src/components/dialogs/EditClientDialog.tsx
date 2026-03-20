@@ -125,6 +125,15 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           else statusValue = 'active';
         }
 
+        // Backend returns parent_client as a string name, not an ID.
+        // Look up the matching option to get the numeric ID.
+        const parentClientName = c.parent_client || c.parent_client_name || null;
+        const parentClientId = parentClientName
+          ? (normalizedClients.find((opt) => opt.label === parentClientName)?.value ??
+            c.client_parent_id ??
+            undefined)
+          : (c.client_parent_id ?? undefined);
+
         reset({
           name: c.name || '',
           authority_scope: c.authority_scope || '',
@@ -140,8 +149,8 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           postal: c.postal || '',
           phone: c.phone || '',
           status: statusValue,
-          hasRelations: !!(c.client_parent_id || c.client_children_ids?.length),
-          parentClientId: c.client_parent_id ?? undefined,
+          hasRelations: !!(parentClientId || c.client_parent_id || c.client_children_ids?.length),
+          parentClientId: parentClientId,
           childClientIds: c.client_children_ids || []
         });
       } catch (error) {
@@ -467,7 +476,7 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
                 options={parentClientOptions.filter((c) => c.value !== Number(client?.id))}
                 getOptionLabel={(option) => option.label}
                 isOptionEqualToValue={(option, value) => option.value === value.value}
-                value={parentClientOptions.find((c) => c.value === field.value) ?? null}
+                value={parentClientOptions.find((opt) => opt.value === Number(field.value)) ?? null}
                 onChange={(_, newValue) => field.onChange(newValue?.value ?? undefined)}
                 slotProps={{ paper: { sx: { bgcolor: 'white', border: '1px solid #D0D5DD' } } }}
                 renderOption={(props, option) => (

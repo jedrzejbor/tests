@@ -42,14 +42,20 @@ export interface ClientDetailsApiClient {
   website?: string;
   client_parent_id?: number | null;
   client_children_ids?: number[];
+  parent_client?: string | null;
   parent_client_name?: string;
+  child_client?: string | null;
   child_client_name?: string;
+  child_client_names?: string[];
   status?: string;
 }
 
 export interface ClientDetailsResponse {
   client: ClientDetailsApiClient;
   actions?: { type: string; label: string; handler: string }[];
+  meta?: {
+    columns?: Record<string, { tooltip?: { content?: unknown } }>;
+  };
 }
 
 // ================== FORM OPTIONS ==================

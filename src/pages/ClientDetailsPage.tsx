@@ -20,6 +20,7 @@ import {
   Stack,
   Tab,
   Tabs,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme
@@ -29,6 +30,7 @@ import ArchiveClientDialog from '@/components/dialogs/ArchiveClientDialog';
 import {
   type ClientRecord,
   type ClientDetailsApiClient,
+  type ClientDetailsResponse,
   getClientDetails
 } from '@/services/clientsService';
 import type { ApiError } from '@/services/apiClient';
@@ -51,12 +53,12 @@ interface ClientDetailsData {
   street: string;
   street_no: string;
   phone: string;
-  email: string;
   authority_scope: string;
   type: string;
   status: string;
   parent_client: string;
   child_client: string;
+  child_client_names: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -175,37 +177,60 @@ const ClientDetailsPage: React.FC = () => {
       street: '',
       street_no: '',
       phone: '',
-      email: '',
       authority_scope: stateClient.authority_scope || '',
       type: stateClient.type || '',
       status: stateClient.status || '',
       parent_client: stateClient.parent_client || '',
-      child_client: stateClient.child_client || ''
+      child_client: stateClient.child_client || '',
+      child_client_names: []
     }),
     [clientId]
   );
 
   const mapFromApiClient = useCallback(
-    (api: ClientDetailsApiClient, stateClient?: ClientRecord): ClientDetailsData => ({
-      id: api.id ?? stateClient?.id ?? clientId ?? '',
-      name: api.name || stateClient?.name || '',
-      nip: api.nip || '',
-      regon: api.regon || '',
-      krs: api.krs || '',
-      bank_account: api.bank_account || '',
-      website: api.website || '',
-      city: api.city || '',
-      postal: api.postal || '',
-      street: api.street || '',
-      street_no: api.street_no || '',
-      phone: api.phone || '',
-      email: api.email || '',
-      authority_scope: api.authority_scope || '',
-      type: api.type || '',
-      status: api.status || stateClient?.status || '',
-      parent_client: api.parent_client_name || stateClient?.parent_client || '',
-      child_client: api.child_client_name || stateClient?.child_client || ''
-    }),
+    (
+      api: ClientDetailsApiClient,
+      stateClient?: ClientRecord,
+      responseMeta?: ClientDetailsResponse['meta']
+    ): ClientDetailsData => {
+      // Extract child client names from meta.columns.child_client.tooltip.content
+      // Backend sends content as { "1": "Name1", "2": "Name2" } or an array
+      const tooltipContent = responseMeta?.columns?.['child_client']?.tooltip?.content;
+      let childClientNames: string[] = [];
+      if (tooltipContent) {
+        if (Array.isArray(tooltipContent)) {
+          childClientNames = tooltipContent.filter((v): v is string => typeof v === 'string');
+        } else if (typeof tooltipContent === 'object' && tooltipContent !== null) {
+          childClientNames = Object.values(tooltipContent as Record<string, string>).filter(
+            (v): v is string => typeof v === 'string'
+          );
+        }
+      }
+      if (childClientNames.length === 0 && api.child_client) {
+        childClientNames = [api.child_client];
+      }
+      return {
+        id: api.id ?? stateClient?.id ?? clientId ?? '',
+        name: api.name || stateClient?.name || '',
+        nip: api.nip || '',
+        regon: api.regon || '',
+        krs: api.krs || '',
+        bank_account: api.bank_account || '',
+        website: api.website || '',
+        city: api.city || '',
+        postal: api.postal || '',
+        street: api.street || '',
+        street_no: api.street_no || '',
+        phone: api.phone || '',
+        authority_scope: api.authority_scope || '',
+        type: api.type || '',
+        status: api.status || stateClient?.status || '',
+        parent_client:
+          api.parent_client || api.parent_client_name || stateClient?.parent_client || '',
+        child_client: api.child_client || api.child_client_name || stateClient?.child_client || '',
+        child_client_names: childClientNames
+      };
+    },
     [clientId]
   );
 
@@ -229,7 +254,7 @@ const ClientDetailsPage: React.FC = () => {
         }
 
         const response = await getClientDetails(clientId);
-        setClientData(mapFromApiClient(response.client, stateClient));
+        setClientData(mapFromApiClient(response.client, stateClient, response.meta));
       } catch (error) {
         const apiError = error as ApiError;
 
@@ -289,7 +314,7 @@ const ClientDetailsPage: React.FC = () => {
     if (clientId) {
       getClientDetails(clientId).then((response) => {
         const stateClient = (location.state as { client?: ClientRecord })?.client;
-        setClientData(mapFromApiClient(response.client, stateClient));
+        setClientData(mapFromApiClient(response.client, stateClient, response.meta));
       });
     }
   }, [addToast, clientId, location.state, mapFromApiClient]);
@@ -548,7 +573,6 @@ const ClientDetailsPage: React.FC = () => {
                       <MobileFieldRow label="Nazwa ulicy" value={clientData.street} />
                       <MobileFieldRow label="Numer budynku/lokalu" value={clientData.street_no} />
                       <MobileFieldRow label="Numer telefonu" value={clientData.phone} />
-                      <MobileFieldRow label="E-mail" value={clientData.email} />
                     </Stack>
                   </Collapse>
 
@@ -564,7 +588,49 @@ const ClientDetailsPage: React.FC = () => {
                         label="Podmiot zarządzający"
                         value={clientData.parent_client}
                       />
-                      <MobileFieldRow label="Podmiot zależny" value={clientData.child_client} />
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{ height: 40, px: 1.5, py: 0.75 }}
+                      >
+                        <Typography
+                          sx={{
+                            color: '#74767F',
+                            fontSize: '14px',
+                            lineHeight: 1.43,
+                            letterSpacing: '0.17px'
+                          }}
+                        >
+                          Podmiot zależny
+                        </Typography>
+                        <Stack direction="row" alignItems="center" gap={0.5}>
+                          <Typography
+                            sx={{ color: '#32343A', fontSize: '12px', lineHeight: '16px' }}
+                          >
+                            {clientData.child_client || '-'}
+                          </Typography>
+                          {clientData.child_client_names.length > 1 && (
+                            <Tooltip
+                              title={
+                                <Box>
+                                  {clientData.child_client_names.map((item, i) => (
+                                    <Typography key={i} variant="body2" sx={{ fontSize: '13px' }}>
+                                      {item}
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              }
+                              arrow
+                              placement="top"
+                            >
+                              <InfoOutlinedIcon
+                                sx={{ fontSize: 16, color: '#9CA3AF', cursor: 'pointer' }}
+                              />
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      </Stack>
                     </Stack>
                   </Collapse>
                 </Stack>
@@ -844,7 +910,6 @@ const ClientDetailsPage: React.FC = () => {
                   <FieldItem label="Nazwa ulicy" value={clientData.street} />
                   <FieldItem label="Numer budynku/lokalu" value={clientData.street_no} />
                   <FieldItem label="Numer telefonu" value={clientData.phone} />
-                  <FieldItem label="E-mail" value={clientData.email} />
                 </Stack>
               </Box>
             </CardContent>
@@ -888,7 +953,58 @@ const ClientDetailsPage: React.FC = () => {
               <Box sx={{ px: 0 }}>
                 <Stack direction="row">
                   <FieldItem label="Podmiot zarządzający" value={clientData.parent_client} />
-                  <FieldItem label="Podmiot zależny" value={clientData.child_client} />
+                  <Box sx={{ flex: 1, p: 1.5 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: '#74767F',
+                        mb: 1,
+                        fontSize: '14px',
+                        lineHeight: 1.43,
+                        letterSpacing: '0.17px'
+                      }}
+                    >
+                      Podmiot zależny
+                    </Typography>
+                    <Stack direction="row" alignItems="center" gap={0.5}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: '#32343A',
+                          fontWeight: 500,
+                          fontSize: '14px',
+                          lineHeight: 1.57,
+                          letterSpacing: '0.1px'
+                        }}
+                      >
+                        {clientData.child_client || '-'}
+                      </Typography>
+                      {clientData.child_client_names.length > 1 && (
+                        <Tooltip
+                          title={
+                            <Box>
+                              {clientData.child_client_names.map((item, i) => (
+                                <Typography key={i} variant="body2" sx={{ fontSize: '13px' }}>
+                                  {item}
+                                </Typography>
+                              ))}
+                            </Box>
+                          }
+                          arrow
+                          placement="top"
+                        >
+                          <InfoOutlinedIcon
+                            sx={{
+                              fontSize: 16,
+                              color: '#9CA3AF',
+                              cursor: 'pointer',
+                              '&:hover': { color: '#6B7280' }
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Stack>
+                  </Box>
                   {/* Spacers for grid alignment */}
                   <Box sx={{ flex: 1, p: 1.5 }} />
                   <Box sx={{ flex: 1, p: 1.5 }} />
