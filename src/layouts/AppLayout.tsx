@@ -15,11 +15,13 @@ import ShieldIcon from '@/components/icons/ShieldIcon';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { Container, Box } from '@mui/material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 
 import AppShell, { BreadcrumbItem } from '@/components/layout/AppShell';
 import { MenuSection } from '@/components/navigation/DesktopSidebar';
 import { UserMenuOption } from '@/components/navigation/UserMenu';
 import { useAuthStore } from '@/store/authStore';
+import { useListStateStore } from '@/store/listStateStore';
 import homeIcon from '@/assets/home-icon.svg';
 
 // Mobile navigation items (for bottom bar)
@@ -126,6 +128,24 @@ const AppLayout = () => {
   const resetAuth = useAuthStore((state) => state.resetAuth);
   const navigate = useNavigate();
   const location = useLocation();
+  const { clearListState } = useListStateStore();
+
+  // List routes that have persisted state
+  const STATEFUL_ROUTES = ['/app/clients', '/app/users'];
+
+  // Clear persisted list state for any route we navigate away from
+  const prevPathnameRef = useRef(location.pathname);
+  useEffect(() => {
+    const prev = prevPathnameRef.current;
+    const curr = location.pathname;
+    prevPathnameRef.current = curr;
+
+    STATEFUL_ROUTES.forEach((route) => {
+      if (prev.startsWith(route) && !curr.startsWith(route)) {
+        clearListState(route);
+      }
+    });
+  }, [location.pathname, clearListState]);
 
   const getBreadcrumbs = (): BreadcrumbItem[] => {
     const path = location.pathname;

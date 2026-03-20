@@ -177,6 +177,7 @@ const ClientsPage: React.FC = () => {
         rowKey={(row) => String(row.id || row.name)}
         initialPerPage={10}
         refreshKey={refreshKey}
+        stateKey="/app/clients"
       />
 
       <AddClientDialog

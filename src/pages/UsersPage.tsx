@@ -295,6 +295,7 @@ const UsersPage: React.FC = () => {
         initialPerPage={10}
         refreshKey={refreshKey}
         extraRowActions={extraRowActions}
+        stateKey="/app/users"
       />
 
       <AddUserDialog

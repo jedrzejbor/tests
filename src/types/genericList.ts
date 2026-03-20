@@ -223,6 +223,12 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
   disabledColumns?: string[];
   /** Filter keys to exclude from backend response */
   disabledFilters?: string[];
+  /**
+   * When provided, filter/search/sort/page/perPage state is persisted in the
+   * global store under this key and restored when the component remounts.
+   * Use the route path, e.g. '/app/clients'.
+   */
+  stateKey?: string;
 }
 
 // ================== CONTROLLER STATE ==================

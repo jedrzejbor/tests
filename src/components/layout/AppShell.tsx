@@ -185,10 +185,18 @@ export const AppShell: React.FC<AppShellProps> = ({
                       ) : (
                         <Link
                           key={index}
+                          component="button"
                           underline="hover"
                           color="text.secondary"
-                          href={crumb.href || '#'}
-                          sx={{ fontSize: '14px', letterSpacing: '0.17px' }}
+                          onClick={() => crumb.href && navigate(crumb.href)}
+                          sx={{
+                            fontSize: '14px',
+                            letterSpacing: '0.17px',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            p: 0
+                          }}
                         >
                           {crumb.label}
                         </Link>

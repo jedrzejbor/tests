@@ -6,6 +6,7 @@ import type {
   ListMeta,
   UseGenericListController
 } from '@/types/genericList';
+import { useListStateStore } from '@/store/listStateStore';
 
 interface UseGenericListControllerOptions<T extends GenericRecord> {
   fetcher: Fetcher<T>;
@@ -15,6 +16,12 @@ interface UseGenericListControllerOptions<T extends GenericRecord> {
   disabledColumns?: string[];
   /** Filter keys to exclude from backend response */
   disabledFilters?: string[];
+  /**
+   * When provided, list state (filters, search, sort, page, perPage) is
+   * persisted in the global store under this key and restored on remount.
+   * Use the route path, e.g. '/app/clients'.
+   */
+  stateKey?: string;
 }
 
 /**
@@ -24,7 +31,19 @@ interface UseGenericListControllerOptions<T extends GenericRecord> {
 export function useGenericListController<T extends GenericRecord = GenericRecord>(
   options: UseGenericListControllerOptions<T>
 ): UseGenericListController<T> {
-  const { fetcher, rowKey = 'id', initialPerPage = 10, disabledColumns, disabledFilters } = options;
+  const {
+    fetcher,
+    rowKey = 'id',
+    initialPerPage = 10,
+    disabledColumns,
+    disabledFilters,
+    stateKey
+  } = options;
+
+  const { getListState, saveListState } = useListStateStore();
+
+  // Restore previously saved state if stateKey is provided
+  const saved = stateKey ? getListState(stateKey) : undefined;
 
   // Data state
   const [data, setData] = useState<T[]>([]);
@@ -33,20 +52,26 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
   const [error, setError] = useState<string | null>(null);
 
   // Pagination
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(initialPerPage);
+  const [page, setPage] = useState(saved?.page ?? 1);
+  const [perPage, setPerPage] = useState(saved?.perPage ?? initialPerPage);
 
   // Search
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(saved?.search ?? '');
 
   // Sort
-  const [sortProperty, setSortProperty] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortProperty, setSortProperty] = useState(saved?.sortProperty ?? 'created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(saved?.sortOrder ?? 'desc');
 
   // Filters
-  const [filters, setFilters] = useState<FiltersState>({});
+  const [filters, setFilters] = useState<FiltersState>(saved?.filters ?? {});
 
-  const hasAppliedInitialSort = useRef(false);
+  // Persist list state whenever any relevant state changes
+  useEffect(() => {
+    if (!stateKey) return;
+    saveListState(stateKey, { filters, search, sortProperty, sortOrder, page, perPage });
+  }, [stateKey, saveListState, filters, search, sortProperty, sortOrder, page, perPage]);
+
+  const hasAppliedInitialSort = useRef(!!saved?.sortProperty);
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

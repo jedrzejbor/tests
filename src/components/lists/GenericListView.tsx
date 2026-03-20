@@ -33,7 +33,8 @@ import type {
   GenericRecord,
   GenericListViewProps,
   RowHandler,
-  GeneralHandler
+  GeneralHandler,
+  FiltersState
 } from '@/types/genericList';
 import { normalizeFilterOptions } from '@/types/genericList';
 
@@ -48,7 +49,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   refreshKey,
   extraRowActions = [],
   disabledColumns,
-  disabledFilters
+  disabledFilters,
+  stateKey
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -57,13 +59,17 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   const [sortAnchorEl, setSortAnchorEl] = useState<null | HTMLElement>(null);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
+  // Draft filter state — applied only when user clicks "Zastosuj"
+  const [draftFilters, setDraftFilters] = useState<FiltersState>({});
+
   // Initialize controller
   const controller = useGenericListController<T>({
     fetcher,
     rowKey,
     initialPerPage,
     disabledColumns,
-    disabledFilters
+    disabledFilters,
+    stateKey
   });
 
   const {
@@ -110,6 +116,13 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
     if (refreshKey === undefined) return;
     refetch();
   }, [refreshKey, refetch]);
+
+  // Sync draft filters from controller state when drawer opens
+  useEffect(() => {
+    if (filterDrawerOpen) {
+      setDraftFilters(filters);
+    }
+  }, [filterDrawerOpen]); // intentionally omit `filters` - we only want to snapshot on open
 
   // Calculate selected count
   const selectedCount = selectedIds.size;
@@ -569,9 +582,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               </IconButton>
             </Stack>
 
-            {/* Render filter inputs */}
+            {/* Render filter inputs — changes are buffered in draftFilters */}
             {meta?.filtersDefs.map((filterDef) => {
-              const currentValue = filters[filterDef.key] || (filterDef.is_multiple ? [] : '');
+              const currentValue = draftFilters[filterDef.key] || (filterDef.is_multiple ? [] : '');
 
               if (filterDef.type === 'select') {
                 // Normalize options from any backend format
@@ -585,7 +598,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                       label={filterDef.label}
                       multiple={filterDef.is_multiple}
                       onChange={(e) =>
-                        setFilter(filterDef.key, e.target.value as string | string[])
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          [filterDef.key]: e.target.value as string | string[]
+                        }))
                       }
                       MenuProps={{
                         PaperProps: {
@@ -612,7 +628,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                   key={filterDef.key}
                   label={filterDef.label}
                   value={currentValue}
-                  onChange={(e) => setFilter(filterDef.key, e.target.value)}
+                  onChange={(e) =>
+                    setDraftFilters((prev) => ({ ...prev, [filterDef.key]: e.target.value }))
+                  }
                   fullWidth
                   size="small"
                   sx={{ mb: 2 }}
@@ -623,10 +641,30 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             <Divider sx={{ my: 2 }} />
 
             <Stack direction="row" spacing={2}>
-              <Button variant="outlined" fullWidth onClick={clearFilters}>
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => {
+                  setDraftFilters({});
+                  clearFilters();
+                  setFilterDrawerOpen(false);
+                }}
+              >
                 Wyczyść
               </Button>
-              <Button variant="contained" fullWidth onClick={() => setFilterDrawerOpen(false)}>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={() => {
+                  // Apply all draft filters at once
+                  Object.entries(draftFilters).forEach(([key, value]) => setFilter(key, value));
+                  // Clear any previously set keys not present in draft
+                  Object.keys(filters).forEach((key) => {
+                    if (!(key in draftFilters)) setFilter(key, '');
+                  });
+                  setFilterDrawerOpen(false);
+                }}
+              >
                 Zastosuj
               </Button>
             </Stack>
