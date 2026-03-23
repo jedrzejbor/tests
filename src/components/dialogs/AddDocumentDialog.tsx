@@ -333,8 +333,10 @@ const AddDocumentDialog: React.FC<AddDocumentDialogProps> = ({
         anchor="bottom"
         open={open}
         onClose={handleClose}
+        sx={{ zIndex: (theme) => theme.zIndex.modal + 200 }}
         PaperProps={{
           sx: {
+            bgcolor: '#FFFFFF',
             borderTopLeftRadius: 16,
             borderTopRightRadius: 16,
             maxHeight: '95vh',
