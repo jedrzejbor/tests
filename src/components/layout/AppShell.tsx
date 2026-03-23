@@ -141,7 +141,6 @@ export const AppShell: React.FC<AppShellProps> = ({
           color="inherit"
           elevation={0}
           sx={{
-            // borderBottom: '1px solid',
             borderColor: 'divider',
             ml: isMdUp ? `${currentSidebarWidth + 40}px` : 0,
             width: isMdUp ? `calc(100% - ${currentSidebarWidth + 40}px)` : '100%',
@@ -318,14 +317,21 @@ export const AppShell: React.FC<AppShellProps> = ({
           component="main"
           sx={{
             flexGrow: 1,
-            py: { xs: 3, md: 4 },
+            py: { xs: 0, md: 4 },
             px: 0,
-            pb: { xs: 3, md: 3 },
-            mt: 8,
-            mb: 0,
             ml: isMdUp ? `${currentSidebarWidth + 40}px` : 0,
             width: isMdUp ? `calc(100% - ${currentSidebarWidth + 40}px)` : '100%',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            // Mobile: fixed header (64px) + scrollable content + space for bottom nav (80px)
+            ...(isMdUp
+              ? { mt: 8, pb: 3 }
+              : {
+                  mt: '80px',
+                  pb: '112px',
+                  height: 'calc(100vh - 180px)',
+                  overflowY: 'auto',
+                  pt: '16px'
+                })
           }}
         >
           {children}
