@@ -370,6 +370,7 @@ export const ListToolbar = ({
           open={filterDrawerOpen}
           onClose={handleFilterDrawerToggle}
           sx={{
+            zIndex: (theme) => theme.zIndex.modal + 200,
             '& .MuiDrawer-paper': {
               bgcolor: '#FFFFFF',
               borderRadius: '20px 20px 0 0',

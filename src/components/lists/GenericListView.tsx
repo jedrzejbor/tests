@@ -417,7 +417,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             }}
           >
             <DesktopTableRenderer
-              columns={meta.columnDefs}
+              columns={meta.columnDefs || []}
               data={data}
               loading={loading}
               selectedIds={selectedIds}

@@ -36,9 +36,9 @@ const FormModal: React.FC<FormModalProps> = ({ open, onClose, title, children })
         open={open}
         onClose={onClose}
         sx={{
-          zIndex: (theme) => theme.zIndex.modal + 100,
+          zIndex: (theme) => theme.zIndex.modal + 200,
           '& .MuiDrawer-paper': {
-            backgroundColor: theme.palette.background.paper,
+            backgroundColor: '#FFFFFF',
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             maxHeight: '90vh',
