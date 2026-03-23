@@ -219,3 +219,67 @@ export const editClientSchema = z.object({
 });
 
 export type EditClientFormValues = z.input<typeof editClientSchema>;
+
+// ================== DOCUMENT SCHEMAS ==================
+
+const ALLOWED_DOC_EXTENSIONS = [
+  'doc',
+  'docx',
+  'pdf',
+  'xlsx',
+  'xls',
+  'zip',
+  'rar',
+  '7z',
+  'gz',
+  'tar',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'bmp',
+  'tiff'
+];
+const MAX_FILE_SIZE = 35 * 1024 * 1024; // 35 MB
+
+const fileValidator = z
+  .instanceof(File, { message: 'Załącznik jest wymagany' })
+  .refine((f) => f.size <= MAX_FILE_SIZE, 'Plik nie może przekraczać 35 MB')
+  .refine(
+    (f) => {
+      const ext = f.name.split('.').pop()?.toLowerCase() || '';
+      return ALLOWED_DOC_EXTENSIONS.includes(ext);
+    },
+    `Dozwolone typy: ${ALLOWED_DOC_EXTENSIONS.join(', ')}`
+  );
+
+const optionalFileValidator = z
+  .instanceof(File)
+  .refine((f) => f.size <= MAX_FILE_SIZE, 'Plik nie może przekraczać 35 MB')
+  .refine(
+    (f) => {
+      const ext = f.name.split('.').pop()?.toLowerCase() || '';
+      return ALLOWED_DOC_EXTENSIONS.includes(ext);
+    },
+    `Dozwolone typy: ${ALLOWED_DOC_EXTENSIONS.join(', ')}`
+  )
+  .optional();
+
+export const addDocumentSchema = z.object({
+  name: z.string().min(1, 'Nazwa dokumentu jest wymagana'),
+  description: z.string().optional(),
+  date: z.string().min(1, 'Data dokumentu jest wymagana'),
+  attachment: fileValidator
+});
+
+export type AddDocumentFormValues = z.input<typeof addDocumentSchema>;
+
+export const editDocumentSchema = z.object({
+  name: z.string().min(1, 'Nazwa dokumentu jest wymagana'),
+  description: z.string().optional(),
+  date: z.string().min(1, 'Data dokumentu jest wymagana'),
+  keepExistingFile: z.boolean().optional(),
+  newFile: optionalFileValidator
+});
+
+export type EditDocumentFormValues = z.input<typeof editDocumentSchema>;
