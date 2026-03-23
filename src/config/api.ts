@@ -19,7 +19,11 @@ export const API_ENDPOINTS = {
   USERS_TABLE: '/api/resource/users',
   CLIENTS_TABLE: '/api/resource/clients',
   // Client form options
-  CLIENT_FORM: '/api/client/form'
+  CLIENT_FORM: '/api/client/form',
+  // Documents
+  DOCUMENTS_TABLE: '/api/resource/documents',
+  DOCUMENTS: '/api/documents',
+  DOCUMENTS_ATTACHMENTS: '/api/documents/attachments'
   // Tutaj dodawaj kolejne endpointy
 } as const;
 
