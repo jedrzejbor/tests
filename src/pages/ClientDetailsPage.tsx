@@ -547,7 +547,8 @@ const ClientDetailsPage: React.FC = () => {
       'archive-payments': handleArchivePayment,
       'delete-payments': handleForceDeletePayment,
       'restore-payments': handleRestorePayment,
-      'create-payment': handleCreatePayment as unknown as (row: PaymentRecord) => void
+      // Backend sends handler name "payments-create" for the general action button
+      'payments-create': handleCreatePayment as unknown as (row: PaymentRecord) => void
     }),
     [
       handleViewPayment,
@@ -1026,7 +1027,9 @@ const ClientDetailsPage: React.FC = () => {
         borderRadius: 1,
         py: 3,
         px: 3,
-        height: '100%'
+        flex: 1,
+        minHeight: 0,
+        overflow: 'hidden'
       }}
     >
       {/* Header: name + action buttons */}

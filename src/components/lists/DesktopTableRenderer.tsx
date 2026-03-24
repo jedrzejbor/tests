@@ -545,10 +545,12 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
     <>
       <TableContainer
         sx={{
-          bgcolor: 'transparent'
+          bgcolor: 'transparent',
+          flex: 1,
+          overflow: 'auto'
         }}
       >
-        <Table>
+        <Table stickyHeader>
           <TableHead>
             <TableRow
               sx={{
@@ -563,7 +565,8 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                   sx={{
                     width: 48,
                     pl: 2.5,
-                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)'
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                    bgcolor: '#FFFFFF'
                   }}
                 >
                   <Checkbox
@@ -596,7 +599,8 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                     borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
-                    height: 48
+                    height: 48,
+                    bgcolor: '#FFFFFF'
                   }}
                 >
                   {column.label}
@@ -607,7 +611,8 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                   align="right"
                   sx={{
                     width: 60,
-                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)'
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                    bgcolor: '#FFFFFF'
                   }}
                 />
               )}

@@ -207,7 +207,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   }
 
   return (
-    <Box>
+    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {/* Page Title removed for mobile - using inner wrapper title */}
 
       {/* Desktop: White container with title, toolbar, table, and pagination */}
@@ -220,8 +220,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            height: 'calc(100vh - 120px)',
-            minHeight: '600px'
+            flex: 1,
+            minHeight: 0
           }}
         >
           {/* Header section with title and toolbar */}
@@ -412,7 +412,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
           <Box
             sx={{
               flex: 1,
-              overflow: 'auto',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
               px: 3
             }}
           >
