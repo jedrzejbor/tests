@@ -31,6 +31,10 @@ import AddDocumentDialog from '@/components/dialogs/AddDocumentDialog';
 import EditDocumentDialog from '@/components/dialogs/EditDocumentDialog';
 import ArchiveDocumentDialog from '@/components/dialogs/ArchiveDocumentDialog';
 import ForceDeleteDocumentDialog from '@/components/dialogs/ForceDeleteDocumentDialog';
+import AddPaymentDialog from '@/components/dialogs/AddPaymentDialog';
+import EditPaymentDialog from '@/components/dialogs/EditPaymentDialog';
+import ArchivePaymentDialog from '@/components/dialogs/ArchivePaymentDialog';
+import ForceDeletePaymentDialog from '@/components/dialogs/ForceDeletePaymentDialog';
 import { GenericListView } from '@/components/lists';
 import {
   type ClientRecord,
@@ -44,6 +48,11 @@ import {
   downloadAttachment,
   restoreDocument
 } from '@/services/documentsService';
+import {
+  type PaymentRecord,
+  createClientPaymentsFetcher,
+  restorePayment
+} from '@/services/paymentsService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
 
@@ -175,6 +184,14 @@ const ClientDetailsPage: React.FC = () => {
   const [forceDeleteDocDialogOpen, setForceDeleteDocDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentRecord | null>(null);
   const [docRefreshKey, setDocRefreshKey] = useState(0);
+
+  // Payment dialogs state
+  const [addPaymentDialogOpen, setAddPaymentDialogOpen] = useState(false);
+  const [editPaymentDialogOpen, setEditPaymentDialogOpen] = useState(false);
+  const [archivePaymentDialogOpen, setArchivePaymentDialogOpen] = useState(false);
+  const [forceDeletePaymentDialogOpen, setForceDeletePaymentDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
+  const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
 
   // Mobile collapsible sections
   const [registrationOpen, setRegistrationOpen] = useState(true);
@@ -460,6 +477,88 @@ const ClientDetailsPage: React.FC = () => {
     ]
   );
 
+  // ---------------------------------------------------------------------------
+  // Payment handlers
+  // ---------------------------------------------------------------------------
+
+  const paymentsFetcher = React.useMemo(
+    () => (clientId ? createClientPaymentsFetcher(clientId) : undefined),
+    [clientId]
+  );
+
+  const handleCreatePayment = useCallback(() => {
+    setAddPaymentDialogOpen(true);
+  }, []);
+
+  const handleViewPayment = useCallback((row: PaymentRecord) => {
+    setSelectedPayment(row);
+    setEditPaymentDialogOpen(true);
+  }, []);
+
+  const handleEditPayment = useCallback((row: PaymentRecord) => {
+    setSelectedPayment(row);
+    setEditPaymentDialogOpen(true);
+  }, []);
+
+  const handleArchivePayment = useCallback((row: PaymentRecord) => {
+    setSelectedPayment(row);
+    setArchivePaymentDialogOpen(true);
+  }, []);
+
+  const handleForceDeletePayment = useCallback((row: PaymentRecord) => {
+    setSelectedPayment(row);
+    setForceDeletePaymentDialogOpen(true);
+  }, []);
+
+  const handleRestorePayment = useCallback(
+    async (row: PaymentRecord) => {
+      if (!row.id) return;
+      try {
+        await restorePayment(row.id);
+        addToast({
+          id: crypto.randomUUID(),
+          message: 'Płatność została przywrócona',
+          severity: 'success'
+        });
+        setPaymentRefreshKey((k) => k + 1);
+      } catch (error) {
+        const apiError = error as ApiError;
+        addToast({
+          id: crypto.randomUUID(),
+          message: apiError?.message || 'Nie udało się przywrócić płatności',
+          severity: 'error'
+        });
+      }
+    },
+    [addToast]
+  );
+
+  const handlePaymentSuccess = useCallback(() => {
+    setPaymentRefreshKey((k) => k + 1);
+  }, []);
+
+  const PAYMENTS_DISABLED_COLUMNS = React.useMemo(() => ['client_name'], []);
+  const PAYMENTS_DISABLED_FILTERS = React.useMemo(() => ['client'], []);
+
+  const paymentHandlers: Record<string, (row: PaymentRecord) => void> = React.useMemo(
+    () => ({
+      'view-payments': handleViewPayment,
+      'edit-payments': handleEditPayment,
+      'archive-payments': handleArchivePayment,
+      'delete-payments': handleForceDeletePayment,
+      'restore-payments': handleRestorePayment,
+      'create-payment': handleCreatePayment as unknown as (row: PaymentRecord) => void
+    }),
+    [
+      handleViewPayment,
+      handleEditPayment,
+      handleArchivePayment,
+      handleForceDeletePayment,
+      handleRestorePayment,
+      handleCreatePayment
+    ]
+  );
+
   // Convert to ClientRecord for dialogs
   const clientRecord: ClientRecord | null = clientData
     ? {
@@ -637,6 +736,19 @@ const ClientDetailsPage: React.FC = () => {
               refreshKey={docRefreshKey}
               disabledColumns={DOCS_DISABLED_COLUMNS}
               disabledFilters={DOCS_DISABLED_FILTERS}
+            />
+          </Box>
+        ) : activeTab === 3 && paymentsFetcher ? (
+          <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
+            <GenericListView<PaymentRecord>
+              title="Płatności składek"
+              fetcher={paymentsFetcher}
+              handlers={paymentHandlers}
+              rowKey={(row) => String(row.id || row.policy_number)}
+              initialPerPage={10}
+              refreshKey={paymentRefreshKey}
+              disabledColumns={PAYMENTS_DISABLED_COLUMNS}
+              disabledFilters={PAYMENTS_DISABLED_FILTERS}
             />
           </Box>
         ) : activeTab !== 0 ? (
@@ -862,6 +974,42 @@ const ClientDetailsPage: React.FC = () => {
           document={selectedDocument}
           onSuccess={handleDocumentSuccess}
         />
+
+        {clientData?.id && (
+          <AddPaymentDialog
+            open={addPaymentDialogOpen}
+            onClose={() => setAddPaymentDialogOpen(false)}
+            clientId={Number(clientData.id)}
+            onSuccess={handlePaymentSuccess}
+          />
+        )}
+        <EditPaymentDialog
+          open={editPaymentDialogOpen}
+          onClose={() => {
+            setEditPaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+        <ArchivePaymentDialog
+          open={archivePaymentDialogOpen}
+          onClose={() => {
+            setArchivePaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+        <ForceDeletePaymentDialog
+          open={forceDeletePaymentDialogOpen}
+          onClose={() => {
+            setForceDeletePaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
       </Stack>
     );
   }
@@ -963,6 +1111,19 @@ const ClientDetailsPage: React.FC = () => {
             rowKey={(row) => String(row.id || row.name)}
             initialPerPage={10}
             refreshKey={docRefreshKey}
+            disabledColumns={['client_name']}
+            disabledFilters={['client']}
+          />
+        </Box>
+      ) : activeTab === 3 && paymentsFetcher ? (
+        <Box sx={{ flex: 1, minHeight: 0 }}>
+          <GenericListView<PaymentRecord>
+            title="Płatności składek"
+            fetcher={paymentsFetcher}
+            handlers={paymentHandlers}
+            rowKey={(row) => String(row.id || row.policy_number)}
+            initialPerPage={10}
+            refreshKey={paymentRefreshKey}
             disabledColumns={['client_name']}
             disabledFilters={['client']}
           />
@@ -1254,6 +1415,42 @@ const ClientDetailsPage: React.FC = () => {
         }}
         document={selectedDocument}
         onSuccess={handleDocumentSuccess}
+      />
+
+      {clientData?.id && (
+        <AddPaymentDialog
+          open={addPaymentDialogOpen}
+          onClose={() => setAddPaymentDialogOpen(false)}
+          clientId={Number(clientData.id)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
+      <EditPaymentDialog
+        open={editPaymentDialogOpen}
+        onClose={() => {
+          setEditPaymentDialogOpen(false);
+          setSelectedPayment(null);
+        }}
+        payment={selectedPayment}
+        onSuccess={handlePaymentSuccess}
+      />
+      <ArchivePaymentDialog
+        open={archivePaymentDialogOpen}
+        onClose={() => {
+          setArchivePaymentDialogOpen(false);
+          setSelectedPayment(null);
+        }}
+        payment={selectedPayment}
+        onSuccess={handlePaymentSuccess}
+      />
+      <ForceDeletePaymentDialog
+        open={forceDeletePaymentDialogOpen}
+        onClose={() => {
+          setForceDeletePaymentDialogOpen(false);
+          setSelectedPayment(null);
+        }}
+        payment={selectedPayment}
+        onSuccess={handlePaymentSuccess}
       />
     </Stack>
   );

@@ -283,3 +283,61 @@ export const editDocumentSchema = z.object({
 });
 
 export type EditDocumentFormValues = z.input<typeof editDocumentSchema>;
+
+// ================== PAYMENT SCHEMAS ==================
+
+export const addPaymentSchema = z.object({
+  insurance_company_id: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z.number().int().min(1, 'Wybierz ubezpieczyciela')
+  ),
+  policy_id: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z.number().int().min(1, 'Wybierz polisę')
+  ),
+  payment_date: z.string().min(1, 'Data przelewu jest wymagana'),
+  payment_total: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z
+      .number({ required_error: 'Kwota raty jest wymagana' })
+      .min(0, 'Kwota musi być większa lub równa 0')
+  ),
+  margin_percent: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z
+      .number({ required_error: 'Procent prowizji jest wymagany' })
+      .min(0, 'Wartość od 0 do 100')
+      .max(100, 'Wartość od 0 do 100')
+  ),
+  status: z.string().min(1, 'Wybierz status płatności')
+});
+
+export type AddPaymentFormValues = z.input<typeof addPaymentSchema>;
+
+export const editPaymentSchema = z.object({
+  insurance_company_id: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z.number().int().min(1, 'Wybierz ubezpieczyciela')
+  ),
+  policy_id: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z.number().int().min(1, 'Wybierz polisę')
+  ),
+  payment_date: z.string().min(1, 'Data przelewu jest wymagana'),
+  payment_total: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z
+      .number({ required_error: 'Kwota raty jest wymagana' })
+      .min(0, 'Kwota musi być większa lub równa 0')
+  ),
+  margin_percent: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : Number(value)),
+    z
+      .number({ required_error: 'Procent prowizji jest wymagany' })
+      .min(0, 'Wartość od 0 do 100')
+      .max(100, 'Wartość od 0 do 100')
+  ),
+  status: z.string().min(1, 'Wybierz status płatności')
+});
+
+export type EditPaymentFormValues = z.input<typeof editPaymentSchema>;
