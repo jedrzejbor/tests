@@ -234,12 +234,15 @@ const SettingsPage = () => {
       spacing={3}
       sx={{
         maxWidth: isMdUp ? '100%' : 800,
+        width: '100%',
         mx: 'auto',
         backgroundColor: theme.palette.background.paper,
         borderRadius: 2,
         py: 3,
         px: isMdUp ? 3 : 1,
-        height: '100%'
+        flex: 1,
+        minHeight: 0,
+        overflow: 'auto'
       }}
     >
       {/* Page Title */}

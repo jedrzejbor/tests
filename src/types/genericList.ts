@@ -5,7 +5,16 @@
 
 // ================== COLUMN DEFINITIONS ==================
 
-export type ColumnType = 'text' | 'email' | 'phone' | 'full_name' | 'actions' | 'status' | 'badge';
+export type ColumnType =
+  | 'text'
+  | 'email'
+  | 'phone'
+  | 'full_name'
+  | 'actions'
+  | 'status'
+  | 'badge'
+  | 'datetime'
+  | 'array';
 
 export interface ColumnDef {
   type: ColumnType;

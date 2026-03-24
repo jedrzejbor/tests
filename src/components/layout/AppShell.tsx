@@ -120,14 +120,15 @@ export const AppShell: React.FC<AppShellProps> = ({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh',
+        height: '100vh',
+        overflow: 'hidden',
         bgcolor: 'background.default'
       }}
     >
       {/* Impersonation banner – always on top */}
       <ImpersonationBanner />
 
-      <Box sx={{ display: 'flex', flex: 1 }}>
+      <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* Desktop Sidebar */}
         {isMdUp && menuSections && (
           <DesktopSidebar
@@ -141,7 +142,6 @@ export const AppShell: React.FC<AppShellProps> = ({
           color="inherit"
           elevation={0}
           sx={{
-            // borderBottom: '1px solid',
             borderColor: 'divider',
             ml: isMdUp ? `${currentSidebarWidth + 40}px` : 0,
             width: isMdUp ? `calc(100% - ${currentSidebarWidth + 40}px)` : '100%',
@@ -318,14 +318,21 @@ export const AppShell: React.FC<AppShellProps> = ({
           component="main"
           sx={{
             flexGrow: 1,
-            py: { xs: 3, md: 4 },
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
             px: 0,
-            pb: { xs: 3, md: 3 },
-            mt: 8,
-            mb: 0,
             ml: isMdUp ? `${currentSidebarWidth + 40}px` : 0,
             width: isMdUp ? `calc(100% - ${currentSidebarWidth + 40}px)` : '100%',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            overflow: 'hidden',
+            ...(isMdUp
+              ? { mt: '64px', py: 4, pb: 3 }
+              : {
+                  mt: '80px',
+                  pb: '112px',
+                  pt: '16px'
+                })
           }}
         >
           {children}

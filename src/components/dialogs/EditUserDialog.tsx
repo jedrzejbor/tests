@@ -702,9 +702,9 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
         open={open}
         onClose={handleClose}
         sx={{
-          zIndex: (theme) => theme.zIndex.modal + 100,
+          zIndex: (theme) => theme.zIndex.modal + 200,
           '& .MuiDrawer-paper': {
-            backgroundColor: theme.palette.background.paper,
+            backgroundColor: '#FFFFFF',
             borderTopLeftRadius: 16,
             borderTopRightRadius: 16,
             maxHeight: '90vh',

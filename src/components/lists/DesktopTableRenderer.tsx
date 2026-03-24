@@ -315,6 +315,63 @@ const renderCell = <T extends GenericRecord>(column: ColumnDef, row: T) => {
         </Typography>
       );
 
+    case 'datetime': {
+      // Format datetime: "2026-03-04 00:00:00" → "04.03.2026"
+      if (!value) return <Typography sx={{ fontSize: '14px', color: '#32343A' }}>—</Typography>;
+      try {
+        const d = new Date(stringValue);
+        const formatted = d.toLocaleDateString('pl-PL', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+        return (
+          <Typography sx={{ fontSize: '14px', color: '#32343A', fontWeight: 400 }}>
+            {formatted}
+          </Typography>
+        );
+      } catch {
+        return (
+          <Typography sx={{ fontSize: '14px', color: '#32343A', fontWeight: 400 }}>
+            {stringValue}
+          </Typography>
+        );
+      }
+    }
+
+    case 'array': {
+      // Render array of objects — e.g. attachments: [{id, name, size}]
+      if (!Array.isArray(value) || value.length === 0)
+        return <Typography sx={{ fontSize: '14px', color: '#9CA3AF' }}>—</Typography>;
+
+      return (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          {(value as Record<string, unknown>[]).map((item, i) => {
+            const label =
+              typeof item === 'string'
+                ? item
+                : (item.name as string) || (item.label as string) || String(item);
+            return (
+              <Typography
+                key={i}
+                sx={{
+                  fontSize: '14px',
+                  color: '#32343A',
+                  fontWeight: 400,
+                  maxWidth: 200,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {label}
+              </Typography>
+            );
+          })}
+        </Box>
+      );
+    }
+
     case 'status':
     case 'badge': {
       const statusColorMap: Record<string, string> = {
@@ -371,50 +428,9 @@ const renderCell = <T extends GenericRecord>(column: ColumnDef, row: T) => {
         );
       }
       return (
-        // <Typography sx={{ fontSize: '14px', color: '#32343A', px: 0 }}>{stringValue}</Typography>
-        // <Chip
-        //   label={stringValue}
-        //   size="small"
-        //   variant="filled"
-        //   sx={{
-        //     borderRadius: '20px',
-        //     fontWeight: 400,
-        //     fontSize: '12px',
-        //     textTransform: 'capitalize',
-        //     color: '#111827',
-        //     height: 28,
-        //     bgcolor: '#F3F4F6',
-        //     px: '0',
-        //     lineHeight: '18px'
-        //   }}
-        // />
-
-        <Chip
-          label={stringValue}
-          size="small"
-          sx={{
-            bgcolor: '#E8F5E9',
-            color: '#2E7D32',
-            fontWeight: 400,
-            fontSize: '12px',
-            height: '20px',
-            padding: '3px 8px',
-            '& .MuiChip-icon': { mr: '6px', ml: 0 },
-            '& .MuiChip-label': { px: 0 }
-          }}
-          icon={
-            <Box
-              component="span"
-              sx={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                bgcolor: '#4CAF50',
-                ml: 1
-              }}
-            />
-          }
-        />
+        <Typography sx={{ fontSize: '14px', color: '#32343A', fontWeight: 400 }}>
+          {stringValue.length > 50 ? `${stringValue.slice(0, 47)}...` : stringValue}
+        </Typography>
       );
   }
 };
@@ -521,17 +537,20 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
     );
   }
 
-  const visibleColumns = columns.filter((c) => c.type !== 'actions');
-  const hasActions = columns.some((c) => c.type === 'actions');
+  const safeColumns = Array.isArray(columns) ? columns : [];
+  const visibleColumns = safeColumns.filter((c) => c.type !== 'actions');
+  const hasActions = safeColumns.some((c) => c.type === 'actions');
 
   return (
     <>
       <TableContainer
         sx={{
-          bgcolor: 'transparent'
+          bgcolor: 'transparent',
+          flex: 1,
+          overflow: 'auto'
         }}
       >
-        <Table>
+        <Table stickyHeader>
           <TableHead>
             <TableRow
               sx={{
@@ -546,7 +565,8 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                   sx={{
                     width: 48,
                     pl: 2.5,
-                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)'
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                    bgcolor: '#FFFFFF'
                   }}
                 >
                   <Checkbox
@@ -579,7 +599,8 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                     borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
-                    height: 48
+                    height: 48,
+                    bgcolor: '#FFFFFF'
                   }}
                 >
                   {column.label}
@@ -590,7 +611,8 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                   align="right"
                   sx={{
                     width: 60,
-                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)'
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                    bgcolor: '#FFFFFF'
                   }}
                 />
               )}

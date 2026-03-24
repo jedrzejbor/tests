@@ -2,7 +2,13 @@ import HomeIcon from '@/components/icons/HomeIcon';
 import ShieldIcon from '@/components/icons/ShieldIcon';
 import DamageIcon from '@/components/icons/DamageIcon';
 import PaymentsIcon from '@/components/icons/PaymentsIcon';
-import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined';
+import ClientIcon from '@/components/icons/ClientIcon';
+import UsersIcon from '@/components/icons/UsersIcon';
+import InsurersIcon from '@/components/icons/InsurersIcon';
+import InsurerContactsIcon from '@/components/icons/InsurerContactsIcon';
+import KnowledgeBaseIcon from '@/components/icons/KnowledgeBaseIcon';
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import type { SvgIconProps } from '@mui/material/SvgIcon';
 
 /**
@@ -38,9 +44,9 @@ export const navigationItems: NavItem[] = [
     showInMobileMenu: true
   },
   {
-    id: 'claims',
+    id: 'damages',
     label: 'Szkody',
-    path: '/app/claims',
+    path: '/app/damages',
     icon: DamageIcon,
     showInMobileMenu: true
   },
@@ -52,24 +58,59 @@ export const navigationItems: NavItem[] = [
     showInMobileMenu: true
   },
   {
-    id: 'documents',
-    label: 'Dokumenty',
-    path: '/app/documents',
-    icon: ShieldIcon,
+    id: 'clients',
+    label: 'Klienci',
+    path: '/app/clients',
+    icon: ClientIcon,
     showInMobileMenu: false
   },
   {
-    id: 'settings',
-    label: 'Ustawienia',
-    path: '/app/settings',
-    icon: MoreHorizOutlinedIcon,
+    id: 'users',
+    label: 'Użytkownicy',
+    path: '/app/users',
+    icon: UsersIcon,
     showInMobileMenu: false
   },
   {
-    id: 'support',
-    label: 'Pomoc',
-    path: '/app/support',
-    icon: MoreHorizOutlinedIcon,
+    id: 'insurers',
+    label: 'Ubezpieczyciele',
+    path: '/app/insurers',
+    icon: InsurersIcon,
+    showInMobileMenu: false
+  },
+  {
+    id: 'insurer-contacts',
+    label: 'Ubezpieczyciel Kontakty',
+    path: '/app/insurer-contacts',
+    icon: InsurerContactsIcon,
+    showInMobileMenu: false
+  },
+  {
+    id: 'forms',
+    label: 'Formularze',
+    path: '/app/forms',
+    icon: InsurerContactsIcon,
+    showInMobileMenu: false
+  },
+  {
+    id: 'knowledge-base',
+    label: 'Baza wiedzy',
+    path: '/app/knowledge-base',
+    icon: KnowledgeBaseIcon,
+    showInMobileMenu: false
+  },
+  {
+    id: 'reports',
+    label: 'Raporty',
+    path: '/app/reports',
+    icon: AssessmentOutlinedIcon,
+    showInMobileMenu: false
+  },
+  {
+    id: 'event-logs',
+    label: 'Logi zdarzeń',
+    path: '/app/event-logs',
+    icon: HistoryOutlinedIcon,
     showInMobileMenu: false
   }
 ];

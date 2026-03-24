@@ -8,6 +8,31 @@ import type {
 } from '@/types/genericList';
 import { useListStateStore } from '@/store/listStateStore';
 
+/**
+ * Normalize meta from backend.
+ * Handles:
+ *  - camelCase vs snake_case keys (columnDefs vs column_defs)
+ *  - Object-keyed collections vs arrays (backend may return { "0": {...}, "2": {...} }
+ *    instead of an array)
+ */
+function toArray<T>(val: T[] | Record<string, T> | undefined | null): T[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'object') return Object.values(val);
+  return [];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeMeta(raw: any): ListMeta {
+  return {
+    pagination: raw.pagination ?? { page: 1, perPage: 10, pages: 1, count: 0 },
+    sortable: toArray(raw.sortable),
+    filtersDefs: toArray(raw.filtersDefs ?? raw.filters_defs),
+    generalActions: toArray(raw.generalActions ?? raw.general_actions),
+    columnDefs: toArray(raw.columnDefs ?? raw.column_defs)
+  };
+}
+
 interface UseGenericListControllerOptions<T extends GenericRecord> {
   fetcher: Fetcher<T>;
   rowKey?: keyof T | ((row: T) => string);
@@ -39,6 +64,22 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
     disabledFilters,
     stateKey
   } = options;
+
+  // Stabilize array props — inline arrays passed as props create new references every render,
+  // which would cause fetchData to change and trigger an infinite refetch loop.
+  const disabledColumnsRef = useRef(disabledColumns);
+  disabledColumnsRef.current = disabledColumns;
+  const stableDisabledColumns = useMemo(
+    () => disabledColumnsRef.current,
+    [JSON.stringify(disabledColumns)]
+  );
+
+  const disabledFiltersRef = useRef(disabledFilters);
+  disabledFiltersRef.current = disabledFilters;
+  const stableDisabledFilters = useMemo(
+    () => disabledFiltersRef.current,
+    [JSON.stringify(disabledFilters)]
+  );
 
   const { getListState, saveListState } = useListStateStore();
 
@@ -123,16 +164,17 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
         sortProperty,
         sortOrder,
         filters,
-        disabledColumns,
-        disabledFilters
+        disabledColumns: stableDisabledColumns,
+        disabledFilters: stableDisabledFilters
       });
 
+      const normalizedMeta = normalizeMeta(response.meta);
       setData(response.data);
-      setMeta(response.meta);
+      setMeta(normalizedMeta);
 
       // Set initial sort from meta if available
-      if (!hasAppliedInitialSort.current && response.meta.sortable.length > 0) {
-        const defaultSort = response.meta.sortable[0];
+      if (!hasAppliedInitialSort.current && normalizedMeta.sortable.length > 0) {
+        const defaultSort = normalizedMeta.sortable[0];
         setSortProperty(defaultSort.property);
         setSortOrder(defaultSort.order);
         hasAppliedInitialSort.current = true;
@@ -154,8 +196,8 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
     sortProperty,
     sortOrder,
     filters,
-    disabledColumns,
-    disabledFilters
+    stableDisabledColumns,
+    stableDisabledFilters
   ]);
 
   // Initial fetch and refetch on params change

@@ -14,8 +14,8 @@ const DashboardPage: React.FC = () => {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 120px)',
-        minHeight: '600px'
+        flex: 1,
+        minHeight: 0
       }}
     >
       <Box sx={{ p: 3, pb: 2 }}>
