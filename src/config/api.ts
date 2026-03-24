@@ -23,7 +23,11 @@ export const API_ENDPOINTS = {
   // Documents
   DOCUMENTS_TABLE: '/api/resource/documents',
   DOCUMENTS: '/api/documents',
-  DOCUMENTS_ATTACHMENTS: '/api/documents/attachments'
+  DOCUMENTS_ATTACHMENTS: '/api/documents/attachments',
+  // Payments
+  PAYMENTS_TABLE: '/api/resource/policy/payments',
+  PAYMENTS: '/api/payments',
+  PAYMENTS_FORM: '/api/payments/form'
   // Tutaj dodawaj kolejne endpointy
 } as const;
 
