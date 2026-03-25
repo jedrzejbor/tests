@@ -10,7 +10,6 @@ import {
   Select,
   MenuItem,
   Divider,
-  
   useMediaQuery,
   useTheme,
   IconButton,
@@ -32,8 +31,7 @@ import {
   updateUser,
   getUserDetails,
   type RoleOption,
-  type CompanyOption,
-  
+  type CompanyOption
 } from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
@@ -534,7 +532,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             disabled={!canEditEmail}
             InputLabelProps={{ shrink: true }}
           />
-
         </Box>
       </Stack>
 

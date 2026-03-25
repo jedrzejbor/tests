@@ -35,7 +35,8 @@ import AddPaymentDialog from '@/components/dialogs/AddPaymentDialog';
 import EditPaymentDialog from '@/components/dialogs/EditPaymentDialog';
 import ArchivePaymentDialog from '@/components/dialogs/ArchivePaymentDialog';
 import ForceDeletePaymentDialog from '@/components/dialogs/ForceDeletePaymentDialog';
-import { GenericListView } from '@/components/lists';
+// GenericListView intentionally not imported while Documents/Payments UI is hidden
+// import { GenericListView } from '@/components/lists';
 import {
   type ClientRecord,
   type ClientDetailsApiClient,
@@ -160,8 +161,8 @@ const CLIENT_TABS = [
 // Main component
 // ---------------------------------------------------------------------------
 
-const DOCS_DISABLED_COLUMNS = ['client_name'];
-const DOCS_DISABLED_FILTERS = ['client'];
+// const DOCS_DISABLED_COLUMNS = ['client_name'];
+// const DOCS_DISABLED_FILTERS = ['client'];
 
 const ClientDetailsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
@@ -537,8 +538,8 @@ const ClientDetailsPage: React.FC = () => {
     setPaymentRefreshKey((k) => k + 1);
   }, []);
 
-  const PAYMENTS_DISABLED_COLUMNS = React.useMemo(() => ['client_name'], []);
-  const PAYMENTS_DISABLED_FILTERS = React.useMemo(() => ['client'], []);
+  // const PAYMENTS_DISABLED_COLUMNS = React.useMemo(() => ['client_name'], []);
+  // const PAYMENTS_DISABLED_FILTERS = React.useMemo(() => ['client'], []);
 
   const paymentHandlers: Record<string, (row: PaymentRecord) => void> = React.useMemo(
     () => ({
@@ -574,6 +575,15 @@ const ClientDetailsPage: React.FC = () => {
         city: clientData.city
       }
     : null;
+
+  // Preserve handlers and refresh keys usage while Documents/Payments UI is hidden.
+  // These are intentionally kept so the logic remains available when the tabs are re-enabled.
+  React.useEffect(() => {
+    void documentHandlers;
+    void paymentHandlers;
+    void docRefreshKey;
+    void paymentRefreshKey;
+  }, [documentHandlers, paymentHandlers, docRefreshKey, paymentRefreshKey]);
 
   // ---------------------------------------------------------------------------
   // Loading / empty states
@@ -728,7 +738,7 @@ const ClientDetailsPage: React.FC = () => {
         {/* Tab content */}
         {activeTab === 1 && documentsFetcher ? (
           <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
-            <GenericListView<DocumentRecord>
+            {/* <GenericListView<DocumentRecord>
               title="Dokumenty"
               fetcher={documentsFetcher}
               handlers={documentHandlers}
@@ -737,11 +747,12 @@ const ClientDetailsPage: React.FC = () => {
               refreshKey={docRefreshKey}
               disabledColumns={DOCS_DISABLED_COLUMNS}
               disabledFilters={DOCS_DISABLED_FILTERS}
-            />
+            /> */}
+            <UnavailableTabContent />
           </Box>
         ) : activeTab === 3 && paymentsFetcher ? (
           <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
-            <GenericListView<PaymentRecord>
+            {/* <GenericListView<PaymentRecord>
               title="Płatności składek"
               fetcher={paymentsFetcher}
               handlers={paymentHandlers}
@@ -750,7 +761,8 @@ const ClientDetailsPage: React.FC = () => {
               refreshKey={paymentRefreshKey}
               disabledColumns={PAYMENTS_DISABLED_COLUMNS}
               disabledFilters={PAYMENTS_DISABLED_FILTERS}
-            />
+            /> */}
+            <UnavailableTabContent />
           </Box>
         ) : activeTab !== 0 ? (
           <Box sx={{ px: 1 }}>
@@ -1107,7 +1119,7 @@ const ClientDetailsPage: React.FC = () => {
       {/* Tab content */}
       {activeTab === 1 && documentsFetcher ? (
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <GenericListView<DocumentRecord>
+          {/* <GenericListView<DocumentRecord>
             title="Dokumenty"
             fetcher={documentsFetcher}
             handlers={documentHandlers}
@@ -1116,11 +1128,12 @@ const ClientDetailsPage: React.FC = () => {
             refreshKey={docRefreshKey}
             disabledColumns={['client_name']}
             disabledFilters={['client']}
-          />
+          /> */}
+          <UnavailableTabContent />
         </Box>
       ) : activeTab === 3 && paymentsFetcher ? (
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <GenericListView<PaymentRecord>
+          {/* <GenericListView<PaymentRecord>
             title="Płatności składek"
             fetcher={paymentsFetcher}
             handlers={paymentHandlers}
@@ -1129,7 +1142,8 @@ const ClientDetailsPage: React.FC = () => {
             refreshKey={paymentRefreshKey}
             disabledColumns={['client_name']}
             disabledFilters={['client']}
-          />
+          /> */}
+          <UnavailableTabContent />
         </Box>
       ) : activeTab !== 0 ? (
         <UnavailableTabContent />
