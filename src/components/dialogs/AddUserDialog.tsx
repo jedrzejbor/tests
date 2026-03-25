@@ -9,9 +9,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
   Divider,
-  Autocomplete,
   useMediaQuery,
   useTheme,
   IconButton,
@@ -30,8 +28,7 @@ import {
   createUser,
   getUserCreateOptions,
   type RoleOption,
-  type CompanyOption,
-  type ScopeOption
+  type CompanyOption
 } from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
@@ -49,10 +46,7 @@ const POSITIONS = [
   { value: 'asystent', label: 'Asystent' }
 ];
 
-const ACCOUNT_TYPES = [
-  { value: 'firma', label: 'Firma' },
-  { value: 'osoba_fizyczna', label: 'Osoba fizyczna' }
-];
+const CLIFFSIDE_ADMIN_ROLES = ['Super Admin Cliffside Brokers', 'Admin Cliffside Brokers'];
 
 const STATUSES = [
   { value: 'aktywny', label: 'Aktywny' },
@@ -72,7 +66,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
   const [createdEmail, setCreatedEmail] = useState('');
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
-  const [competencyOptions, setCompetencyOptions] = useState<ScopeOption[]>([]);
 
   const {
     register,
@@ -80,6 +73,8 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
     control,
     reset,
     setError,
+    watch,
+    setValue,
     formState: { errors }
   } = useForm<AddUserFormValues>({
     resolver: zodResolver(addUserSchema),
@@ -92,10 +87,16 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
       competencies: [],
       phone: '',
       email: '',
-      accountType: '',
-      status: 'aktywny'
+      status: 'aktywny',
+      _companyNotRequired: false
     }
   });
+
+  const watchedRole = watch('role');
+  useEffect(() => {
+    const label = roleOptions.find((r) => r.value === watchedRole)?.label ?? '';
+    setValue('_companyNotRequired', CLIFFSIDE_ADMIN_ROLES.includes(label));
+  }, [watchedRole, roleOptions, setValue]);
 
   useEffect(() => {
     if (!open) return;
@@ -115,11 +116,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           ? rawCompanies.map((c) => (typeof c === 'string' ? { value: 0, label: c } : c))
           : Object.values(rawCompanies);
         setCompanyOptions(normalizedCompanies);
-        const rawScopes = response.scopes_of_competence || [];
-        const normalizedScopes: ScopeOption[] = Array.isArray(rawScopes)
-          ? rawScopes
-          : Object.values(rawScopes);
-        setCompetencyOptions(normalizedScopes);
       } catch (error) {
         const apiError = error as ApiError;
         addToast({
@@ -311,25 +307,46 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         <Controller
           name="company"
           control={control}
-          render={({ field }) => (
-            <FormControl fullWidth size="medium" error={Boolean(errors.company)}>
-              <InputLabel>Firma</InputLabel>
-              <Select
-                {...field}
-                label="Firma"
-                MenuProps={{
-                  PaperProps: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-              >
-                {companyOptions.map((company) => (
-                  <MenuItem key={company.value} value={company.value}>
-                    {company.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          render={({ field: companyField }) => (
+            <Controller
+              name="role"
+              control={control}
+              render={({ field: roleField }) => {
+                const selectedRoleLabel =
+                  roleOptions.find((r) => r.value === roleField.value)?.label ?? '';
+                const isCliffsideRole = CLIFFSIDE_ADMIN_ROLES.includes(selectedRoleLabel);
+                // Reset company value when Cliffside role is selected
+                if (isCliffsideRole && companyField.value !== '') {
+                  setTimeout(() => companyField.onChange(''), 0);
+                }
+                return (
+                  <FormControl
+                    fullWidth
+                    size="medium"
+                    error={Boolean(errors.company)}
+                    disabled={isCliffsideRole}
+                  >
+                    <InputLabel>Firma</InputLabel>
+                    <Select
+                      {...companyField}
+                      value={isCliffsideRole ? '' : companyField.value}
+                      label="Firma"
+                      MenuProps={{
+                        PaperProps: {
+                          sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                        }
+                      }}
+                    >
+                      {companyOptions.map((company) => (
+                        <MenuItem key={company.value} value={company.value}>
+                          {company.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                );
+              }}
+            />
           )}
         />
       </Stack>
@@ -392,43 +409,27 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         />
 
         <Controller
-          name="competencies"
+          name="status"
           control={control}
           render={({ field }) => (
-            <Autocomplete
-              multiple
-              options={competencyOptions}
-              getOptionLabel={(option) => option.label}
-              isOptionEqualToValue={(option, value) => option.value === value.value}
-              value={competencyOptions.filter((c) => field.value?.includes(c.value))}
-              onChange={(_, newValue) => {
-                field.onChange(newValue.map((v) => v.value));
-              }}
-              slotProps={{
-                paper: {
-                  sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                }
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Zakres kompetencji" size="medium" />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    label={option.label}
-                    size="small"
-                    {...getTagProps({ index })}
-                    key={option.value}
-                    sx={{
-                      borderRadius: '16px',
-                      border: '1px solid rgba(0, 0, 0, 0.5)',
-                      bgcolor: 'transparent'
-                    }}
-                  />
-                ))
-              }
-              sx={{ flex: 1 }}
-            />
+            <FormControl fullWidth size="medium" error={Boolean(errors.status)} sx={{ flex: 1 }}>
+              <InputLabel>Status użytkownika</InputLabel>
+              <Select
+                {...field}
+                label="Status użytkownika"
+                MenuProps={{
+                  PaperProps: {
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                  }
+                }}
+              >
+                {STATUSES.map((status) => (
+                  <MenuItem key={status.value} value={status.value}>
+                    {status.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           )}
         />
       </Stack>
@@ -452,58 +453,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           helperText={errors.email?.message}
           fullWidth
           size="medium"
-        />
-      </Stack>
-
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-        <Controller
-          name="accountType"
-          control={control}
-          render={({ field }) => (
-            <FormControl fullWidth size="medium" error={Boolean(errors.accountType)}>
-              <InputLabel>Rodzaj konta</InputLabel>
-              <Select
-                {...field}
-                label="Rodzaj konta"
-                MenuProps={{
-                  PaperProps: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-              >
-                {ACCOUNT_TYPES.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    {type.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-        />
-
-        <Controller
-          name="status"
-          control={control}
-          render={({ field }) => (
-            <FormControl fullWidth size="medium" error={Boolean(errors.status)}>
-              <InputLabel>Status użytkownika</InputLabel>
-              <Select
-                {...field}
-                label="Status użytkownika"
-                MenuProps={{
-                  PaperProps: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-              >
-                {STATUSES.map((status) => (
-                  <MenuItem key={status.value} value={status.value}>
-                    {status.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
         />
       </Stack>
 

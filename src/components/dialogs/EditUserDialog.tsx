@@ -9,9 +9,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
   Divider,
-  Autocomplete,
+  
   useMediaQuery,
   useTheme,
   IconButton,
@@ -34,7 +33,7 @@ import {
   getUserDetails,
   type RoleOption,
   type CompanyOption,
-  type ScopeOption
+  
 } from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
@@ -54,10 +53,7 @@ const POSITIONS = [
   { value: 'asystent', label: 'Asystent' }
 ];
 
-const ACCOUNT_TYPES = [
-  { value: 'firma', label: 'Firma' },
-  { value: 'osoba_fizyczna', label: 'Osoba fizyczna' }
-];
+const CLIFFSIDE_ADMIN_ROLES = ['Super Admin Cliffside Brokers', 'Admin Cliffside Brokers'];
 
 const MARKETING_CONSENT = [
   { value: 'tak', label: 'Tak' },
@@ -85,7 +81,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
 
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
-  const [competencyOptions, setCompetencyOptions] = useState<ScopeOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState('');
 
@@ -95,6 +90,8 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
     control,
     reset,
     setError,
+    watch,
+    setValue,
     formState: { errors }
   } = useForm<EditUserFormValues>({
     resolver: zodResolver(editUserSchema),
@@ -108,10 +105,16 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
       phone: '',
       email: '',
       marketingConsent: '',
-      accountType: '',
-      status: 'aktywny'
+      status: 'aktywny',
+      _companyNotRequired: false
     }
   });
+
+  const watchedRole = watch('role');
+  useEffect(() => {
+    const label = roleOptions.find((r) => r.value === watchedRole)?.label ?? '';
+    setValue('_companyNotRequired', CLIFFSIDE_ADMIN_ROLES.includes(label));
+  }, [watchedRole, roleOptions, setValue]);
 
   // Single effect: load form options AND user details together so company/role
   // lookups always have fresh options available (avoids race condition where
@@ -140,11 +143,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
           : Object.values(rawCompanies);
         setCompanyOptions(normalizedCompanies);
 
-        const rawScopes = optionsResponse.scopes_of_competence || [];
-        const normalizedScopes: ScopeOption[] = Array.isArray(rawScopes)
-          ? rawScopes
-          : Object.values(rawScopes);
-        setCompetencyOptions(normalizedScopes);
+        // scopes_of_competence not used in this dialog anymore
 
         // --- Map user details using freshly loaded options ---
         const userDetails = detailsResponse.user;
@@ -195,7 +194,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
               : userDetails.marketing_consent === false
                 ? 'nie'
                 : '',
-          accountType: user.account_type || '',
           status: userDetails.status || user.status || 'aktywny'
         });
       } catch (error) {
@@ -349,25 +347,45 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
         <Controller
           name="company"
           control={control}
-          render={({ field }) => (
-            <FormControl fullWidth size="medium" error={Boolean(errors.company)}>
-              <InputLabel>Firma</InputLabel>
-              <Select
-                {...field}
-                label="Firma"
-                MenuProps={{
-                  PaperProps: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-              >
-                {companyOptions.map((company) => (
-                  <MenuItem key={company.value} value={company.value}>
-                    {company.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          render={({ field: companyField }) => (
+            <Controller
+              name="role"
+              control={control}
+              render={({ field: roleField }) => {
+                const selectedRoleLabel =
+                  roleOptions.find((r) => r.value === roleField.value)?.label ?? '';
+                const isCliffsideRole = CLIFFSIDE_ADMIN_ROLES.includes(selectedRoleLabel);
+                if (isCliffsideRole && companyField.value !== '') {
+                  setTimeout(() => companyField.onChange(''), 0);
+                }
+                return (
+                  <FormControl
+                    fullWidth
+                    size="medium"
+                    error={Boolean(errors.company)}
+                    disabled={isCliffsideRole}
+                  >
+                    <InputLabel>Firma</InputLabel>
+                    <Select
+                      {...companyField}
+                      value={isCliffsideRole ? '' : companyField.value}
+                      label="Firma"
+                      MenuProps={{
+                        PaperProps: {
+                          sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                        }
+                      }}
+                    >
+                      {companyOptions.map((company) => (
+                        <MenuItem key={company.value} value={company.value}>
+                          {company.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                );
+              }}
+            />
           )}
         />
       </Stack>
@@ -465,31 +483,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
               </FormControl>
             )}
           />
-
-          <Controller
-            name="accountType"
-            control={control}
-            render={({ field }) => (
-              <FormControl fullWidth size="medium" error={Boolean(errors.accountType)}>
-                <InputLabel>Rodzaj konta</InputLabel>
-                <Select
-                  {...field}
-                  label="Rodzaj konta"
-                  MenuProps={{
-                    PaperProps: {
-                      sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                    }
-                  }}
-                >
-                  {ACCOUNT_TYPES.map((type) => (
-                    <MenuItem key={type.value} value={type.value}>
-                      {type.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
         </Box>
 
         {/* Right column */}
@@ -502,59 +495,6 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
             fullWidth
             size="medium"
             disabled={!canEditName}
-            InputLabelProps={{ shrink: true }}
-          />
-
-          <Controller
-            name="competencies"
-            control={control}
-            render={({ field }) => (
-              <Autocomplete
-                multiple
-                options={competencyOptions}
-                getOptionLabel={(option) => option.label}
-                isOptionEqualToValue={(option, value) => option.value === value.value}
-                value={competencyOptions.filter((c) => field.value?.includes(c.value))}
-                onChange={(_, newValue) => {
-                  field.onChange(newValue.map((v) => v.value));
-                }}
-                slotProps={{
-                  paper: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Zakres kompetencji" size="medium" />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      label={option.label}
-                      size="small"
-                      {...getTagProps({ index })}
-                      key={option.value}
-                      sx={{
-                        borderRadius: '16px',
-                        border: '1px solid rgba(0, 0, 0, 0.5)',
-                        bgcolor: 'transparent'
-                      }}
-                    />
-                  ))
-                }
-                sx={{ flex: 1 }}
-              />
-            )}
-          />
-
-          <TextField
-            label="Email"
-            type="email"
-            {...register('email')}
-            error={Boolean(errors.email)}
-            helperText={errors.email?.message}
-            fullWidth
-            size="medium"
-            disabled={!canEditEmail}
             InputLabelProps={{ shrink: true }}
           />
 
@@ -582,6 +522,19 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({ open, onClose, user, on
               </FormControl>
             )}
           />
+
+          <TextField
+            label="Email"
+            type="email"
+            {...register('email')}
+            error={Boolean(errors.email)}
+            helperText={errors.email?.message}
+            fullWidth
+            size="medium"
+            disabled={!canEditEmail}
+            InputLabelProps={{ shrink: true }}
+          />
+
         </Box>
       </Stack>
 

@@ -80,69 +80,91 @@ export const changePasswordSchema = z
 export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
 // Add User form schema
-export const addUserSchema = z.object({
-  // Dane użytkownika
-  role: z.preprocess(
-    (value) => (value === '' || value === null ? undefined : Number(value)),
-    z.number().int().min(1, 'Wybierz rolę w systemie')
-  ),
-  company: z.preprocess(
-    (value) => (value === '' || value === null ? undefined : Number(value)),
-    z.number().int().min(1, 'Wybierz firmę')
-  ),
+export const addUserSchema = z
+  .object({
+    // Dane użytkownika
+    role: z.preprocess(
+      (value) => (value === '' || value === null ? undefined : Number(value)),
+      z.number().int().min(1, 'Wybierz rolę w systemie')
+    ),
+    company: z.preprocess(
+      (value) => (value === '' || value === null ? undefined : Number(value)),
+      z.number().int().min(1, 'Wybierz firmę').optional()
+    ),
+    // Flag injected at validation time — true when selected role doesn’t require a company
+    _companyNotRequired: z.boolean().optional(),
 
-  // Dane użytkownika
-  firstName: z.string().min(1, 'Imię jest wymagane').min(2, 'Imię musi mieć co najmniej 2 znaki'),
-  lastName: z
-    .string()
-    .min(1, 'Nazwisko jest wymagane')
-    .min(2, 'Nazwisko musi mieć co najmniej 2 znaki'),
-  position: z.string().optional(),
-  competencies: z.array(z.number()).optional(),
-  managingEntities: z.array(z.number()).optional(),
-  dependentEntities: z.array(z.number()).optional(),
-  phone: z
-    .string()
-    .min(1, 'Numer telefonu jest wymagany')
-    .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)'),
-  email: emailField,
-  accountType: z.string().min(1, 'Wybierz rodzaj konta'),
-  status: z.string().min(1, 'Wybierz status użytkownika')
-});
+    // Dane użytkownika
+    firstName: z.string().min(1, 'Imię jest wymagane').min(2, 'Imię musi mieć co najmniej 2 znaki'),
+    lastName: z
+      .string()
+      .min(1, 'Nazwisko jest wymagane')
+      .min(2, 'Nazwisko musi mieć co najmniej 2 znaki'),
+    position: z.string().optional(),
+    competencies: z.array(z.number()).optional(),
+    managingEntities: z.array(z.number()).optional(),
+    dependentEntities: z.array(z.number()).optional(),
+    phone: z
+      .string()
+      .min(1, 'Numer telefonu jest wymagany')
+      .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)'),
+    email: emailField,
+    status: z.string().min(1, 'Wybierz status użytkownika')
+  })
+  .superRefine((data, ctx) => {
+    if (!data._companyNotRequired && !data.company) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Wybierz firmę',
+        path: ['company']
+      });
+    }
+  });
 
 export type AddUserFormValues = z.input<typeof addUserSchema>;
 
 // Edit User form schema (similar to addUser but with optional new password)
-export const editUserSchema = z.object({
-  // Dane użytkownika
-  role: z.preprocess(
-    (value) => (value === '' || value === null ? undefined : Number(value)),
-    z.number().int().min(1, 'Wybierz rolę w systemie')
-  ),
-  company: z.preprocess(
-    (value) => (value === '' || value === null ? undefined : Number(value)),
-    z.number().int().min(1, 'Wybierz firmę')
-  ),
+export const editUserSchema = z
+  .object({
+    // Dane użytkownika
+    role: z.preprocess(
+      (value) => (value === '' || value === null ? undefined : Number(value)),
+      z.number().int().min(1, 'Wybierz rolę w systemie')
+    ),
+    company: z.preprocess(
+      (value) => (value === '' || value === null ? undefined : Number(value)),
+      z.number().int().min(1, 'Wybierz firmę').optional()
+    ),
+    // Flag injected at validation time — true when selected role doesn’t require a company
+    _companyNotRequired: z.boolean().optional(),
 
-  // Dane użytkownika
-  firstName: z.string().min(1, 'Imię jest wymagane').min(2, 'Imię musi mieć co najmniej 2 znaki'),
-  lastName: z
-    .string()
-    .min(1, 'Nazwisko jest wymagane')
-    .min(2, 'Nazwisko musi mieć co najmniej 2 znaki'),
-  position: z.string().optional(),
-  competencies: z.array(z.number()).optional(),
-  managingEntities: z.array(z.number()).optional(),
-  dependentEntities: z.array(z.number()).optional(),
-  phone: z
-    .string()
-    .min(1, 'Numer telefonu jest wymagany')
-    .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)'),
-  email: emailField,
-  marketingConsent: z.string().min(1, 'Wybierz zgodę marketingową'),
-  accountType: z.string().min(1, 'Wybierz rodzaj konta'),
-  status: z.string().min(1, 'Wybierz status użytkownika')
-});
+    // Dane użytkownika
+    firstName: z.string().min(1, 'Imię jest wymagane').min(2, 'Imię musi mieć co najmniej 2 znaki'),
+    lastName: z
+      .string()
+      .min(1, 'Nazwisko jest wymagane')
+      .min(2, 'Nazwisko musi mieć co najmniej 2 znaki'),
+    position: z.string().optional(),
+    competencies: z.array(z.number()).optional(),
+    managingEntities: z.array(z.number()).optional(),
+    dependentEntities: z.array(z.number()).optional(),
+    phone: z
+      .string()
+      .min(1, 'Numer telefonu jest wymagany')
+      .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)'),
+    email: emailField,
+    marketingConsent: z.string().min(1, 'Wybierz zgodę marketingową'),
+    status: z.string().min(1, 'Wybierz status użytkownika')
+  })
+  .superRefine((data, ctx) => {
+    if (!data._companyNotRequired && !data.company) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Wybierz firmę',
+        path: ['company']
+      });
+    }
+  });
 
 export type EditUserFormValues = z.input<typeof editUserSchema>;
 
