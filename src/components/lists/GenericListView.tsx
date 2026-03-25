@@ -217,7 +217,6 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             bgcolor: 'white',
             borderRadius: '12px',
             border: '1px solid #E5E7EB',
-            overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             flex: 1,

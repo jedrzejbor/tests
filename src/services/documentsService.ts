@@ -263,9 +263,7 @@ export const archiveDocument = async (
   documentId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.delete(`/api/documents/${documentId}/archive`, {
-    body: JSON.stringify({ password })
-  });
+  await apiClient.delete(`/api/documents/${documentId}/archive`, { password });
 };
 
 /**
@@ -275,9 +273,7 @@ export const forceDeleteDocument = async (
   documentId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.delete(`/api/documents/${documentId}/force`, {
-    body: JSON.stringify({ password })
-  });
+  await apiClient.delete(`/api/documents/${documentId}/force`, { password });
 };
 
 /**

@@ -1106,7 +1106,7 @@ const ClientDetailsPage: React.FC = () => {
 
       {/* Tab content */}
       {activeTab === 1 && documentsFetcher ? (
-        <Box sx={{ flex: 1, minHeight: 0 }}>
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <GenericListView<DocumentRecord>
             title="Dokumenty"
             fetcher={documentsFetcher}
@@ -1119,7 +1119,7 @@ const ClientDetailsPage: React.FC = () => {
           />
         </Box>
       ) : activeTab === 3 && paymentsFetcher ? (
-        <Box sx={{ flex: 1, minHeight: 0 }}>
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <GenericListView<PaymentRecord>
             title="Płatności składek"
             fetcher={paymentsFetcher}

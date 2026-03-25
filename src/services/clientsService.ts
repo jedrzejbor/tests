@@ -224,9 +224,7 @@ export const updateClient = async (
  * Archive (soft delete) client
  */
 export const archiveClient = async (clientId: string | number, password: string): Promise<void> => {
-  await apiClient.delete(`/api/client/${clientId}/archive`, {
-    body: JSON.stringify({ password })
-  });
+  await apiClient.delete(`/api/client/${clientId}/archive`, { password });
 };
 
 /**
@@ -236,9 +234,7 @@ export const forceDeleteClient = async (
   clientId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.delete(`/api/client/${clientId}/force`, {
-    body: JSON.stringify({ password })
-  });
+  await apiClient.delete(`/api/client/${clientId}/force`, { password });
 };
 
 /**
