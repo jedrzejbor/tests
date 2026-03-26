@@ -40,8 +40,17 @@ class ApiClient {
     return headers;
   }
 
-  private async handleResponse<T>(response: Response): Promise<T> {
+  private async handleResponse<T>(response: Response, skipAuth = false): Promise<T> {
     if (!response.ok) {
+      // Sesja wygasła lub token nieważny — wyloguj automatycznie
+      if (response.status === 401 && !skipAuth) {
+        useAuthStore.getState().resetAuth();
+        // Przekieruj do strony logowania (działa poza React — window.location)
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
+      }
+
       let errorData: Partial<ApiError> = {};
 
       try {
@@ -73,7 +82,7 @@ class ApiClient {
       ...fetchOptions
     });
 
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, skipAuth);
   }
 
   async post<T>(endpoint: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
@@ -86,7 +95,7 @@ class ApiClient {
       ...fetchOptions
     });
 
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, skipAuth);
   }
 
   async put<T>(endpoint: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
@@ -99,7 +108,7 @@ class ApiClient {
       ...fetchOptions
     });
 
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, skipAuth);
   }
 
   async patch<T>(endpoint: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
@@ -112,7 +121,7 @@ class ApiClient {
       ...fetchOptions
     });
 
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, skipAuth);
   }
 
   async delete<T>(endpoint: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
@@ -125,7 +134,7 @@ class ApiClient {
       ...fetchOptions
     });
 
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, skipAuth);
   }
 }
 
