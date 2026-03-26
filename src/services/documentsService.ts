@@ -205,9 +205,7 @@ export const createDocument = async (
   formData.append('client_id', String(fields.client_id));
   formData.append('name', fields.name);
   formData.append('date', fields.date);
-  if (fields.description) {
-    formData.append('description', fields.description);
-  }
+  formData.append('description', fields.description ?? '');
   formData.append('attachment', fields.attachment);
 
   const response = await fetch(`${API_BASE_URL}/api/documents`, {
