@@ -10,9 +10,14 @@ import { useColorMode } from '@/theme';
 
 export interface LoginPageProps {
   initialStage?: 'login' | 'forgot' | 'sent' | 'reset';
+  /** When true, the set-password form shows "Ustaw hasło dla konta" */
+  isNewAccount?: boolean;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ initialStage = 'login' }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({
+  initialStage = 'login',
+  isNewAccount = false
+}) => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const email = searchParams.get('email');
@@ -82,6 +87,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialStage = 'login' }) 
             <ResetPasswordPlaceholder
               onBack={handleBackToLogin}
               onSuccess={handlePasswordResetComplete}
+              isNewAccount={isNewAccount}
             />
           )}
         </div>

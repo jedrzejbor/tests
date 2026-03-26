@@ -9,7 +9,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Divider,
   useMediaQuery,
   useTheme,
   IconButton,
@@ -19,7 +18,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addUserSchema, type AddUserFormValues } from '@/utils/formSchemas';
@@ -67,7 +66,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
 
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
-  const [generatedPassword, setGeneratedPassword] = useState('');
   const [createdEmail, setCreatedEmail] = useState('');
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
@@ -156,13 +154,11 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
 
       const response = await createUser(payload);
 
-      const password = response.generated_password ?? response.password ?? '';
-      setGeneratedPassword(password);
       setCreatedEmail(response.user?.email || data.email);
       setStep(2);
 
       // Callback for parent component
-      onSuccess?.(data, password);
+      onSuccess?.(data);
     } catch (error) {
       const apiError = error as ApiError;
 
@@ -200,22 +196,15 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
     }
   };
 
-  const handleCopyCredentials = async () => {
-    const credentials = `Login: ${createdEmail}\nHasło: ${generatedPassword}`;
-    await navigator.clipboard.writeText(credentials);
-  };
-
   const handleAddAnother = () => {
     reset();
     setStep(1);
-    setGeneratedPassword('');
     setCreatedEmail('');
   };
 
   const handleClose = () => {
     reset();
     setStep(1);
-    setGeneratedPassword('');
     setCreatedEmail('');
     onClose();
   };
@@ -571,34 +560,43 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           py: 1
         }}
       >
-        <Stack spacing={1}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            sx={{ py: 1.5, px: 1.5 }}
-          >
-            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Login</Typography>
-            <Typography sx={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.87)' }}>
-              {createdEmail}
-            </Typography>
-          </Stack>
-
-          <Divider sx={{ borderColor: 'rgba(143, 109, 95, 0.08)' }} />
-
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            sx={{ py: 1.5, px: 1.5 }}
-          >
-            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Hasło</Typography>
-            <Typography sx={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.87)' }}>
-              {generatedPassword}
-            </Typography>
-          </Stack>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ py: 1.5, px: 1.5 }}
+        >
+          <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Login</Typography>
+          <Typography sx={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.87)' }}>
+            {createdEmail}
+          </Typography>
         </Stack>
       </Box>
+
+      {/* Email notification info */}
+      <Stack
+        direction="row"
+        spacing={1.5}
+        alignItems="flex-start"
+        sx={{
+          mt: 3,
+          p: 2,
+          bgcolor: 'rgba(143, 109, 95, 0.06)',
+          borderRadius: '8px'
+        }}
+      >
+        <MailOutlineIcon sx={{ color: '#8F6D5F', fontSize: 20, mt: 0.25 }} />
+        <Typography
+          sx={{
+            fontSize: '13px',
+            lineHeight: 1.5,
+            color: 'rgba(0, 0, 0, 0.6)'
+          }}
+        >
+          Na adres <strong>{createdEmail}</strong> został wysłany e-mail z linkiem do ustawienia
+          hasła do konta. Link jest ważny przez 48 godzin.
+        </Typography>
+      </Stack>
 
       {/* Action buttons */}
       <Stack direction="row" justifyContent="space-between" sx={{ mt: 4 }}>
@@ -626,8 +624,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         </Button>
         <Button
           variant="contained"
-          startIcon={<ContentCopyIcon />}
-          onClick={handleCopyCredentials}
+          onClick={handleClose}
           sx={{
             bgcolor: '#1E1F21',
             color: '#FFFFFF',
@@ -642,7 +639,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
             }
           }}
         >
-          Skopiuj logowanie i hasło
+          Zakończ
         </Button>
       </Stack>
     </Box>
@@ -693,14 +690,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
               }}
             >
               Dodaj nowego użytkownika
-              {step === 2 && (
-                <Typography
-                  component="span"
-                  sx={{ color: '#D32F2F', fontSize: '13px', fontWeight: 400, ml: 1 }}
-                >
-                  (funkcjonalność w trakcie przeróbek)
-                </Typography>
-              )}
             </Typography>
             <IconButton onClick={handleClose} size="small" aria-label="Zamknij">
               <CloseIcon sx={{ color: '#8E9098' }} />
@@ -744,14 +733,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
             }}
           >
             Dodaj nowego użytkownika
-            {step === 2 && (
-              <Typography
-                component="span"
-                sx={{ color: '#D32F2F', fontSize: '13px', fontWeight: 400, ml: 1 }}
-              >
-                (funkcjonalność w trakcie przeróbek)
-              </Typography>
-            )}
           </Typography>
           <IconButton onClick={handleClose} size="medium" aria-label="Zamknij">
             <CloseIcon sx={{ color: '#8E9098' }} />

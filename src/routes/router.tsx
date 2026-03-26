@@ -12,6 +12,7 @@ import UserDetailsPage from '@/pages/UserDetailsPage';
 import ClientsPage from '@/pages/ClientsPage';
 import ClientDetailsPage from '@/pages/ClientDetailsPage';
 import ResetPasswordTokenPage from '@/pages/ResetPasswordTokenPage';
+import SetPasswordTokenPage from '@/pages/SetPasswordTokenPage';
 import AppErrorBoundary from '@/routes/AppErrorBoundary';
 import ProtectedRoute from '@/routes/ProtectedRoute';
 import PublicRoute from '@/routes/PublicRoute';
@@ -57,6 +58,22 @@ export const router = createBrowserRouter([
         element: (
           <PublicRoute>
             <ResetPasswordTokenPage />
+          </PublicRoute>
+        )
+      },
+      {
+        path: '/set-password',
+        element: (
+          <PublicRoute>
+            <LoginPage initialStage="reset" isNewAccount />
+          </PublicRoute>
+        )
+      },
+      {
+        path: '/set-password/:token',
+        element: (
+          <PublicRoute>
+            <SetPasswordTokenPage />
           </PublicRoute>
         )
       },
