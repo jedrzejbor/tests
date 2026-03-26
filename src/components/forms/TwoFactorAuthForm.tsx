@@ -13,7 +13,7 @@ import { useState, useRef, KeyboardEvent, ClipboardEvent, useEffect } from 'reac
 import { useNavigate } from 'react-router-dom';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
-import { verifyTwoFactor } from '@/services/authService';
+import { verifyTwoFactor, getMe } from '@/services/authService';
 
 export interface TwoFactorAuthFormProps {
   email?: string;
@@ -116,9 +116,19 @@ export const TwoFactorAuthForm: React.FC<TwoFactorAuthFormProps> = ({
       // Wyczyść dane tymczasowe PRZED zapisaniem tokenu
       clearPendingAuth();
 
-      // Zapisz token i dane użytkownika - to wywoła useEffect który przekieruje
+      // Zapisz token — wymagany przez apiClient do kolejnych requestów
       setToken(response.token);
+      // Zapisz podstawowe dane z odpowiedzi 2FA
       setUser(response.user);
+
+      // Pobierz pełne dane użytkownika z /me (zawiera permissions)
+      // i nadpisz store — dzięki temu uprawnienia są dostępne od razu
+      try {
+        const fullUser = await getMe();
+        setUser({ ...response.user, ...fullUser });
+      } catch {
+        // Nieudane /me nie blokuje logowania — permissions załadują się przy wejściu na Ustawienia
+      }
 
       addToast({
         id: crypto.randomUUID(),

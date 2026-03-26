@@ -273,7 +273,8 @@ const UserDetailsPage: React.FC = () => {
           position: data.position,
           competencies: data.competencies as unknown as string[],
           company: (data.company as string) ?? previous.company,
-          account_type: data.accountType,
+          // accountType was removed from the edit form; preserve previous value
+          account_type: previous.account_type,
           managingEntities: data.managingEntities,
           dependentEntities: data.dependentEntities,
           firstName: data.firstName,

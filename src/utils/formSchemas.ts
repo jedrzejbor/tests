@@ -109,6 +109,7 @@ export const addUserSchema = z
       .min(1, 'Numer telefonu jest wymagany')
       .regex(/^[0-9]{1,11}$/, 'Podaj prawidłowy numer telefonu (tylko cyfry, max 11)'),
     email: emailField,
+    marketingConsent: z.string().min(1, 'Wybierz zgodę marketingową'),
     status: z.string().min(1, 'Wybierz status użytkownika')
   })
   .superRefine((data, ctx) => {
@@ -320,16 +321,11 @@ export const addPaymentSchema = z.object({
   payment_date: z.string().min(1, 'Data przelewu jest wymagana'),
   payment_total: z.preprocess(
     (value) => (value === '' || value === null ? undefined : Number(value)),
-    z
-      .number({ required_error: 'Kwota raty jest wymagana' })
-      .min(0, 'Kwota musi być większa lub równa 0')
+    z.number().min(0, 'Kwota musi być większa lub równa 0')
   ),
   margin_percent: z.preprocess(
     (value) => (value === '' || value === null ? undefined : Number(value)),
-    z
-      .number({ required_error: 'Procent prowizji jest wymagany' })
-      .min(0, 'Wartość od 0 do 100')
-      .max(100, 'Wartość od 0 do 100')
+    z.number().min(0, 'Wartość od 0 do 100').max(100, 'Wartość od 0 do 100')
   ),
   status: z.string().min(1, 'Wybierz status płatności')
 });
@@ -348,16 +344,11 @@ export const editPaymentSchema = z.object({
   payment_date: z.string().min(1, 'Data przelewu jest wymagana'),
   payment_total: z.preprocess(
     (value) => (value === '' || value === null ? undefined : Number(value)),
-    z
-      .number({ required_error: 'Kwota raty jest wymagana' })
-      .min(0, 'Kwota musi być większa lub równa 0')
+    z.number().min(0, 'Kwota musi być większa lub równa 0')
   ),
   margin_percent: z.preprocess(
     (value) => (value === '' || value === null ? undefined : Number(value)),
-    z
-      .number({ required_error: 'Procent prowizji jest wymagany' })
-      .min(0, 'Wartość od 0 do 100')
-      .max(100, 'Wartość od 0 do 100')
+    z.number().min(0, 'Wartość od 0 do 100').max(100, 'Wartość od 0 do 100')
   ),
   status: z.string().min(1, 'Wybierz status płatności')
 });

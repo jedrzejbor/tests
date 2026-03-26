@@ -48,6 +48,11 @@ const POSITIONS = [
 
 const CLIFFSIDE_ADMIN_ROLES = ['Super Admin Cliffside Brokers', 'Admin Cliffside Brokers'];
 
+const MARKETING_CONSENT = [
+  { value: 'tak', label: 'Tak' },
+  { value: 'nie', label: 'Nie' }
+];
+
 const STATUSES = [
   { value: 'aktywny', label: 'Aktywny' },
   { value: 'nieaktywny', label: 'Nieaktywny' }
@@ -87,6 +92,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
       competencies: [],
       phone: '',
       email: '',
+      marketingConsent: '',
       status: 'aktywny',
       _companyNotRequired: false
     }
@@ -143,7 +149,9 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         role: Number(data.role),
         status,
         scopes_of_competence: data.competencies?.length ? data.competencies : undefined,
-        company: data.company ? Number(data.company) : undefined
+        company: data.company ? Number(data.company) : undefined,
+        marketing_consent:
+          data.marketingConsent === 'tak' ? true : data.marketingConsent === 'nie' ? false : null
       };
 
       const response = await createUser(payload);
@@ -454,6 +462,40 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           fullWidth
           size="medium"
         />
+      </Stack>
+
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
+        <Controller
+          name="marketingConsent"
+          control={control}
+          render={({ field }) => (
+            <FormControl size="medium" fullWidth error={Boolean(errors.marketingConsent)}>
+              <InputLabel>Zgody marketingowe</InputLabel>
+              <Select
+                {...field}
+                label="Zgody marketingowe"
+                MenuProps={{
+                  PaperProps: {
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                  }
+                }}
+              >
+                {MARKETING_CONSENT.map((consent) => (
+                  <MenuItem key={consent.value} value={consent.value}>
+                    {consent.label}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.marketingConsent && (
+                <Typography variant="caption" color="error" sx={{ ml: 1.5, mt: 0.5 }}>
+                  {errors.marketingConsent.message}
+                </Typography>
+              )}
+            </FormControl>
+          )}
+        />
+        {/* Empty box to keep 2-column layout */}
+        <Box sx={{ flex: 1 }} />
       </Stack>
 
       {/* Removed 'Podmiot ma powiązania' section per request */}
