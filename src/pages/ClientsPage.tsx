@@ -5,6 +5,9 @@ import CheckBoxOutlinedIcon from '@mui/icons-material/CheckBoxOutlined';
 import { GenericListView } from '@/components/lists';
 import { fetchClientsTable, restoreClient, type ClientRecord } from '@/services/clientsService';
 import { useUiStore } from '@/store/uiStore';
+import { usePermission } from '@/hooks/usePermission';
+import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
+import NoAccessContent from '@/components/NoAccessContent';
 import AddClientDialog from '@/components/dialogs/AddClientDialog';
 import EditClientDialog from '@/components/dialogs/EditClientDialog';
 import ArchiveClientDialog from '@/components/dialogs/ArchiveClientDialog';
@@ -13,6 +16,7 @@ import ForceDeleteClientDialog from '@/components/dialogs/ForceDeleteClientDialo
 const ClientsPage: React.FC = () => {
   const navigate = useNavigate();
   const { addToast } = useUiStore();
+  const { hasPermission } = usePermission();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -20,6 +24,9 @@ const ClientsPage: React.FC = () => {
   const [forceDeleteDialogOpen, setForceDeleteDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null);
   const [refreshKey, setRefreshKey] = useState<number | undefined>(undefined);
+
+  // Permission gate — user must have 'client view-list'
+  const canViewList = hasPermission('client view-list');
 
   // ——— Row handlers ———
 
@@ -165,6 +172,16 @@ const ClientsPage: React.FC = () => {
       icon: <CheckBoxOutlinedIcon />
     }
   ];
+
+  if (!canViewList) {
+    return (
+      <Box component="main" pb={4}>
+        <ListPlaceholderLayout title="Klienci">
+          <NoAccessContent />
+        </ListPlaceholderLayout>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

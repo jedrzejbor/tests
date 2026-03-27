@@ -9,6 +9,8 @@ import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { impersonateUser } from '@/services/impersonationService';
 import { usePermission } from '@/hooks/usePermission';
+import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
+import NoAccessContent from '@/components/NoAccessContent';
 import AddUserDialog from '@/components/dialogs/AddUserDialog';
 import EditUserDialog from '@/components/dialogs/EditUserDialog';
 import DeleteUserDialog from '@/components/dialogs/DeleteUserDialog';
@@ -282,6 +284,17 @@ const UsersPage: React.FC = () => {
       icon: <CheckBoxOutlinedIcon />
     }
   ];
+
+  // Permission gate — user must have 'user view-list'
+  if (!hasPermission('user view-list')) {
+    return (
+      <Box component="main" pb={4}>
+        <ListPlaceholderLayout title="Użytkownicy">
+          <NoAccessContent />
+        </ListPlaceholderLayout>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
