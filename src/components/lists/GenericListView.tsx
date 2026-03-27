@@ -50,6 +50,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   extraRowActions = [],
   disabledColumns,
   disabledFilters,
+  disabledGeneralActions,
   stateKey
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
@@ -247,8 +248,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               {/* Add button from general actions or default "create-user" handler */}
               {(() => {
                 const generalActions = meta?.generalActions || [];
-                // Show only generalActions from backend (includes create-user / create-client etc.)
-                const actionsToShow = generalActions;
+                // Show only generalActions from backend, filtering out disabled ones
+                const actionsToShow = disabledGeneralActions?.length
+                  ? generalActions.filter((a) => !disabledGeneralActions.includes(a.handler))
+                  : generalActions;
 
                 return actionsToShow
                   .filter((action) => action.type === 'button_primary')
@@ -705,6 +708,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
 
                 {meta.generalActions
                   .filter((action) => action.type === 'button_primary')
+                  .filter((action) => !disabledGeneralActions?.includes(action.handler))
                   .map((action) => (
                     <Button
                       key={action.handler}

@@ -265,8 +265,8 @@ const UsersPage: React.FC = () => {
       handler: 'impersonate-user',
       label: 'Zaloguj jako użytkownik',
       icon: <ManageAccountsOutlinedIcon sx={{ fontSize: 18 }} />,
-      // Only show for non-deleted users when current user has impersonation permission
-      show: (row: UserRecord) => !row.deleted_at && hasPermission('user can-impersonate')
+      // Impersonation temporarily disabled for all roles
+      show: () => false
     }
   ];
 

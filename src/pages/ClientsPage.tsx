@@ -27,6 +27,7 @@ const ClientsPage: React.FC = () => {
 
   // Permission gate — user must have 'client view-list'
   const canViewList = hasPermission('client view-list');
+  const canCreateClient = hasPermission('client create');
 
   // ——— Row handlers ———
 
@@ -195,6 +196,7 @@ const ClientsPage: React.FC = () => {
         initialPerPage={10}
         refreshKey={refreshKey}
         stateKey="/app/clients"
+        disabledGeneralActions={!canCreateClient ? ['create-client'] : undefined}
       />
 
       <AddClientDialog
