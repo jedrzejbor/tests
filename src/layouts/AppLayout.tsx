@@ -74,7 +74,8 @@ const allMenuSections: PermissionedMenuSection[] = [
       {
         label: 'Polisy',
         to: '/app/policies',
-        icon: <ShieldIcon sx={{ fontSize: 24 }} />
+        icon: <ShieldIcon sx={{ fontSize: 24 }} />,
+        requiredPermission: 'policy view-list'
       },
       {
         label: 'Szkody',

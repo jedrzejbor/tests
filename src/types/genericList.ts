@@ -50,7 +50,7 @@ export interface FilterOption {
 export type RawFilterOptions = FilterOption[] | Record<string, any> | string[];
 
 export interface FilterDef {
-  type: 'select' | 'text' | 'date' | 'date_range';
+  type: 'select' | 'text' | 'date' | 'date_range' | 'range';
   key: string;
   label: string;
   options?: RawFilterOptions;

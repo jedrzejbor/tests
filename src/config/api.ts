@@ -27,7 +27,9 @@ export const API_ENDPOINTS = {
   // Payments
   PAYMENTS_TABLE: '/api/resource/policy/payments',
   PAYMENTS: '/api/payments',
-  PAYMENTS_FORM: '/api/payments/form'
+  PAYMENTS_FORM: '/api/payments/form',
+  // Policies
+  POLICIES_TABLE: '/api/resource/policy/policy'
   // Tutaj dodawaj kolejne endpointy
 } as const;
 
