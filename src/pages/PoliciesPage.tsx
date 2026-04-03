@@ -8,6 +8,8 @@ import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
 import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
 import ForceDeletePolicyDialog from '@/components/dialogs/ForceDeletePolicyDialog';
+import AddPolicyDialog from '@/components/dialogs/AddPolicyDialog';
+import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
 
 const PoliciesPage: React.FC = () => {
   const { addToast } = useUiStore();
@@ -15,6 +17,8 @@ const PoliciesPage: React.FC = () => {
 
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [forceDeleteDialogOpen, setForceDeleteDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyRecord | null>(null);
   const [refreshKey, setRefreshKey] = useState<number | undefined>(undefined);
 
@@ -28,8 +32,9 @@ const PoliciesPage: React.FC = () => {
     // TODO: navigate to policy details page when available
   }, []);
 
-  const handleEditPolicy = useCallback(() => {
-    // TODO: open edit policy dialog when available
+  const handleEditPolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setEditDialogOpen(true);
   }, []);
 
   const handleArchivePolicy = useCallback((row: PolicyRecord) => {
@@ -72,13 +77,8 @@ const PoliciesPage: React.FC = () => {
   // ——— General handlers ———
 
   const handleCreatePolicy = useCallback(() => {
-    // TODO: open create policy dialog when available
-    addToast({
-      id: crypto.randomUUID(),
-      message: 'Tworzenie polisy — wkrótce dostępne',
-      severity: 'info'
-    });
-  }, [addToast]);
+    setAddDialogOpen(true);
+  }, []);
 
   // ——— Dialog callbacks ———
 
@@ -101,6 +101,14 @@ const PoliciesPage: React.FC = () => {
     });
     setRefreshKey(Date.now());
   }, [selectedPolicy, addToast]);
+
+  const handlePolicyCreated = useCallback(() => {
+    setRefreshKey(Date.now());
+  }, []);
+
+  const handlePolicyUpdated = useCallback(() => {
+    setRefreshKey(Date.now());
+  }, []);
 
   // ——— Handler map ———
 
@@ -163,6 +171,22 @@ const PoliciesPage: React.FC = () => {
         }}
         policy={selectedPolicy}
         onSuccess={handlePolicyForceDeleted}
+      />
+
+      <AddPolicyDialog
+        open={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        onSuccess={handlePolicyCreated}
+      />
+
+      <EditPolicyDialog
+        open={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setSelectedPolicy(null);
+        }}
+        policy={selectedPolicy}
+        onSuccess={handlePolicyUpdated}
       />
     </Box>
   );

@@ -354,3 +354,155 @@ export const editPaymentSchema = z.object({
 });
 
 export type EditPaymentFormValues = z.input<typeof editPaymentSchema>;
+
+// ================== POLICY SCHEMAS ==================
+
+const ALLOWED_POLICY_EXTENSIONS = [
+  'doc',
+  'docx',
+  'pdf',
+  'xlsx',
+  'xls',
+  'zip',
+  'rar',
+  '7z',
+  'gz',
+  'tar',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'bmp',
+  'tiff'
+];
+const MAX_POLICY_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+const policyFileValidator = z
+  .instanceof(File)
+  .refine((f) => f.size <= MAX_POLICY_FILE_SIZE, 'Plik nie może przekraczać 10 MB')
+  .refine(
+    (f) => {
+      const ext = f.name.split('.').pop()?.toLowerCase() || '';
+      return ALLOWED_POLICY_EXTENSIONS.includes(ext);
+    },
+    `Dozwolone typy: ${ALLOWED_POLICY_EXTENSIONS.join(', ')}`
+  )
+  .optional()
+  .nullable();
+
+const numberPreprocess = (value: unknown) =>
+  value === '' || value === null || value === undefined ? undefined : Number(value);
+
+/** Single instalment (rata) */
+const paymentDetailSchema = z.object({
+  id: z.number().int().optional(),
+  /** Amount displayed in PLN (e.g. "1200.00") — converted to grosze before submit */
+  amount: z.preprocess(numberPreprocess, z.number().min(1, 'Kwota raty jest wymagana')),
+  payment_date: z.string().min(1, 'Data raty jest wymagana')
+});
+
+export const addPolicySchema = z
+  .object({
+    // Step 1 — basic data
+    client_id: z.preprocess(numberPreprocess, z.number().int().min(1, 'Wybierz klienta')),
+    insurance_company_id: z.preprocess(
+      numberPreprocess,
+      z.number().int().min(1, 'Wybierz ubezpieczyciela')
+    ),
+    bank_name: z.string().min(1, 'Nazwa banku jest wymagana'),
+    bank_account_number: z.string().min(1, 'Numer konta jest wymagany'),
+    description: z.string().optional().nullable(),
+
+    // Step 2 — policy details
+    policy_type_id: z.preprocess(
+      numberPreprocess,
+      z.number().int().min(1, 'Wybierz rodzaj polisy')
+    ),
+    car_plates: z.string().optional().nullable(),
+    number: z.string().min(1, 'Numer polisy jest wymagany').max(255),
+    date_signed_at: z.string().min(1, 'Data zawarcia jest wymagana'),
+    date_from: z.string().min(1, 'Początek obowiązywania jest wymagany'),
+    date_to: z.string().min(1, 'Koniec obowiązywania jest wymagany'),
+    city: z.string().min(1, 'Miasto jest wymagane'),
+
+    // Step 3 — payment details
+    /** Total premium in PLN (display) — converted to grosze before submit */
+    payment_total: z.preprocess(
+      numberPreprocess,
+      z.number().min(1, 'Wysokość składki jest wymagana')
+    ),
+    margin_percent: z.preprocess(
+      numberPreprocess,
+      z.number().min(0, 'Wartość od 0 do 100').max(100, 'Wartość od 0 do 100')
+    ),
+    payments_count: z.preprocess(
+      numberPreprocess,
+      z.number().int().min(1, 'Minimalna liczba rat to 1')
+    ),
+    payment_details: z.array(paymentDetailSchema).min(1, 'Dodaj przynajmniej jedną ratę'),
+
+    // Clauses
+    first_update_clause_of_su: z.boolean(),
+    automatic_coverage_clause: z.boolean(),
+    current_assets_settlement_clause: z.boolean(),
+
+    // Attachment
+    attachment: policyFileValidator
+  })
+  .refine((data) => !data.date_to || !data.date_from || data.date_to >= data.date_from, {
+    path: ['date_to'],
+    message: 'Koniec obowiązywania musi być po początku'
+  });
+
+export type AddPolicyFormValues = z.input<typeof addPolicySchema>;
+
+export const editPolicySchema = z
+  .object({
+    client_id: z.preprocess(numberPreprocess, z.number().int().min(1, 'Wybierz klienta')),
+    insurance_company_id: z.preprocess(
+      numberPreprocess,
+      z.number().int().min(1, 'Wybierz ubezpieczyciela')
+    ),
+    bank_name: z.string().min(1, 'Nazwa banku jest wymagana'),
+    bank_account_number: z.string().min(1, 'Numer konta jest wymagany'),
+    description: z.string().optional().nullable(),
+
+    policy_type_id: z.preprocess(
+      numberPreprocess,
+      z.number().int().min(1, 'Wybierz rodzaj polisy')
+    ),
+    car_plates: z.string().optional().nullable(),
+    number: z.string().min(1, 'Numer polisy jest wymagany').max(255),
+    date_signed_at: z.string().min(1, 'Data zawarcia jest wymagana'),
+    date_from: z.string().min(1, 'Początek obowiązywania jest wymagany'),
+    date_to: z.string().min(1, 'Koniec obowiązywania jest wymagany'),
+    city: z.string().min(1, 'Miasto jest wymagane'),
+
+    payment_total: z.preprocess(
+      numberPreprocess,
+      z.number().min(1, 'Wysokość składki jest wymagana')
+    ),
+    margin_percent: z.preprocess(
+      numberPreprocess,
+      z.number().min(0, 'Wartość od 0 do 100').max(100, 'Wartość od 0 do 100')
+    ),
+    payments_count: z.preprocess(
+      numberPreprocess,
+      z.number().int().min(1, 'Minimalna liczba rat to 1')
+    ),
+    payment_details: z.array(paymentDetailSchema).min(1, 'Dodaj przynajmniej jedną ratę'),
+
+    first_update_clause_of_su: z.boolean(),
+    automatic_coverage_clause: z.boolean(),
+    current_assets_settlement_clause: z.boolean(),
+
+    attachment: policyFileValidator,
+    /** Keep existing attachment (edit mode) */
+    keepExistingAttachment: z.boolean().optional()
+  })
+  .refine((data) => !data.date_to || !data.date_from || data.date_to >= data.date_from, {
+    path: ['date_to'],
+    message: 'Koniec obowiązywania musi być po początku'
+  });
+
+export type EditPolicyFormValues = z.input<typeof editPolicySchema>;
