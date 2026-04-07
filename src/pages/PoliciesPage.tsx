@@ -1,5 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Box } from '@mui/material';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
+import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { GenericListView } from '@/components/lists';
 import { fetchPoliciesTable, restorePolicy, type PolicyRecord } from '@/services/policiesService';
 import { useUiStore } from '@/store/uiStore';
@@ -10,6 +15,7 @@ import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
 import ForceDeletePolicyDialog from '@/components/dialogs/ForceDeletePolicyDialog';
 import AddPolicyDialog from '@/components/dialogs/AddPolicyDialog';
 import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
+import type { ExtraRowAction } from '@/types/genericList';
 
 const PoliciesPage: React.FC = () => {
   const { addToast } = useUiStore();
@@ -25,6 +31,10 @@ const PoliciesPage: React.FC = () => {
   // Permission checks
   const canViewList = hasPermission('policy view-list');
   const canCreatePolicy = hasPermission('policy create');
+  const canEditPolicy = hasPermission('policy edit');
+  const canArchivePolicy = hasPermission('policy archive');
+  const canRestorePolicy = hasPermission('policy restore');
+  const canDeletePolicy = hasPermission('policy delete');
 
   // ——— Row handlers ———
 
@@ -128,6 +138,59 @@ const PoliciesPage: React.FC = () => {
     'create-policy': handleCreatePolicy
   };
 
+  /**
+   * Helper: check if a given handler is already present in the row's backend actions.
+   * If the backend already sends the action (permission resolved server-side),
+   * we don't duplicate it in the extra actions.
+   */
+  const hasBackendAction = (row: PolicyRecord, handler: string) =>
+    row.actions?.some((a) => a.handler === handler) ?? false;
+
+  const isArchived = (row: PolicyRecord) => Boolean(row.deleted_at);
+
+  // Extra row actions — shown based on frontend permissions,
+  // but only when the backend didn't already include the same action.
+  const extraRowActions: ExtraRowAction<PolicyRecord>[] = useMemo(
+    () => [
+      {
+        handler: 'view-policy',
+        label: 'Szczegóły',
+        icon: <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />,
+        show: (row) => !isArchived(row) && !hasBackendAction(row, 'view-policy')
+      },
+      {
+        handler: 'edit-policy',
+        label: 'Edytuj',
+        icon: <EditOutlinedIcon sx={{ fontSize: 18 }} />,
+        show: (row) => canEditPolicy && !isArchived(row) && !hasBackendAction(row, 'edit-policy')
+      },
+      {
+        handler: 'archive-policy',
+        label: 'Archiwizuj',
+        icon: <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />,
+        type: 'button_archive',
+        show: (row) =>
+          canArchivePolicy && !isArchived(row) && !hasBackendAction(row, 'archive-policy')
+      },
+      {
+        handler: 'restore-policy',
+        label: 'Przywróć',
+        icon: <RestoreOutlinedIcon sx={{ fontSize: 18 }} />,
+        type: 'button_restore',
+        show: (row) =>
+          canRestorePolicy && isArchived(row) && !hasBackendAction(row, 'restore-policy')
+      },
+      {
+        handler: 'delete-policy',
+        label: 'Usuń',
+        icon: <DeleteOutlineIcon sx={{ fontSize: 18 }} />,
+        type: 'button_delete',
+        show: (row) => canDeletePolicy && isArchived(row) && !hasBackendAction(row, 'delete-policy')
+      }
+    ],
+    [canEditPolicy, canArchivePolicy, canRestorePolicy, canDeletePolicy]
+  );
+
   // ——— Permission gate ———
 
   if (!canViewList) {
@@ -151,6 +214,7 @@ const PoliciesPage: React.FC = () => {
         refreshKey={refreshKey}
         stateKey="/app/policies"
         disabledGeneralActions={!canCreatePolicy ? ['create-policy'] : undefined}
+        extraRowActions={extraRowActions}
       />
 
       <ArchivePolicyDialog
