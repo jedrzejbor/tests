@@ -47,15 +47,33 @@ export interface EditPolicyDialogProps {
 const TOTAL_STEPS = 3;
 
 /**
- * Parse a formatted PLN string like "1 000,00 zł" or "500,00 zł" to a number in PLN (e.g. 1000).
- * Falls back to parseFloat for already-numeric strings.
+ * Parse a formatted PLN string like "1 000,00 zł", "500,00 zł", or "PLN 2,000.00" to a number in PLN.
  */
 const parsePlnString = (formatted: string): number => {
   if (!formatted) return 0;
-  // Remove currency, spaces, and convert comma to dot
-  const cleaned = formatted.replace(/[^0-9,.-]/g, '').replace(',', '.');
+  // Remove currency labels and whitespace
+  let cleaned = formatted.replace(/PLN|z\u0142/gi, '').trim();
+  // If it uses dot as thousands separator and comma as decimal (e.g. "2.000,00")
+  if (/\d\.\d{3},\d{2}$/.test(cleaned)) {
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (/\d,\d{3}\.\d{2}$/.test(cleaned) || /^[\d,]+\.\d{1,2}$/.test(cleaned)) {
+    // Format like "2,000.00" — comma is thousands separator, dot is decimal
+    cleaned = cleaned.replace(/,/g, '');
+  } else {
+    // Format like "1 000,00" — space thousands, comma decimal
+    cleaned = cleaned.replace(/\s/g, '').replace(',', '.');
+  }
   const val = parseFloat(cleaned);
   return isNaN(val) ? 0 : val;
+};
+
+/**
+ * Convert an ISO date string (e.g. "2026-04-08T00:00:00.000000Z") to "YYYY-MM-DD"
+ * which is what HTML <input type="date"> expects.
+ */
+const toDateInput = (iso: string | null | undefined): string => {
+  if (!iso) return '';
+  return iso.slice(0, 10);
 };
 
 const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
@@ -166,9 +184,9 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
           policy_type_id: p.policy_type_id,
           car_plates: p.car_plates || '',
           number: p.number || '',
-          date_signed_at: p.date_signed_at || '',
-          date_from: p.date_from || '',
-          date_to: p.date_to || '',
+          date_signed_at: toDateInput(p.date_signed_at),
+          date_from: toDateInput(p.date_from),
+          date_to: toDateInput(p.date_to),
           city: p.city || '',
           payment_total: totalPln,
           margin_percent: parseFloat(p.margin_percent) || 0,
