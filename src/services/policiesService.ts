@@ -284,6 +284,22 @@ export const fetchPoliciesTable = async (
 };
 
 /**
+ * Create a fetcher scoped to a specific client (pre-filters by client_id).
+ */
+export const createClientPoliciesFetcher = (clientId: string | number) => {
+  return async (params: FetcherParams): Promise<GenericListResponse<PolicyRecord>> => {
+    const scopedParams: FetcherParams = {
+      ...params,
+      filters: {
+        ...params.filters,
+        client_id: String(clientId)
+      }
+    };
+    return fetchPoliciesTable(scopedParams);
+  };
+};
+
+/**
  * Get form options for policy create/edit (clients, insurance_companies, policy_types)
  */
 export const getPolicyFormOptions = async (): Promise<PolicyFormOptionsResponse> => {

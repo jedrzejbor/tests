@@ -234,7 +234,7 @@ const ForceDeletePolicyDialog: React.FC<ForceDeletePolicyDialogProps> = ({
       maxWidth="sm"
       fullWidth
       PaperProps={{
-        sx: { borderRadius: '16px', overflow: 'hidden', maxWidth: 480 }
+        sx: { bgcolor: 'white', borderRadius: '16px', overflow: 'hidden', maxWidth: 480 }
       }}
     >
       <DialogContent sx={{ p: 2, pt: 2 }}>

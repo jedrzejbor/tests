@@ -40,11 +40,18 @@ export interface AddPolicyDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  /** When provided, pre-selects and locks the client dropdown */
+  clientId?: number;
 }
 
 const TOTAL_STEPS = 3;
 
-const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({ open, onClose, onSuccess }) => {
+const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
+  open,
+  onClose,
+  onSuccess,
+  clientId: preselectedClientId
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { addToast } = useUiStore();
@@ -133,6 +140,11 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({ open, onClose, onSucc
         setClientOptions(opts.clients || []);
         setInsurerOptions(opts.insurance_companies || []);
         setPolicyTypeOptions(opts.policy_types || []);
+
+        // Pre-select client if provided via prop
+        if (preselectedClientId) {
+          reset((prev) => ({ ...prev, client_id: preselectedClientId }));
+        }
       } catch (error) {
         const apiError = error as ApiError;
         addToast({
@@ -326,7 +338,12 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({ open, onClose, onSucc
           render={({ field }) => (
             <FormControl fullWidth size="medium" error={Boolean(errors.client_id)}>
               <InputLabel>Firma</InputLabel>
-              <Select {...field} label="Firma" MenuProps={{ PaperProps: { sx: menuPaperSx } }}>
+              <Select
+                {...field}
+                label="Firma"
+                disabled={Boolean(preselectedClientId)}
+                MenuProps={{ PaperProps: { sx: menuPaperSx } }}
+              >
                 {clientOptions.map((o) => (
                   <MenuItem key={o.value} value={o.value}>
                     {o.label}

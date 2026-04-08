@@ -35,6 +35,10 @@ import AddPaymentDialog from '@/components/dialogs/AddPaymentDialog';
 import EditPaymentDialog from '@/components/dialogs/EditPaymentDialog';
 import ArchivePaymentDialog from '@/components/dialogs/ArchivePaymentDialog';
 import ForceDeletePaymentDialog from '@/components/dialogs/ForceDeletePaymentDialog';
+import AddPolicyDialog from '@/components/dialogs/AddPolicyDialog';
+import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
+import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
+import ForceDeletePolicyDialog from '@/components/dialogs/ForceDeletePolicyDialog';
 // GenericListView intentionally not imported while Documents/Payments UI is hidden
 import { GenericListView } from '@/components/lists';
 import {
@@ -54,6 +58,11 @@ import {
   createClientPaymentsFetcher,
   restorePayment
 } from '@/services/paymentsService';
+import {
+  type PolicyRecord,
+  createClientPoliciesFetcher,
+  restorePolicy
+} from '@/services/policiesService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
 import { usePermission } from '@/hooks/usePermission';
@@ -229,6 +238,14 @@ const ClientDetailsPage: React.FC = () => {
   const [forceDeletePaymentDialogOpen, setForceDeletePaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
   const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
+
+  // Policy dialogs state
+  const [addPolicyDialogOpen, setAddPolicyDialogOpen] = useState(false);
+  const [editPolicyDialogOpen, setEditPolicyDialogOpen] = useState(false);
+  const [archivePolicyDialogOpen, setArchivePolicyDialogOpen] = useState(false);
+  const [forceDeletePolicyDialogOpen, setForceDeletePolicyDialogOpen] = useState(false);
+  const [selectedPolicy, setSelectedPolicy] = useState<PolicyRecord | null>(null);
+  const [policyRefreshKey, setPolicyRefreshKey] = useState(0);
 
   // Mobile collapsible sections
   const [registrationOpen, setRegistrationOpen] = useState(true);
@@ -597,6 +614,88 @@ const ClientDetailsPage: React.FC = () => {
     ]
   );
 
+  // ---------------------------------------------------------------------------
+  // Policy handlers
+  // ---------------------------------------------------------------------------
+
+  const policiesFetcher = React.useMemo(
+    () => (clientId ? createClientPoliciesFetcher(clientId) : undefined),
+    [clientId]
+  );
+
+  const POLICIES_DISABLED_COLUMNS = React.useMemo(() => ['client'], []);
+  const POLICIES_DISABLED_FILTERS = React.useMemo(() => ['client_id'], []);
+
+  const handleCreatePolicy = useCallback(() => {
+    setAddPolicyDialogOpen(true);
+  }, []);
+
+  const handleViewPolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setEditPolicyDialogOpen(true);
+  }, []);
+
+  const handleEditPolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setEditPolicyDialogOpen(true);
+  }, []);
+
+  const handleArchivePolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setArchivePolicyDialogOpen(true);
+  }, []);
+
+  const handleForceDeletePolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setForceDeletePolicyDialogOpen(true);
+  }, []);
+
+  const handleRestorePolicy = useCallback(
+    async (row: PolicyRecord) => {
+      if (!row.id) return;
+      try {
+        await restorePolicy(row.id);
+        addToast({
+          id: crypto.randomUUID(),
+          message: 'Polisa została przywrócona',
+          severity: 'success'
+        });
+        setPolicyRefreshKey((k) => k + 1);
+      } catch (error) {
+        const apiError = error as ApiError;
+        addToast({
+          id: crypto.randomUUID(),
+          message: apiError?.message || 'Nie udało się przywrócić polisy',
+          severity: 'error'
+        });
+      }
+    },
+    [addToast]
+  );
+
+  const handlePolicySuccess = useCallback(() => {
+    setPolicyRefreshKey((k) => k + 1);
+  }, []);
+
+  const policyHandlers: Record<string, (row: PolicyRecord) => void> = React.useMemo(
+    () => ({
+      'view-policy': handleViewPolicy,
+      'edit-policy': handleEditPolicy,
+      'archive-policy': handleArchivePolicy,
+      'delete-policy': handleForceDeletePolicy,
+      'restore-policy': handleRestorePolicy,
+      'create-policy': handleCreatePolicy as unknown as (row: PolicyRecord) => void
+    }),
+    [
+      handleViewPolicy,
+      handleEditPolicy,
+      handleArchivePolicy,
+      handleForceDeletePolicy,
+      handleRestorePolicy,
+      handleCreatePolicy
+    ]
+  );
+
   // Convert to ClientRecord for dialogs
   const clientRecord: ClientRecord | null = clientData
     ? {
@@ -617,9 +716,18 @@ const ClientDetailsPage: React.FC = () => {
   React.useEffect(() => {
     void documentHandlers;
     void paymentHandlers;
+    void policyHandlers;
     void docRefreshKey;
     void paymentRefreshKey;
-  }, [documentHandlers, paymentHandlers, docRefreshKey, paymentRefreshKey]);
+    void policyRefreshKey;
+  }, [
+    documentHandlers,
+    paymentHandlers,
+    policyHandlers,
+    docRefreshKey,
+    paymentRefreshKey,
+    policyRefreshKey
+  ]);
 
   // ---------------------------------------------------------------------------
   // Permission gate
@@ -802,6 +910,22 @@ const ClientDetailsPage: React.FC = () => {
                   disabledFilters={DOCS_DISABLED_FILTERS}
                 />
                 {/* <UnavailableTabContent /> */}
+              </Box>
+            );
+          }
+          if (originalIdx === 2 && policiesFetcher) {
+            return (
+              <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
+                <GenericListView<PolicyRecord>
+                  title="Polisy"
+                  fetcher={policiesFetcher}
+                  handlers={policyHandlers}
+                  rowKey={(row) => String(row.id || row.number)}
+                  initialPerPage={10}
+                  refreshKey={policyRefreshKey}
+                  disabledColumns={POLICIES_DISABLED_COLUMNS}
+                  disabledFilters={POLICIES_DISABLED_FILTERS}
+                />
               </Box>
             );
           }
@@ -1088,6 +1212,42 @@ const ClientDetailsPage: React.FC = () => {
           payment={selectedPayment}
           onSuccess={handlePaymentSuccess}
         />
+
+        {clientData?.id && (
+          <AddPolicyDialog
+            open={addPolicyDialogOpen}
+            onClose={() => setAddPolicyDialogOpen(false)}
+            clientId={Number(clientData.id)}
+            onSuccess={handlePolicySuccess}
+          />
+        )}
+        <EditPolicyDialog
+          open={editPolicyDialogOpen}
+          onClose={() => {
+            setEditPolicyDialogOpen(false);
+            setSelectedPolicy(null);
+          }}
+          policy={selectedPolicy}
+          onSuccess={handlePolicySuccess}
+        />
+        <ArchivePolicyDialog
+          open={archivePolicyDialogOpen}
+          onClose={() => {
+            setArchivePolicyDialogOpen(false);
+            setSelectedPolicy(null);
+          }}
+          policy={selectedPolicy}
+          onSuccess={handlePolicySuccess}
+        />
+        <ForceDeletePolicyDialog
+          open={forceDeletePolicyDialogOpen}
+          onClose={() => {
+            setForceDeletePolicyDialogOpen(false);
+            setSelectedPolicy(null);
+          }}
+          policy={selectedPolicy}
+          onSuccess={handlePolicySuccess}
+        />
       </Stack>
     );
   }
@@ -1198,6 +1358,22 @@ const ClientDetailsPage: React.FC = () => {
                 disabledFilters={['client']}
               />
               {/* <UnavailableTabContent /> */}
+            </Box>
+          );
+        }
+        if (originalIdx === 2 && policiesFetcher) {
+          return (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <GenericListView<PolicyRecord>
+                title="Polisy"
+                fetcher={policiesFetcher}
+                handlers={policyHandlers}
+                rowKey={(row) => String(row.id || row.number)}
+                initialPerPage={10}
+                refreshKey={policyRefreshKey}
+                disabledColumns={POLICIES_DISABLED_COLUMNS}
+                disabledFilters={POLICIES_DISABLED_FILTERS}
+              />
             </Box>
           );
         }
@@ -1543,6 +1719,42 @@ const ClientDetailsPage: React.FC = () => {
         }}
         payment={selectedPayment}
         onSuccess={handlePaymentSuccess}
+      />
+
+      {clientData?.id && (
+        <AddPolicyDialog
+          open={addPolicyDialogOpen}
+          onClose={() => setAddPolicyDialogOpen(false)}
+          clientId={Number(clientData.id)}
+          onSuccess={handlePolicySuccess}
+        />
+      )}
+      <EditPolicyDialog
+        open={editPolicyDialogOpen}
+        onClose={() => {
+          setEditPolicyDialogOpen(false);
+          setSelectedPolicy(null);
+        }}
+        policy={selectedPolicy}
+        onSuccess={handlePolicySuccess}
+      />
+      <ArchivePolicyDialog
+        open={archivePolicyDialogOpen}
+        onClose={() => {
+          setArchivePolicyDialogOpen(false);
+          setSelectedPolicy(null);
+        }}
+        policy={selectedPolicy}
+        onSuccess={handlePolicySuccess}
+      />
+      <ForceDeletePolicyDialog
+        open={forceDeletePolicyDialogOpen}
+        onClose={() => {
+          setForceDeletePolicyDialogOpen(false);
+          setSelectedPolicy(null);
+        }}
+        policy={selectedPolicy}
+        onSuccess={handlePolicySuccess}
       />
     </Stack>
   );
