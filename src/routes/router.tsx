@@ -11,7 +11,9 @@ import UsersPage from '@/pages/UsersPage';
 import UserDetailsPage from '@/pages/UserDetailsPage';
 import ClientsPage from '@/pages/ClientsPage';
 import ClientDetailsPage from '@/pages/ClientDetailsPage';
+import PoliciesPage from '@/pages/PoliciesPage';
 import ResetPasswordTokenPage from '@/pages/ResetPasswordTokenPage';
+import SetPasswordTokenPage from '@/pages/SetPasswordTokenPage';
 import AppErrorBoundary from '@/routes/AppErrorBoundary';
 import ProtectedRoute from '@/routes/ProtectedRoute';
 import PublicRoute from '@/routes/PublicRoute';
@@ -61,6 +63,22 @@ export const router = createBrowserRouter([
         )
       },
       {
+        path: '/set-password',
+        element: (
+          <PublicRoute>
+            <LoginPage initialStage="reset" isNewAccount />
+          </PublicRoute>
+        )
+      },
+      {
+        path: '/set-password/:token',
+        element: (
+          <PublicRoute>
+            <SetPasswordTokenPage />
+          </PublicRoute>
+        )
+      },
+      {
         path: '/verify',
         element: (
           <PublicRoute>
@@ -94,7 +112,7 @@ export const router = createBrowserRouter([
         path: '/app/policies',
         element: (
           <ProtectedRoute>
-            <UnavailablePage />
+            <PoliciesPage />
           </ProtectedRoute>
         )
       },

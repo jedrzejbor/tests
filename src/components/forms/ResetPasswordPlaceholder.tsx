@@ -37,11 +37,14 @@ type SetNewPasswordFormValues = z.infer<typeof setNewPasswordSchema>;
 interface ResetPasswordPlaceholderProps {
   onBack?: () => void;
   onSuccess?: () => void;
+  /** When true, shows "Ustaw hasło dla konta" instead of "Ustaw nowe hasło" */
+  isNewAccount?: boolean;
 }
 
 export const ResetPasswordPlaceholder: React.FC<ResetPasswordPlaceholderProps> = ({
   onBack,
-  onSuccess
+  onSuccess,
+  isNewAccount = false
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -156,7 +159,7 @@ export const ResetPasswordPlaceholder: React.FC<ResetPasswordPlaceholderProps> =
               color: '#32343A'
             }}
           >
-            Ustaw nowe hasło
+            {isNewAccount ? 'Ustaw hasło dla konta' : 'Ustaw nowe hasło'}
           </Typography>
           <Typography
             variant="body2"

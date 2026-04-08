@@ -50,6 +50,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   extraRowActions = [],
   disabledColumns,
   disabledFilters,
+  disabledGeneralActions,
   stateKey
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
@@ -217,7 +218,6 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             bgcolor: 'white',
             borderRadius: '12px',
             border: '1px solid #E5E7EB',
-            overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
@@ -248,8 +248,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               {/* Add button from general actions or default "create-user" handler */}
               {(() => {
                 const generalActions = meta?.generalActions || [];
-                // Show only generalActions from backend (includes create-user / create-client etc.)
-                const actionsToShow = generalActions;
+                // Show only generalActions from backend, filtering out disabled ones
+                const actionsToShow = disabledGeneralActions?.length
+                  ? generalActions.filter((a) => !disabledGeneralActions.includes(a.handler))
+                  : generalActions;
 
                 return actionsToShow
                   .filter((action) => action.type === 'button_primary')
@@ -625,6 +627,41 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 );
               }
 
+              // Range filter — two numeric inputs (from, to) joined by comma
+              if (filterDef.type === 'range') {
+                const rangeStr = typeof currentValue === 'string' ? currentValue : '';
+                const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+                const updateRange = (from: string, to: string) => {
+                  const val = from || to ? `${from},${to}` : '';
+                  setDraftFilters((prev) => ({ ...prev, [filterDef.key]: val }));
+                };
+                return (
+                  <Box key={filterDef.key} sx={{ mb: 2 }}>
+                    <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                      {filterDef.label}
+                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                      <TextField
+                        label="Od"
+                        value={rangeFrom}
+                        onChange={(e) => updateRange(e.target.value, rangeTo)}
+                        type="number"
+                        fullWidth
+                        size="small"
+                      />
+                      <TextField
+                        label="Do"
+                        value={rangeTo}
+                        onChange={(e) => updateRange(rangeFrom, e.target.value)}
+                        type="number"
+                        fullWidth
+                        size="small"
+                      />
+                    </Stack>
+                  </Box>
+                );
+              }
+
               return (
                 <TextField
                   key={filterDef.key}
@@ -706,6 +743,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
 
                 {meta.generalActions
                   .filter((action) => action.type === 'button_primary')
+                  .filter((action) => !disabledGeneralActions?.includes(action.handler))
                   .map((action) => (
                     <Button
                       key={action.handler}

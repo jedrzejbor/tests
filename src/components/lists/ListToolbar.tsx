@@ -135,6 +135,41 @@ export const ListToolbar = ({
         );
       }
 
+      // Range filter — two numeric inputs (from, to) joined by comma
+      if (filterDef.type === 'range') {
+        const rangeStr = typeof currentValue === 'string' ? currentValue : '';
+        const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+        const updateRange = (from: string, to: string) => {
+          const val = from || to ? `${from},${to}` : '';
+          onFilterChange(filterDef.key, val);
+        };
+        return (
+          <Box key={filterDef.key} sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+              {filterDef.label}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <TextField
+                label="Od"
+                value={rangeFrom}
+                onChange={(e) => updateRange(e.target.value, rangeTo)}
+                type="number"
+                fullWidth
+                size="small"
+              />
+              <TextField
+                label="Do"
+                value={rangeTo}
+                onChange={(e) => updateRange(rangeFrom, e.target.value)}
+                type="number"
+                fullWidth
+                size="small"
+              />
+            </Stack>
+          </Box>
+        );
+      }
+
       // Default text input
       return (
         <TextField

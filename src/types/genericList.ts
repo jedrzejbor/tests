@@ -50,7 +50,7 @@ export interface FilterOption {
 export type RawFilterOptions = FilterOption[] | Record<string, any> | string[];
 
 export interface FilterDef {
-  type: 'select' | 'text' | 'date' | 'date_range';
+  type: 'select' | 'text' | 'date' | 'date_range' | 'range';
   key: string;
   label: string;
   options?: RawFilterOptions;
@@ -232,6 +232,8 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
   disabledColumns?: string[];
   /** Filter keys to exclude from backend response */
   disabledFilters?: string[];
+  /** General action handler names to hide (e.g. ['create-client']) */
+  disabledGeneralActions?: string[];
   /**
    * When provided, filter/search/sort/page/perPage state is persisted in the
    * global store under this key and restored when the component remounts.

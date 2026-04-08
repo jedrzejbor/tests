@@ -15,13 +15,14 @@ import ShieldIcon from '@/components/icons/ShieldIcon';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { Container, Box } from '@mui/material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import AppShell, { BreadcrumbItem } from '@/components/layout/AppShell';
-import { MenuSection } from '@/components/navigation/DesktopSidebar';
+import { MenuSection, MenuItem } from '@/components/navigation/DesktopSidebar';
 import { UserMenuOption } from '@/components/navigation/UserMenu';
 import { useAuthStore } from '@/store/authStore';
 import { useListStateStore } from '@/store/listStateStore';
+import { usePermission } from '@/hooks/usePermission';
 import homeIcon from '@/assets/home-icon.svg';
 
 // Mobile navigation items (for bottom bar)
@@ -45,8 +46,17 @@ const navItems = [
   }
 ];
 
-// Desktop sidebar menu sections
-const menuSections: MenuSection[] = [
+// Desktop sidebar menu sections — items with optional permission requirements
+interface PermissionedMenuItem extends MenuItem {
+  /** If set, the item is shown only when the user has this permission */
+  requiredPermission?: string;
+}
+
+interface PermissionedMenuSection {
+  items: PermissionedMenuItem[];
+}
+
+const allMenuSections: PermissionedMenuSection[] = [
   {
     items: [
       {
@@ -64,7 +74,8 @@ const menuSections: MenuSection[] = [
       {
         label: 'Polisy',
         to: '/app/policies',
-        icon: <ShieldIcon sx={{ fontSize: 24 }} />
+        icon: <ShieldIcon sx={{ fontSize: 24 }} />,
+        requiredPermission: 'policy view-list'
       },
       {
         label: 'Szkody',
@@ -79,12 +90,14 @@ const menuSections: MenuSection[] = [
       {
         label: 'Klienci',
         to: '/app/clients',
-        icon: <ClientIcon sx={{ fontSize: 24 }} />
+        icon: <ClientIcon sx={{ fontSize: 24 }} />,
+        requiredPermission: 'client view-list'
       },
       {
         label: 'Użytkownicy',
         to: '/app/users',
-        icon: <UsersIcon sx={{ fontSize: 24 }} />
+        icon: <UsersIcon sx={{ fontSize: 24 }} />,
+        requiredPermission: 'user view-list'
       },
       {
         label: 'Ubezpieczyciele',
@@ -129,6 +142,18 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { clearListState } = useListStateStore();
+  const { hasPermission } = usePermission();
+
+  // Filter menu sections based on user permissions
+  const menuSections: MenuSection[] = useMemo(() => {
+    return allMenuSections
+      .map((section) => ({
+        items: section.items.filter(
+          (item) => !item.requiredPermission || hasPermission(item.requiredPermission)
+        )
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [hasPermission]);
 
   // List routes that have persisted state
   const STATEFUL_ROUTES = ['/app/clients', '/app/users'];

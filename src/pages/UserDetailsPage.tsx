@@ -24,6 +24,9 @@ import type { EditUserFormValues } from '@/utils/formSchemas';
 import { type UserRecord, getUserDetails, type UserDetailsApiUser } from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
+import { usePermission } from '@/hooks/usePermission';
+import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
+import NoAccessContent from '@/components/NoAccessContent';
 
 // Extended user data matching our forms
 interface UserDetailsData {
@@ -124,6 +127,7 @@ const UserDetailsPage: React.FC = () => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { addToast } = useUiStore();
+  const { hasPermission } = usePermission();
 
   const [userData, setUserData] = useState<UserDetailsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -273,7 +277,8 @@ const UserDetailsPage: React.FC = () => {
           position: data.position,
           competencies: data.competencies as unknown as string[],
           company: (data.company as string) ?? previous.company,
-          account_type: data.accountType,
+          // accountType was removed from the edit form; preserve previous value
+          account_type: previous.account_type,
           managingEntities: data.managingEntities,
           dependentEntities: data.dependentEntities,
           firstName: data.firstName,
@@ -315,6 +320,17 @@ const UserDetailsPage: React.FC = () => {
         status: userData.status
       }
     : null;
+
+  // Permission gate — user must have 'user view'
+  if (!hasPermission('user view')) {
+    return (
+      <Box component="main" pb={4}>
+        <ListPlaceholderLayout title="Szczegóły użytkownika">
+          <NoAccessContent />
+        </ListPlaceholderLayout>
+      </Box>
+    );
+  }
 
   if (loading) {
     return (

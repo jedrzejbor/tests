@@ -163,9 +163,7 @@ export const getPaymentFormOptions = async (): Promise<PaymentFormOptions> => {
 export const createPayment = async (
   fields: CreatePaymentFields
 ): Promise<PaymentDetailsResponse> => {
-  return apiClient.post<PaymentDetailsResponse>(API_ENDPOINTS.PAYMENTS, {
-    body: JSON.stringify(fields)
-  });
+  return apiClient.post<PaymentDetailsResponse>(API_ENDPOINTS.PAYMENTS, fields);
 };
 
 /**
@@ -175,9 +173,7 @@ export const updatePayment = async (
   paymentId: string | number,
   fields: UpdatePaymentFields
 ): Promise<PaymentDetailsResponse> => {
-  return apiClient.post<PaymentDetailsResponse>(`${API_ENDPOINTS.PAYMENTS}/${paymentId}`, {
-    body: JSON.stringify(fields)
-  });
+  return apiClient.post<PaymentDetailsResponse>(`${API_ENDPOINTS.PAYMENTS}/${paymentId}`, fields);
 };
 
 /**
@@ -187,9 +183,7 @@ export const archivePayment = async (
   paymentId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.delete(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/archive`, {
-    body: JSON.stringify({ password })
-  });
+  await apiClient.post(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/archive`, { password });
 };
 
 /**
@@ -199,9 +193,7 @@ export const forceDeletePayment = async (
   paymentId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.delete(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/force`, {
-    body: JSON.stringify({ password })
-  });
+  await apiClient.post(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/force`, { password });
 };
 
 /**

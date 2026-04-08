@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
+  Chip,
   Stack,
   Typography,
   TextField,
@@ -15,7 +16,12 @@ import {
   CircularProgress
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import AddIcon from '@mui/icons-material/Add';
+
+const PAYMENT_STATUSES = [
+  { value: 'pending', label: 'Oczekuje na płatność' },
+  { value: 'paid', label: 'Rozliczona' },
+  { value: 'overdue', label: 'Zaległa' }
+];
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addPaymentSchema, type AddPaymentFormValues } from '@/utils/formSchemas';
@@ -164,31 +170,69 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
           '& .MuiOutlinedInput-notchedOutline': { borderRadius: '4px' }
         }}
       >
-        {/* ——— Dane płatności ——— */}
+        {/* ——— Status jako chipy ——— */}
         <Typography
-          sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.6)', letterSpacing: '0.17px', mb: 2.5 }}
+          sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.6)', letterSpacing: '0.17px', mb: 1 }}
         >
-          Dane płatności
+          Status płatności
         </Typography>
+        <Controller
+          name="status"
+          control={control}
+          render={({ field }) => (
+            <Box sx={{ mb: errors.status ? 0.5 : 2.5 }}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {PAYMENT_STATUSES.map((s) => (
+                  <Chip
+                    key={s.value}
+                    label={s.label}
+                    onClick={() => field.onChange(s.value)}
+                    variant={field.value === s.value ? 'filled' : 'outlined'}
+                    sx={{
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      ...(field.value === s.value
+                        ? { bgcolor: '#1E1F21', color: '#FFFFFF', borderColor: '#1E1F21' }
+                        : { bgcolor: 'white', color: '#1E1F21', borderColor: '#D0D5DD' })
+                    }}
+                  />
+                ))}
+              </Stack>
+              {errors.status && (
+                <Typography sx={{ fontSize: '12px', color: 'error.main', mt: 0.5, ml: 1.5 }}>
+                  {errors.status.message}
+                </Typography>
+              )}
+            </Box>
+          )}
+        />
 
         <Stack spacing={2.5} sx={{ mb: 2.5 }}>
-          {/* Ubezpieczyciel */}
+          {/* Nazwa podmiotu (ubezpieczyciel) */}
           <Controller
             name="insurance_company_id"
             control={control}
             render={({ field }) => (
               <TextField
                 select
-                label="Ubezpieczyciel"
+                label="Nazwa podmiotu"
                 value={field.value ?? ''}
                 onChange={field.onChange}
                 error={Boolean(errors.insurance_company_id)}
                 helperText={errors.insurance_company_id?.message}
                 fullWidth
                 size="medium"
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      sx: { bgcolor: 'white', boxShadow: '0px 4px 12px rgba(0,0,0,0.15)' }
+                    }
+                  }
+                }}
               >
                 <MenuItem value="">
-                  <em>Wybierz ubezpieczyciela</em>
+                  <em>Wybierz podmiot</em>
                 </MenuItem>
                 {formOptions?.insurance_companies?.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
@@ -199,20 +243,27 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
             )}
           />
 
-          {/* Polisa */}
+          {/* Numer polisy */}
           <Controller
             name="policy_id"
             control={control}
             render={({ field }) => (
               <TextField
                 select
-                label="Polisa"
+                label="Numer polisy"
                 value={field.value ?? ''}
                 onChange={field.onChange}
                 error={Boolean(errors.policy_id)}
                 helperText={errors.policy_id?.message}
                 fullWidth
                 size="medium"
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      sx: { bgcolor: 'white', boxShadow: '0px 4px 12px rgba(0,0,0,0.15)' }
+                    }
+                  }
+                }}
               >
                 <MenuItem value="">
                   <em>Wybierz polisę</em>
@@ -238,9 +289,9 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
             InputLabelProps={{ shrink: true }}
           />
 
-          {/* Kwota raty */}
+          {/* Wysokość raty */}
           <TextField
-            label="Wysokość raty (PLN)"
+            label="Wysokość raty"
             type="number"
             inputProps={{ step: '0.01', min: '0' }}
             {...register('payment_total')}
@@ -250,44 +301,27 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
             size="medium"
           />
 
-          {/* Procent prowizji */}
-          <TextField
-            label="Procent prowizji (%)"
-            type="number"
-            inputProps={{ step: '0.01', min: '0', max: '100' }}
-            {...register('margin_percent')}
-            error={Boolean(errors.margin_percent)}
-            helperText={errors.margin_percent?.message}
-            fullWidth
-            size="medium"
-          />
-
-          {/* Status */}
-          <Controller
-            name="status"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                select
-                label="Status"
-                value={field.value ?? ''}
-                onChange={field.onChange}
-                error={Boolean(errors.status)}
-                helperText={errors.status?.message}
-                fullWidth
-                size="medium"
-              >
-                <MenuItem value="">
-                  <em>Wybierz status</em>
-                </MenuItem>
-                {formOptions?.statuses?.map((opt) => (
-                  <MenuItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
+          {/* Wysokość prowizji — tylko procent */}
+          <Box>
+            <Typography
+              sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.6)', letterSpacing: '0.17px', mb: 1 }}
+            >
+              Wysokość prowizji
+            </Typography>
+            <TextField
+              label="Procent"
+              type="number"
+              inputProps={{ step: '0.01', min: '0', max: '100' }}
+              {...register('margin_percent')}
+              error={Boolean(errors.margin_percent)}
+              helperText={errors.margin_percent?.message}
+              fullWidth
+              size="medium"
+              InputProps={{
+                endAdornment: <Typography sx={{ color: 'rgba(0,0,0,0.4)', ml: 0.5 }}>%</Typography>
+              }}
+            />
+          </Box>
         </Stack>
 
         {/* ——— Przyciski ——— */}
@@ -313,7 +347,6 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
             type="submit"
             variant="contained"
             disabled={loading}
-            startIcon={<AddIcon />}
             sx={{
               bgcolor: '#1E1F21',
               color: '#FFFFFF',
@@ -326,7 +359,7 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
               '&:hover': { bgcolor: '#32343A' }
             }}
           >
-            Dodaj płatność
+            Dalej
           </Button>
         </Stack>
       </Box>
@@ -349,7 +382,7 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
           lineHeight: 1.6
         }}
       >
-        Dodaj nową płatność
+        Dodaj płatności składek
       </Typography>
       <IconButton onClick={handleClose} size="small" sx={{ color: 'rgba(0,0,0,0.54)' }}>
         <CloseIcon />

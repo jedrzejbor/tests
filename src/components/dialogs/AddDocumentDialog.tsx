@@ -76,7 +76,7 @@ const AddDocumentDialog: React.FC<AddDocumentDialogProps> = ({
       await createDocument({
         client_id: clientId,
         name: data.name,
-        description: data.description || undefined,
+        description: data.description ?? '',
         date: data.date,
         attachment: data.attachment
       });

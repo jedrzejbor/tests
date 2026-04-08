@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -35,6 +35,11 @@ import AddPaymentDialog from '@/components/dialogs/AddPaymentDialog';
 import EditPaymentDialog from '@/components/dialogs/EditPaymentDialog';
 import ArchivePaymentDialog from '@/components/dialogs/ArchivePaymentDialog';
 import ForceDeletePaymentDialog from '@/components/dialogs/ForceDeletePaymentDialog';
+import AddPolicyDialog from '@/components/dialogs/AddPolicyDialog';
+import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
+import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
+import ForceDeletePolicyDialog from '@/components/dialogs/ForceDeletePolicyDialog';
+// GenericListView intentionally not imported while Documents/Payments UI is hidden
 import { GenericListView } from '@/components/lists';
 import {
   type ClientRecord,
@@ -53,8 +58,16 @@ import {
   createClientPaymentsFetcher,
   restorePayment
 } from '@/services/paymentsService';
+import {
+  type PolicyRecord,
+  createClientPoliciesFetcher,
+  restorePolicy
+} from '@/services/policiesService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
+import { usePermission } from '@/hooks/usePermission';
+import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
+import NoAccessContent from '@/components/NoAccessContent';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -148,12 +161,35 @@ const MobileFieldRow = ({ label, value }: { label: string; value?: string }) => 
 // ---------------------------------------------------------------------------
 
 const CLIENT_TABS = [
-  { label: 'Dane klienta', icon: <PersonOutlineIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Dokumenty', icon: <DescriptionOutlinedIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Polisy', icon: <ShieldOutlinedIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Płatności składek', icon: <PaymentsOutlinedIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Szkody', icon: <ReportProblemOutlinedIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Dodatkowe informacje', icon: <InfoOutlinedIcon sx={{ fontSize: 18 }} /> }
+  {
+    label: 'Dane klienta',
+    icon: <PersonOutlineIcon sx={{ fontSize: 18 }} />,
+    permission: 'client-details view-data'
+  },
+  {
+    label: 'Dokumenty',
+    icon: <DescriptionOutlinedIcon sx={{ fontSize: 18 }} />,
+    permission: 'client-details view-documents'
+  },
+  {
+    label: 'Polisy',
+    icon: <ShieldOutlinedIcon sx={{ fontSize: 18 }} />,
+    permission: 'client-details view-policies'
+  },
+  {
+    label: 'Płatności składek',
+    icon: <PaymentsOutlinedIcon sx={{ fontSize: 18 }} />,
+    permission: 'client-details view-payments'
+  },
+  {
+    label: 'Szkody',
+    icon: <ReportProblemOutlinedIcon sx={{ fontSize: 18 }} />,
+    permission: 'client-details view-claims'
+  },
+  {
+    label: 'Dodatkowe informacje',
+    icon: <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+  }
 ];
 
 // ---------------------------------------------------------------------------
@@ -170,6 +206,16 @@ const ClientDetailsPage: React.FC = () => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { addToast } = useUiStore();
+  const { hasPermission } = usePermission();
+
+  // Filter tabs based on user permissions
+  const visibleTabs = useMemo(
+    () =>
+      CLIENT_TABS.map((tab, originalIndex) => ({ ...tab, originalIndex })).filter(
+        (tab) => !tab.permission || hasPermission(tab.permission)
+      ),
+    [hasPermission]
+  );
 
   const [clientData, setClientData] = useState<ClientDetailsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -192,6 +238,14 @@ const ClientDetailsPage: React.FC = () => {
   const [forceDeletePaymentDialogOpen, setForceDeletePaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
   const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
+
+  // Policy dialogs state
+  const [addPolicyDialogOpen, setAddPolicyDialogOpen] = useState(false);
+  const [editPolicyDialogOpen, setEditPolicyDialogOpen] = useState(false);
+  const [archivePolicyDialogOpen, setArchivePolicyDialogOpen] = useState(false);
+  const [forceDeletePolicyDialogOpen, setForceDeletePolicyDialogOpen] = useState(false);
+  const [selectedPolicy, setSelectedPolicy] = useState<PolicyRecord | null>(null);
+  const [policyRefreshKey, setPolicyRefreshKey] = useState(0);
 
   // Mobile collapsible sections
   const [registrationOpen, setRegistrationOpen] = useState(true);
@@ -560,6 +614,88 @@ const ClientDetailsPage: React.FC = () => {
     ]
   );
 
+  // ---------------------------------------------------------------------------
+  // Policy handlers
+  // ---------------------------------------------------------------------------
+
+  const policiesFetcher = React.useMemo(
+    () => (clientId ? createClientPoliciesFetcher(clientId) : undefined),
+    [clientId]
+  );
+
+  const POLICIES_DISABLED_COLUMNS = React.useMemo(() => ['client'], []);
+  const POLICIES_DISABLED_FILTERS = React.useMemo(() => ['client_id'], []);
+
+  const handleCreatePolicy = useCallback(() => {
+    setAddPolicyDialogOpen(true);
+  }, []);
+
+  const handleViewPolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setEditPolicyDialogOpen(true);
+  }, []);
+
+  const handleEditPolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setEditPolicyDialogOpen(true);
+  }, []);
+
+  const handleArchivePolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setArchivePolicyDialogOpen(true);
+  }, []);
+
+  const handleForceDeletePolicy = useCallback((row: PolicyRecord) => {
+    setSelectedPolicy(row);
+    setForceDeletePolicyDialogOpen(true);
+  }, []);
+
+  const handleRestorePolicy = useCallback(
+    async (row: PolicyRecord) => {
+      if (!row.id) return;
+      try {
+        await restorePolicy(row.id);
+        addToast({
+          id: crypto.randomUUID(),
+          message: 'Polisa została przywrócona',
+          severity: 'success'
+        });
+        setPolicyRefreshKey((k) => k + 1);
+      } catch (error) {
+        const apiError = error as ApiError;
+        addToast({
+          id: crypto.randomUUID(),
+          message: apiError?.message || 'Nie udało się przywrócić polisy',
+          severity: 'error'
+        });
+      }
+    },
+    [addToast]
+  );
+
+  const handlePolicySuccess = useCallback(() => {
+    setPolicyRefreshKey((k) => k + 1);
+  }, []);
+
+  const policyHandlers: Record<string, (row: PolicyRecord) => void> = React.useMemo(
+    () => ({
+      'view-policy': handleViewPolicy,
+      'edit-policy': handleEditPolicy,
+      'archive-policy': handleArchivePolicy,
+      'delete-policy': handleForceDeletePolicy,
+      'restore-policy': handleRestorePolicy,
+      'create-policy': handleCreatePolicy as unknown as (row: PolicyRecord) => void
+    }),
+    [
+      handleViewPolicy,
+      handleEditPolicy,
+      handleArchivePolicy,
+      handleForceDeletePolicy,
+      handleRestorePolicy,
+      handleCreatePolicy
+    ]
+  );
+
   // Convert to ClientRecord for dialogs
   const clientRecord: ClientRecord | null = clientData
     ? {
@@ -574,6 +710,38 @@ const ClientDetailsPage: React.FC = () => {
         city: clientData.city
       }
     : null;
+
+  // Preserve handlers and refresh keys usage while Documents/Payments UI is hidden.
+  // These are intentionally kept so the logic remains available when the tabs are re-enabled.
+  React.useEffect(() => {
+    void documentHandlers;
+    void paymentHandlers;
+    void policyHandlers;
+    void docRefreshKey;
+    void paymentRefreshKey;
+    void policyRefreshKey;
+  }, [
+    documentHandlers,
+    paymentHandlers,
+    policyHandlers,
+    docRefreshKey,
+    paymentRefreshKey,
+    policyRefreshKey
+  ]);
+
+  // ---------------------------------------------------------------------------
+  // Permission gate
+  // ---------------------------------------------------------------------------
+
+  if (!hasPermission('client-details view')) {
+    return (
+      <Box component="main" pb={4}>
+        <ListPlaceholderLayout title="Szczegóły klienta">
+          <NoAccessContent />
+        </ListPlaceholderLayout>
+      </Box>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // Loading / empty states
@@ -719,212 +887,245 @@ const ClientDetailsPage: React.FC = () => {
               }
             }}
           >
-            {CLIENT_TABS.map((tab) => (
+            {visibleTabs.map((tab) => (
               <Tab key={tab.label} icon={tab.icon} iconPosition="start" label={tab.label} />
             ))}
           </Tabs>
         </Box>
 
         {/* Tab content */}
-        {activeTab === 1 && documentsFetcher ? (
-          <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
-            <GenericListView<DocumentRecord>
-              title="Dokumenty"
-              fetcher={documentsFetcher}
-              handlers={documentHandlers}
-              rowKey={(row) => String(row.id || row.name)}
-              initialPerPage={10}
-              refreshKey={docRefreshKey}
-              disabledColumns={DOCS_DISABLED_COLUMNS}
-              disabledFilters={DOCS_DISABLED_FILTERS}
-            />
-          </Box>
-        ) : activeTab === 3 && paymentsFetcher ? (
-          <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
-            <GenericListView<PaymentRecord>
-              title="Płatności składek"
-              fetcher={paymentsFetcher}
-              handlers={paymentHandlers}
-              rowKey={(row) => String(row.id || row.policy_number)}
-              initialPerPage={10}
-              refreshKey={paymentRefreshKey}
-              disabledColumns={PAYMENTS_DISABLED_COLUMNS}
-              disabledFilters={PAYMENTS_DISABLED_FILTERS}
-            />
-          </Box>
-        ) : activeTab !== 0 ? (
-          <Box sx={{ px: 1 }}>
-            <UnavailableTabContent />
-          </Box>
-        ) : (
-          <>
-            {/* "Dane klienta" top label */}
-            <Box sx={{ px: 1 }}>
-              <Box
-                sx={{
-                  bgcolor: 'rgba(143, 109, 95, 0.08)',
-                  borderRadius: '8px',
-                  px: 2,
-                  py: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.75
-                }}
-              >
-                <PersonOutlineIcon sx={{ fontSize: 20, color: '#7A5D51' }} />
-                <Typography
+        {(() => {
+          const originalIdx = visibleTabs[activeTab]?.originalIndex ?? 0;
+          if (originalIdx === 1 && documentsFetcher) {
+            return (
+              <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
+                <GenericListView<DocumentRecord>
+                  title="Dokumenty"
+                  fetcher={documentsFetcher}
+                  handlers={documentHandlers}
+                  rowKey={(row) => String(row.id || row.name)}
+                  initialPerPage={10}
+                  refreshKey={docRefreshKey}
+                  disabledColumns={DOCS_DISABLED_COLUMNS}
+                  disabledFilters={DOCS_DISABLED_FILTERS}
+                />
+                {/* <UnavailableTabContent /> */}
+              </Box>
+            );
+          }
+          if (originalIdx === 2 && policiesFetcher) {
+            return (
+              <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
+                <GenericListView<PolicyRecord>
+                  title="Polisy"
+                  fetcher={policiesFetcher}
+                  handlers={policyHandlers}
+                  rowKey={(row) => String(row.id || row.number)}
+                  initialPerPage={10}
+                  refreshKey={policyRefreshKey}
+                  disabledColumns={POLICIES_DISABLED_COLUMNS}
+                  disabledFilters={POLICIES_DISABLED_FILTERS}
+                />
+              </Box>
+            );
+          }
+          if (originalIdx === 3 && paymentsFetcher) {
+            return (
+              <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
+                <GenericListView<PaymentRecord>
+                  title="Płatności składek"
+                  fetcher={paymentsFetcher}
+                  handlers={paymentHandlers}
+                  rowKey={(row) => String(row.id || row.policy_number)}
+                  initialPerPage={10}
+                  refreshKey={paymentRefreshKey}
+                  disabledColumns={PAYMENTS_DISABLED_COLUMNS}
+                  disabledFilters={PAYMENTS_DISABLED_FILTERS}
+                />
+                {/* <UnavailableTabContent /> */}
+              </Box>
+            );
+          }
+          if (originalIdx !== 0) {
+            return (
+              <Box sx={{ px: 1 }}>
+                <UnavailableTabContent />
+              </Box>
+            );
+          }
+          return (
+            <>
+              {/* "Dane klienta" top label */}
+              <Box sx={{ px: 1 }}>
+                <Box
                   sx={{
-                    color: '#7A5D51',
-                    fontSize: '16px',
-                    lineHeight: 1.75,
-                    letterSpacing: '0.15px'
+                    bgcolor: 'rgba(143, 109, 95, 0.08)',
+                    borderRadius: '8px',
+                    px: 2,
+                    py: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75
                   }}
                 >
-                  Dane klienta
-                </Typography>
+                  <PersonOutlineIcon sx={{ fontSize: 20, color: '#7A5D51' }} />
+                  <Typography
+                    sx={{
+                      color: '#7A5D51',
+                      fontSize: '16px',
+                      lineHeight: 1.75,
+                      letterSpacing: '0.15px'
+                    }}
+                  >
+                    Dane klienta
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
 
-            {/* Main content card */}
-            <Box sx={{ px: 1 }}>
-              <Card
-                sx={{
-                  borderRadius: '8px',
-                  boxShadow: 'none',
-                  border: '1px solid rgba(143, 109, 95, 0.12)',
-                  p: 2
-                }}
-              >
-                <Stack spacing={1}>
-                  {/* Dane rejestracyjne */}
-                  <MobileSectionHeader
-                    title="Dane rejestracyjne klienta"
-                    open={registrationOpen}
-                    onToggle={() => setRegistrationOpen((v) => !v)}
-                  />
-                  <Collapse in={registrationOpen}>
-                    <Stack sx={{ pb: 1 }}>
-                      <MobileFieldRow label="Nazwa firmy" value={clientData.name} />
-                      <MobileFieldRow label="NIP" value={clientData.nip} />
-                      <MobileFieldRow label="REGON" value={clientData.regon} />
-                      <MobileFieldRow label="KRS" value={clientData.krs} />
-                      <MobileFieldRow label="Nr konta bankowego" value={clientData.bank_account} />
-                      <MobileFieldRow label="Strona internetowa" value={clientData.website} />
-                    </Stack>
-                  </Collapse>
+              {/* Main content card */}
+              <Box sx={{ px: 1 }}>
+                <Card
+                  sx={{
+                    borderRadius: '8px',
+                    boxShadow: 'none',
+                    border: '1px solid rgba(143, 109, 95, 0.12)',
+                    p: 2
+                  }}
+                >
+                  <Stack spacing={1}>
+                    {/* Dane rejestracyjne */}
+                    <MobileSectionHeader
+                      title="Dane rejestracyjne klienta"
+                      open={registrationOpen}
+                      onToggle={() => setRegistrationOpen((v) => !v)}
+                    />
+                    <Collapse in={registrationOpen}>
+                      <Stack sx={{ pb: 1 }}>
+                        <MobileFieldRow label="Nazwa firmy" value={clientData.name} />
+                        <MobileFieldRow label="NIP" value={clientData.nip} />
+                        <MobileFieldRow label="REGON" value={clientData.regon} />
+                        <MobileFieldRow label="KRS" value={clientData.krs} />
+                        <MobileFieldRow
+                          label="Nr konta bankowego"
+                          value={clientData.bank_account}
+                        />
+                        <MobileFieldRow label="Strona internetowa" value={clientData.website} />
+                      </Stack>
+                    </Collapse>
 
-                  {/* Dane adresowe */}
-                  <MobileSectionHeader
-                    title="Dane adresowe i kontaktowe"
-                    open={addressOpen}
-                    onToggle={() => setAddressOpen((v) => !v)}
-                  />
-                  <Collapse in={addressOpen}>
-                    <Stack sx={{ pb: 1 }}>
-                      <MobileFieldRow label="Miasto" value={clientData.city} />
-                      <MobileFieldRow label="Kod pocztowy" value={clientData.postal} />
-                      <MobileFieldRow label="Nazwa ulicy" value={clientData.street} />
-                      <MobileFieldRow label="Numer budynku/lokalu" value={clientData.street_no} />
-                      <MobileFieldRow label="Numer telefonu" value={clientData.phone} />
-                    </Stack>
-                  </Collapse>
+                    {/* Dane adresowe */}
+                    <MobileSectionHeader
+                      title="Dane adresowe i kontaktowe"
+                      open={addressOpen}
+                      onToggle={() => setAddressOpen((v) => !v)}
+                    />
+                    <Collapse in={addressOpen}>
+                      <Stack sx={{ pb: 1 }}>
+                        <MobileFieldRow label="Miasto" value={clientData.city} />
+                        <MobileFieldRow label="Kod pocztowy" value={clientData.postal} />
+                        <MobileFieldRow label="Nazwa ulicy" value={clientData.street} />
+                        <MobileFieldRow label="Numer budynku/lokalu" value={clientData.street_no} />
+                        <MobileFieldRow label="Numer telefonu" value={clientData.phone} />
+                      </Stack>
+                    </Collapse>
 
-                  {/* Powiązania */}
-                  <MobileSectionHeader
-                    title="Powiązania"
-                    open={relationsOpen}
-                    onToggle={() => setRelationsOpen((v) => !v)}
-                  />
-                  <Collapse in={relationsOpen}>
-                    <Stack sx={{ pb: 1 }}>
-                      <MobileFieldRow
-                        label="Podmiot zarządzający"
-                        value={clientData.parent_client}
-                      />
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        sx={{ height: 40, px: 1.5, py: 0.75 }}
-                      >
-                        <Typography
-                          sx={{
-                            color: '#74767F',
-                            fontSize: '14px',
-                            lineHeight: 1.43,
-                            letterSpacing: '0.17px'
-                          }}
+                    {/* Powiązania */}
+                    <MobileSectionHeader
+                      title="Powiązania"
+                      open={relationsOpen}
+                      onToggle={() => setRelationsOpen((v) => !v)}
+                    />
+                    <Collapse in={relationsOpen}>
+                      <Stack sx={{ pb: 1 }}>
+                        <MobileFieldRow
+                          label="Podmiot zarządzający"
+                          value={clientData.parent_client}
+                        />
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          sx={{ height: 40, px: 1.5, py: 0.75 }}
                         >
-                          Podmiot zależny
-                        </Typography>
-                        <Stack direction="row" alignItems="center" gap={0.5}>
                           <Typography
-                            sx={{ color: '#32343A', fontSize: '12px', lineHeight: '16px' }}
+                            sx={{
+                              color: '#74767F',
+                              fontSize: '14px',
+                              lineHeight: 1.43,
+                              letterSpacing: '0.17px'
+                            }}
                           >
-                            {clientData.child_client || '-'}
+                            Podmiot zależny
                           </Typography>
-                          {clientData.child_client_names.length > 1 && (
-                            <Tooltip
-                              title={
-                                <Box>
-                                  {clientData.child_client_names.map((item, i) => (
-                                    <Typography key={i} variant="body2" sx={{ fontSize: '13px' }}>
-                                      {item}
-                                    </Typography>
-                                  ))}
-                                </Box>
-                              }
-                              arrow
-                              placement="top"
+                          <Stack direction="row" alignItems="center" gap={0.5}>
+                            <Typography
+                              sx={{ color: '#32343A', fontSize: '12px', lineHeight: '16px' }}
                             >
-                              <InfoOutlinedIcon
-                                sx={{ fontSize: 16, color: '#9CA3AF', cursor: 'pointer' }}
-                              />
-                            </Tooltip>
-                          )}
+                              {clientData.child_client || '-'}
+                            </Typography>
+                            {clientData.child_client_names.length > 1 && (
+                              <Tooltip
+                                title={
+                                  <Box>
+                                    {clientData.child_client_names.map((item, i) => (
+                                      <Typography key={i} variant="body2" sx={{ fontSize: '13px' }}>
+                                        {item}
+                                      </Typography>
+                                    ))}
+                                  </Box>
+                                }
+                                arrow
+                                placement="top"
+                              >
+                                <InfoOutlinedIcon
+                                  sx={{ fontSize: 16, color: '#9CA3AF', cursor: 'pointer' }}
+                                />
+                              </Tooltip>
+                            )}
+                          </Stack>
                         </Stack>
                       </Stack>
-                    </Stack>
-                  </Collapse>
-                </Stack>
-              </Card>
-            </Box>
+                    </Collapse>
+                  </Stack>
+                </Card>
+              </Box>
 
-            {/* Mobile action buttons */}
-            <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
-              <Button
-                variant="outlined"
-                startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
-                onClick={handleEditClient}
-                sx={{
-                  borderColor: '#494B54',
-                  color: '#494B54',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  textTransform: 'none'
-                }}
-              >
-                Edytuj
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
-                onClick={handleDeleteClient}
-                sx={{
-                  borderColor: '#D0D5DD',
-                  color: '#1E1F21',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  textTransform: 'none'
-                }}
-              >
-                Usuń klienta
-              </Button>
-            </Stack>
-          </>
-        )}
+              {/* Mobile action buttons */}
+              <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
+                  onClick={handleEditClient}
+                  sx={{
+                    borderColor: '#494B54',
+                    color: '#494B54',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    textTransform: 'none'
+                  }}
+                >
+                  Edytuj
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
+                  onClick={handleDeleteClient}
+                  sx={{
+                    borderColor: '#D0D5DD',
+                    color: '#1E1F21',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    textTransform: 'none'
+                  }}
+                >
+                  Usuń klienta
+                </Button>
+              </Stack>
+            </>
+          );
+        })()}
 
         {/* Dialogs */}
         <EditClientDialog
@@ -1010,6 +1211,42 @@ const ClientDetailsPage: React.FC = () => {
           }}
           payment={selectedPayment}
           onSuccess={handlePaymentSuccess}
+        />
+
+        {clientData?.id && (
+          <AddPolicyDialog
+            open={addPolicyDialogOpen}
+            onClose={() => setAddPolicyDialogOpen(false)}
+            clientId={Number(clientData.id)}
+            onSuccess={handlePolicySuccess}
+          />
+        )}
+        <EditPolicyDialog
+          open={editPolicyDialogOpen}
+          onClose={() => {
+            setEditPolicyDialogOpen(false);
+            setSelectedPolicy(null);
+          }}
+          policy={selectedPolicy}
+          onSuccess={handlePolicySuccess}
+        />
+        <ArchivePolicyDialog
+          open={archivePolicyDialogOpen}
+          onClose={() => {
+            setArchivePolicyDialogOpen(false);
+            setSelectedPolicy(null);
+          }}
+          policy={selectedPolicy}
+          onSuccess={handlePolicySuccess}
+        />
+        <ForceDeletePolicyDialog
+          open={forceDeletePolicyDialogOpen}
+          onClose={() => {
+            setForceDeletePolicyDialogOpen(false);
+            setSelectedPolicy(null);
+          }}
+          policy={selectedPolicy}
+          onSuccess={handlePolicySuccess}
         />
       </Stack>
     );
@@ -1098,277 +1335,305 @@ const ClientDetailsPage: React.FC = () => {
             }
           }}
         >
-          {CLIENT_TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <Tab key={tab.label} icon={tab.icon} iconPosition="start" label={tab.label} />
           ))}
         </Tabs>
       </Box>
 
       {/* Tab content */}
-      {activeTab === 1 && documentsFetcher ? (
-        <Box sx={{ flex: 1, minHeight: 0 }}>
-          <GenericListView<DocumentRecord>
-            title="Dokumenty"
-            fetcher={documentsFetcher}
-            handlers={documentHandlers}
-            rowKey={(row) => String(row.id || row.name)}
-            initialPerPage={10}
-            refreshKey={docRefreshKey}
-            disabledColumns={['client_name']}
-            disabledFilters={['client']}
-          />
-        </Box>
-      ) : activeTab === 3 && paymentsFetcher ? (
-        <Box sx={{ flex: 1, minHeight: 0 }}>
-          <GenericListView<PaymentRecord>
-            title="Płatności składek"
-            fetcher={paymentsFetcher}
-            handlers={paymentHandlers}
-            rowKey={(row) => String(row.id || row.policy_number)}
-            initialPerPage={10}
-            refreshKey={paymentRefreshKey}
-            disabledColumns={['client_name']}
-            disabledFilters={['client']}
-          />
-        </Box>
-      ) : activeTab !== 0 ? (
-        <UnavailableTabContent />
-      ) : (
-        <>
-          {/* Title + Edit button */}
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography
+      {(() => {
+        const originalIdx = visibleTabs[activeTab]?.originalIndex ?? 0;
+        if (originalIdx === 1 && documentsFetcher) {
+          return (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <GenericListView<DocumentRecord>
+                title="Dokumenty"
+                fetcher={documentsFetcher}
+                handlers={documentHandlers}
+                rowKey={(row) => String(row.id || row.name)}
+                initialPerPage={10}
+                refreshKey={docRefreshKey}
+                disabledColumns={['client_name']}
+                disabledFilters={['client']}
+              />
+              {/* <UnavailableTabContent /> */}
+            </Box>
+          );
+        }
+        if (originalIdx === 2 && policiesFetcher) {
+          return (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <GenericListView<PolicyRecord>
+                title="Polisy"
+                fetcher={policiesFetcher}
+                handlers={policyHandlers}
+                rowKey={(row) => String(row.id || row.number)}
+                initialPerPage={10}
+                refreshKey={policyRefreshKey}
+                disabledColumns={POLICIES_DISABLED_COLUMNS}
+                disabledFilters={POLICIES_DISABLED_FILTERS}
+              />
+            </Box>
+          );
+        }
+        if (originalIdx === 3 && paymentsFetcher) {
+          return (
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <GenericListView<PaymentRecord>
+                title="Płatności składek"
+                fetcher={paymentsFetcher}
+                handlers={paymentHandlers}
+                rowKey={(row) => String(row.id || row.policy_number)}
+                initialPerPage={10}
+                refreshKey={paymentRefreshKey}
+                disabledColumns={['client_name']}
+                disabledFilters={['client']}
+              />
+              {/* <UnavailableTabContent /> */}
+            </Box>
+          );
+        }
+        if (originalIdx !== 0) {
+          return <UnavailableTabContent />;
+        }
+        return (
+          <>
+            {/* Title + Edit button */}
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography
+                sx={{
+                  fontSize: '24px',
+                  fontWeight: 300,
+                  color: '#32343A',
+                  lineHeight: 1.334
+                }}
+              >
+                Szczegółowe dane klienta:
+              </Typography>
+              <Button
+                variant="outlined"
+                startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
+                onClick={handleEditClient}
+                sx={{
+                  borderColor: '#494B54',
+                  color: '#494B54',
+                  borderRadius: '8px',
+                  px: 2,
+                  py: 1,
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: '#32343A',
+                    bgcolor: 'rgba(0, 0, 0, 0.04)'
+                  }
+                }}
+              >
+                Edytuj
+              </Button>
+            </Stack>
+
+            {/* Section 1: Dane rejestracyjne klienta */}
+            <Card
               sx={{
-                fontSize: '24px',
-                fontWeight: 300,
-                color: '#32343A',
-                lineHeight: 1.334
+                borderRadius: 1,
+                boxShadow: 'none',
+                border: '1px solid',
+                borderColor: 'rgba(143, 109, 95, 0.12)'
               }}
             >
-              Szczegółowe dane klienta:
-            </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
-              onClick={handleEditClient}
+              <CardContent sx={{ p: 2 }}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  sx={{
+                    borderBottom: '1px solid',
+                    borderColor: 'rgba(143, 109, 95, 0.12)',
+                    pb: 0.75,
+                    px: 1.5,
+                    mb: 2
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontWeight: 400,
+                      color: '#1E1F21',
+                      fontSize: '16px',
+                      lineHeight: 1.75,
+                      letterSpacing: '0.15px'
+                    }}
+                  >
+                    Dane rejestracyjne klienta:
+                  </Typography>
+                </Stack>
+
+                <Box sx={{ px: 0 }}>
+                  <Stack direction="row">
+                    <FieldItem label="Nazwa firmy" value={clientData.name} />
+                    <FieldItem label="NIP" value={clientData.nip} />
+                    <FieldItem label="REGON" value={clientData.regon} />
+                    <FieldItem label="KRS" value={clientData.krs} />
+                    <FieldItem
+                      label="Nr konta bankowego do wypłaty odszkodowania"
+                      value={clientData.bank_account}
+                    />
+                    <FieldItem label="Strona internetowa" value={clientData.website} />
+                  </Stack>
+                </Box>
+              </CardContent>
+            </Card>
+
+            {/* Section 2: Dane adresowe i kontaktowe */}
+            <Card
               sx={{
-                borderColor: '#494B54',
-                color: '#494B54',
-                borderRadius: '8px',
-                px: 2,
-                py: 1,
-                fontSize: '14px',
-                fontWeight: 500,
-                textTransform: 'none',
-                '&:hover': {
-                  borderColor: '#32343A',
-                  bgcolor: 'rgba(0, 0, 0, 0.04)'
-                }
+                borderRadius: 1,
+                boxShadow: 'none',
+                border: '1px solid',
+                borderColor: 'rgba(143, 109, 95, 0.12)'
               }}
             >
-              Edytuj
-            </Button>
-          </Stack>
-
-          {/* Section 1: Dane rejestracyjne klienta */}
-          <Card
-            sx={{
-              borderRadius: 1,
-              boxShadow: 'none',
-              border: '1px solid',
-              borderColor: 'rgba(143, 109, 95, 0.12)'
-            }}
-          >
-            <CardContent sx={{ p: 2 }}>
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-                sx={{
-                  borderBottom: '1px solid',
-                  borderColor: 'rgba(143, 109, 95, 0.12)',
-                  pb: 0.75,
-                  px: 1.5,
-                  mb: 2
-                }}
-              >
-                <Typography
+              <CardContent sx={{ p: 2 }}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                   sx={{
-                    fontWeight: 400,
-                    color: '#1E1F21',
-                    fontSize: '16px',
-                    lineHeight: 1.75,
-                    letterSpacing: '0.15px'
+                    borderBottom: '1px solid',
+                    borderColor: 'rgba(143, 109, 95, 0.12)',
+                    pb: 0.75,
+                    px: 1.5,
+                    mb: 2
                   }}
                 >
-                  Dane rejestracyjne klienta:
-                </Typography>
-              </Stack>
-
-              <Box sx={{ px: 0 }}>
-                <Stack direction="row">
-                  <FieldItem label="Nazwa firmy" value={clientData.name} />
-                  <FieldItem label="NIP" value={clientData.nip} />
-                  <FieldItem label="REGON" value={clientData.regon} />
-                  <FieldItem label="KRS" value={clientData.krs} />
-                  <FieldItem
-                    label="Nr konta bankowego do wypłaty odszkodowania"
-                    value={clientData.bank_account}
-                  />
-                  <FieldItem label="Strona internetowa" value={clientData.website} />
+                  <Typography
+                    sx={{
+                      fontWeight: 400,
+                      color: '#1E1F21',
+                      fontSize: '16px',
+                      lineHeight: 1.75,
+                      letterSpacing: '0.15px'
+                    }}
+                  >
+                    Dane adresowe i kontaktowe:
+                  </Typography>
                 </Stack>
-              </Box>
-            </CardContent>
-          </Card>
 
-          {/* Section 2: Dane adresowe i kontaktowe */}
-          <Card
-            sx={{
-              borderRadius: 1,
-              boxShadow: 'none',
-              border: '1px solid',
-              borderColor: 'rgba(143, 109, 95, 0.12)'
-            }}
-          >
-            <CardContent sx={{ p: 2 }}>
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-                sx={{
-                  borderBottom: '1px solid',
-                  borderColor: 'rgba(143, 109, 95, 0.12)',
-                  pb: 0.75,
-                  px: 1.5,
-                  mb: 2
-                }}
-              >
-                <Typography
+                <Box sx={{ px: 0 }}>
+                  <Stack direction="row">
+                    <FieldItem label="Miasto" value={clientData.city} />
+                    <FieldItem label="Kod pocztowy" value={clientData.postal} />
+                    <FieldItem label="Nazwa ulicy" value={clientData.street} />
+                    <FieldItem label="Numer budynku/lokalu" value={clientData.street_no} />
+                    <FieldItem label="Numer telefonu" value={clientData.phone} />
+                  </Stack>
+                </Box>
+              </CardContent>
+            </Card>
+
+            {/* Section 3: Powiązania */}
+            <Card
+              sx={{
+                borderRadius: 1,
+                boxShadow: 'none',
+                border: '1px solid',
+                borderColor: 'rgba(143, 109, 95, 0.12)'
+              }}
+            >
+              <CardContent sx={{ p: 2 }}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                   sx={{
-                    fontWeight: 400,
-                    color: '#1E1F21',
-                    fontSize: '16px',
-                    lineHeight: 1.75,
-                    letterSpacing: '0.15px'
+                    borderBottom: '1px solid',
+                    borderColor: 'rgba(143, 109, 95, 0.12)',
+                    pb: 0.75,
+                    px: 1.5,
+                    mb: 2
                   }}
                 >
-                  Dane adresowe i kontaktowe:
-                </Typography>
-              </Stack>
-
-              <Box sx={{ px: 0 }}>
-                <Stack direction="row">
-                  <FieldItem label="Miasto" value={clientData.city} />
-                  <FieldItem label="Kod pocztowy" value={clientData.postal} />
-                  <FieldItem label="Nazwa ulicy" value={clientData.street} />
-                  <FieldItem label="Numer budynku/lokalu" value={clientData.street_no} />
-                  <FieldItem label="Numer telefonu" value={clientData.phone} />
+                  <Typography
+                    sx={{
+                      fontWeight: 400,
+                      color: '#1E1F21',
+                      fontSize: '16px',
+                      lineHeight: 1.75,
+                      letterSpacing: '0.15px'
+                    }}
+                  >
+                    Powiązania:
+                  </Typography>
                 </Stack>
-              </Box>
-            </CardContent>
-          </Card>
 
-          {/* Section 3: Powiązania */}
-          <Card
-            sx={{
-              borderRadius: 1,
-              boxShadow: 'none',
-              border: '1px solid',
-              borderColor: 'rgba(143, 109, 95, 0.12)'
-            }}
-          >
-            <CardContent sx={{ p: 2 }}>
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-                sx={{
-                  borderBottom: '1px solid',
-                  borderColor: 'rgba(143, 109, 95, 0.12)',
-                  pb: 0.75,
-                  px: 1.5,
-                  mb: 2
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontWeight: 400,
-                    color: '#1E1F21',
-                    fontSize: '16px',
-                    lineHeight: 1.75,
-                    letterSpacing: '0.15px'
-                  }}
-                >
-                  Powiązania:
-                </Typography>
-              </Stack>
-
-              <Box sx={{ px: 0 }}>
-                <Stack direction="row">
-                  <FieldItem label="Podmiot zarządzający" value={clientData.parent_client} />
-                  <Box sx={{ flex: 1, p: 1.5 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: '#74767F',
-                        mb: 1,
-                        fontSize: '14px',
-                        lineHeight: 1.43,
-                        letterSpacing: '0.17px'
-                      }}
-                    >
-                      Podmiot zależny
-                    </Typography>
-                    <Stack direction="row" alignItems="center" gap={0.5}>
+                <Box sx={{ px: 0 }}>
+                  <Stack direction="row">
+                    <FieldItem label="Podmiot zarządzający" value={clientData.parent_client} />
+                    <Box sx={{ flex: 1, p: 1.5 }}>
                       <Typography
                         variant="body2"
                         sx={{
-                          color: '#32343A',
-                          fontWeight: 500,
+                          color: '#74767F',
+                          mb: 1,
                           fontSize: '14px',
-                          lineHeight: 1.57,
-                          letterSpacing: '0.1px'
+                          lineHeight: 1.43,
+                          letterSpacing: '0.17px'
                         }}
                       >
-                        {clientData.child_client || '-'}
+                        Podmiot zależny
                       </Typography>
-                      {clientData.child_client_names.length > 1 && (
-                        <Tooltip
-                          title={
-                            <Box>
-                              {clientData.child_client_names.map((item, i) => (
-                                <Typography key={i} variant="body2" sx={{ fontSize: '13px' }}>
-                                  {item}
-                                </Typography>
-                              ))}
-                            </Box>
-                          }
-                          arrow
-                          placement="top"
+                      <Stack direction="row" alignItems="center" gap={0.5}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: '#32343A',
+                            fontWeight: 500,
+                            fontSize: '14px',
+                            lineHeight: 1.57,
+                            letterSpacing: '0.1px'
+                          }}
                         >
-                          <InfoOutlinedIcon
-                            sx={{
-                              fontSize: 16,
-                              color: '#9CA3AF',
-                              cursor: 'pointer',
-                              '&:hover': { color: '#6B7280' }
-                            }}
-                          />
-                        </Tooltip>
-                      )}
-                    </Stack>
-                  </Box>
-                  {/* Spacers for grid alignment */}
-                  <Box sx={{ flex: 1, p: 1.5 }} />
-                  <Box sx={{ flex: 1, p: 1.5 }} />
-                  <Box sx={{ flex: 1, p: 1.5 }} />
-                  <Box sx={{ flex: 1, p: 1.5 }} />
-                </Stack>
-              </Box>
-            </CardContent>
-          </Card>
-        </>
-      )}
+                          {clientData.child_client || '-'}
+                        </Typography>
+                        {clientData.child_client_names.length > 1 && (
+                          <Tooltip
+                            title={
+                              <Box>
+                                {clientData.child_client_names.map((item, i) => (
+                                  <Typography key={i} variant="body2" sx={{ fontSize: '13px' }}>
+                                    {item}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            }
+                            arrow
+                            placement="top"
+                          >
+                            <InfoOutlinedIcon
+                              sx={{
+                                fontSize: 16,
+                                color: '#9CA3AF',
+                                cursor: 'pointer',
+                                '&:hover': { color: '#6B7280' }
+                              }}
+                            />
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </Box>
+                    {/* Spacers for grid alignment */}
+                    <Box sx={{ flex: 1, p: 1.5 }} />
+                    <Box sx={{ flex: 1, p: 1.5 }} />
+                    <Box sx={{ flex: 1, p: 1.5 }} />
+                    <Box sx={{ flex: 1, p: 1.5 }} />
+                  </Stack>
+                </Box>
+              </CardContent>
+            </Card>
+          </>
+        );
+      })()}
 
       {/* Dialogs */}
       <EditClientDialog
@@ -1454,6 +1719,42 @@ const ClientDetailsPage: React.FC = () => {
         }}
         payment={selectedPayment}
         onSuccess={handlePaymentSuccess}
+      />
+
+      {clientData?.id && (
+        <AddPolicyDialog
+          open={addPolicyDialogOpen}
+          onClose={() => setAddPolicyDialogOpen(false)}
+          clientId={Number(clientData.id)}
+          onSuccess={handlePolicySuccess}
+        />
+      )}
+      <EditPolicyDialog
+        open={editPolicyDialogOpen}
+        onClose={() => {
+          setEditPolicyDialogOpen(false);
+          setSelectedPolicy(null);
+        }}
+        policy={selectedPolicy}
+        onSuccess={handlePolicySuccess}
+      />
+      <ArchivePolicyDialog
+        open={archivePolicyDialogOpen}
+        onClose={() => {
+          setArchivePolicyDialogOpen(false);
+          setSelectedPolicy(null);
+        }}
+        policy={selectedPolicy}
+        onSuccess={handlePolicySuccess}
+      />
+      <ForceDeletePolicyDialog
+        open={forceDeletePolicyDialogOpen}
+        onClose={() => {
+          setForceDeletePolicyDialogOpen(false);
+          setSelectedPolicy(null);
+        }}
+        policy={selectedPolicy}
+        onSuccess={handlePolicySuccess}
       />
     </Stack>
   );

@@ -464,7 +464,14 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1,
-                  color: '#32343A',
+                  color:
+                    ea.type === 'button_delete'
+                      ? '#EF4444'
+                      : ea.type === 'button_archive'
+                        ? '#F59E0B'
+                        : ea.type === 'button_restore'
+                          ? '#10B981'
+                          : '#32343A',
                   fontSize: '14px',
                   py: 1.5,
                   '&:hover': { bgcolor: '#F9FAFB' }

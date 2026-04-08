@@ -798,7 +798,14 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                 <MenuItem
                   onClick={() => handleActionClick(ea.handler)}
                   sx={{
-                    color: '#1E1F21',
+                    color:
+                      ea.type === 'button_delete'
+                        ? '#EF4444'
+                        : ea.type === 'button_archive'
+                          ? '#F59E0B'
+                          : ea.type === 'button_restore'
+                            ? '#10B981'
+                            : '#1E1F21',
                     fontSize: '14px',
                     fontWeight: 500,
                     lineHeight: '24px',
@@ -813,7 +820,14 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                   {ea.icon && (
                     <ListItemIcon
                       sx={{
-                        color: '#8E9098',
+                        color:
+                          ea.type === 'button_delete'
+                            ? '#EF4444'
+                            : ea.type === 'button_archive'
+                              ? '#F59E0B'
+                              : ea.type === 'button_restore'
+                                ? '#10B981'
+                                : '#8E9098',
                         minWidth: 'auto',
                         width: 16,
                         height: 20,

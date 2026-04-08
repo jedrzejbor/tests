@@ -9,9 +9,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
-  Divider,
-  Autocomplete,
   useMediaQuery,
   useTheme,
   IconButton,
@@ -21,7 +18,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addUserSchema, type AddUserFormValues } from '@/utils/formSchemas';
@@ -30,8 +27,7 @@ import {
   createUser,
   getUserCreateOptions,
   type RoleOption,
-  type CompanyOption,
-  type ScopeOption
+  type CompanyOption
 } from '@/services/usersService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
@@ -49,9 +45,11 @@ const POSITIONS = [
   { value: 'asystent', label: 'Asystent' }
 ];
 
-const ACCOUNT_TYPES = [
-  { value: 'firma', label: 'Firma' },
-  { value: 'osoba_fizyczna', label: 'Osoba fizyczna' }
+const CLIFFSIDE_ADMIN_ROLES = ['Super Admin Cliffside Brokers', 'Admin Cliffside Brokers'];
+
+const MARKETING_CONSENT = [
+  { value: 'tak', label: 'Tak' },
+  { value: 'nie', label: 'Nie' }
 ];
 
 const STATUSES = [
@@ -68,11 +66,9 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
 
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
-  const [generatedPassword, setGeneratedPassword] = useState('');
   const [createdEmail, setCreatedEmail] = useState('');
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
-  const [competencyOptions, setCompetencyOptions] = useState<ScopeOption[]>([]);
 
   const {
     register,
@@ -80,6 +76,8 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
     control,
     reset,
     setError,
+    watch,
+    setValue,
     formState: { errors }
   } = useForm<AddUserFormValues>({
     resolver: zodResolver(addUserSchema),
@@ -92,10 +90,17 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
       competencies: [],
       phone: '',
       email: '',
-      accountType: '',
-      status: 'aktywny'
+      marketingConsent: '',
+      status: 'aktywny',
+      _companyNotRequired: false
     }
   });
+
+  const watchedRole = watch('role');
+  useEffect(() => {
+    const label = roleOptions.find((r) => r.value === watchedRole)?.label ?? '';
+    setValue('_companyNotRequired', CLIFFSIDE_ADMIN_ROLES.includes(label));
+  }, [watchedRole, roleOptions, setValue]);
 
   useEffect(() => {
     if (!open) return;
@@ -115,11 +120,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           ? rawCompanies.map((c) => (typeof c === 'string' ? { value: 0, label: c } : c))
           : Object.values(rawCompanies);
         setCompanyOptions(normalizedCompanies);
-        const rawScopes = response.scopes_of_competence || [];
-        const normalizedScopes: ScopeOption[] = Array.isArray(rawScopes)
-          ? rawScopes
-          : Object.values(rawScopes);
-        setCompetencyOptions(normalizedScopes);
       } catch (error) {
         const apiError = error as ApiError;
         addToast({
@@ -147,18 +147,18 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         role: Number(data.role),
         status,
         scopes_of_competence: data.competencies?.length ? data.competencies : undefined,
-        company: data.company ? Number(data.company) : undefined
+        company: data.company ? Number(data.company) : undefined,
+        marketing_consent:
+          data.marketingConsent === 'tak' ? true : data.marketingConsent === 'nie' ? false : null
       };
 
       const response = await createUser(payload);
 
-      const password = response.generated_password ?? response.password ?? '';
-      setGeneratedPassword(password);
       setCreatedEmail(response.user?.email || data.email);
       setStep(2);
 
       // Callback for parent component
-      onSuccess?.(data, password);
+      onSuccess?.(data);
     } catch (error) {
       const apiError = error as ApiError;
 
@@ -196,22 +196,15 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
     }
   };
 
-  const handleCopyCredentials = async () => {
-    const credentials = `Login: ${createdEmail}\nHasło: ${generatedPassword}`;
-    await navigator.clipboard.writeText(credentials);
-  };
-
   const handleAddAnother = () => {
     reset();
     setStep(1);
-    setGeneratedPassword('');
     setCreatedEmail('');
   };
 
   const handleClose = () => {
     reset();
     setStep(1);
-    setGeneratedPassword('');
     setCreatedEmail('');
     onClose();
   };
@@ -311,25 +304,46 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         <Controller
           name="company"
           control={control}
-          render={({ field }) => (
-            <FormControl fullWidth size="medium" error={Boolean(errors.company)}>
-              <InputLabel>Firma</InputLabel>
-              <Select
-                {...field}
-                label="Firma"
-                MenuProps={{
-                  PaperProps: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-              >
-                {companyOptions.map((company) => (
-                  <MenuItem key={company.value} value={company.value}>
-                    {company.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          render={({ field: companyField }) => (
+            <Controller
+              name="role"
+              control={control}
+              render={({ field: roleField }) => {
+                const selectedRoleLabel =
+                  roleOptions.find((r) => r.value === roleField.value)?.label ?? '';
+                const isCliffsideRole = CLIFFSIDE_ADMIN_ROLES.includes(selectedRoleLabel);
+                // Reset company value when Cliffside role is selected
+                if (isCliffsideRole && companyField.value !== '') {
+                  setTimeout(() => companyField.onChange(''), 0);
+                }
+                return (
+                  <FormControl
+                    fullWidth
+                    size="medium"
+                    error={Boolean(errors.company)}
+                    disabled={isCliffsideRole}
+                  >
+                    <InputLabel>Firma</InputLabel>
+                    <Select
+                      {...companyField}
+                      value={isCliffsideRole ? '' : companyField.value}
+                      label="Firma"
+                      MenuProps={{
+                        PaperProps: {
+                          sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                        }
+                      }}
+                    >
+                      {companyOptions.map((company) => (
+                        <MenuItem key={company.value} value={company.value}>
+                          {company.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                );
+              }}
+            />
           )}
         />
       </Stack>
@@ -392,43 +406,27 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         />
 
         <Controller
-          name="competencies"
+          name="status"
           control={control}
           render={({ field }) => (
-            <Autocomplete
-              multiple
-              options={competencyOptions}
-              getOptionLabel={(option) => option.label}
-              isOptionEqualToValue={(option, value) => option.value === value.value}
-              value={competencyOptions.filter((c) => field.value?.includes(c.value))}
-              onChange={(_, newValue) => {
-                field.onChange(newValue.map((v) => v.value));
-              }}
-              slotProps={{
-                paper: {
-                  sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                }
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Zakres kompetencji" size="medium" />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    label={option.label}
-                    size="small"
-                    {...getTagProps({ index })}
-                    key={option.value}
-                    sx={{
-                      borderRadius: '16px',
-                      border: '1px solid rgba(0, 0, 0, 0.5)',
-                      bgcolor: 'transparent'
-                    }}
-                  />
-                ))
-              }
-              sx={{ flex: 1 }}
-            />
+            <FormControl fullWidth size="medium" error={Boolean(errors.status)} sx={{ flex: 1 }}>
+              <InputLabel>Status użytkownika</InputLabel>
+              <Select
+                {...field}
+                label="Status użytkownika"
+                MenuProps={{
+                  PaperProps: {
+                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
+                  }
+                }}
+              >
+                {STATUSES.map((status) => (
+                  <MenuItem key={status.value} value={status.value}>
+                    {status.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           )}
         />
       </Stack>
@@ -455,56 +453,38 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         />
       </Stack>
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
         <Controller
-          name="accountType"
+          name="marketingConsent"
           control={control}
           render={({ field }) => (
-            <FormControl fullWidth size="medium" error={Boolean(errors.accountType)}>
-              <InputLabel>Rodzaj konta</InputLabel>
+            <FormControl size="medium" fullWidth error={Boolean(errors.marketingConsent)}>
+              <InputLabel>Zgody marketingowe</InputLabel>
               <Select
                 {...field}
-                label="Rodzaj konta"
+                label="Zgody marketingowe"
                 MenuProps={{
                   PaperProps: {
                     sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
                   }
                 }}
               >
-                {ACCOUNT_TYPES.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    {type.label}
+                {MARKETING_CONSENT.map((consent) => (
+                  <MenuItem key={consent.value} value={consent.value}>
+                    {consent.label}
                   </MenuItem>
                 ))}
               </Select>
+              {errors.marketingConsent && (
+                <Typography variant="caption" color="error" sx={{ ml: 1.5, mt: 0.5 }}>
+                  {errors.marketingConsent.message}
+                </Typography>
+              )}
             </FormControl>
           )}
         />
-
-        <Controller
-          name="status"
-          control={control}
-          render={({ field }) => (
-            <FormControl fullWidth size="medium" error={Boolean(errors.status)}>
-              <InputLabel>Status użytkownika</InputLabel>
-              <Select
-                {...field}
-                label="Status użytkownika"
-                MenuProps={{
-                  PaperProps: {
-                    sx: { bgcolor: 'white', border: '1px solid #D0D5DD' }
-                  }
-                }}
-              >
-                {STATUSES.map((status) => (
-                  <MenuItem key={status.value} value={status.value}>
-                    {status.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-        />
+        {/* Empty box to keep 2-column layout */}
+        <Box sx={{ flex: 1 }} />
       </Stack>
 
       {/* Removed 'Podmiot ma powiązania' section per request */}
@@ -580,34 +560,43 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
           py: 1
         }}
       >
-        <Stack spacing={1}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            sx={{ py: 1.5, px: 1.5 }}
-          >
-            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Login</Typography>
-            <Typography sx={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.87)' }}>
-              {createdEmail}
-            </Typography>
-          </Stack>
-
-          <Divider sx={{ borderColor: 'rgba(143, 109, 95, 0.08)' }} />
-
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            sx={{ py: 1.5, px: 1.5 }}
-          >
-            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Hasło</Typography>
-            <Typography sx={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.87)' }}>
-              {generatedPassword}
-            </Typography>
-          </Stack>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ py: 1.5, px: 1.5 }}
+        >
+          <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Login</Typography>
+          <Typography sx={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.87)' }}>
+            {createdEmail}
+          </Typography>
         </Stack>
       </Box>
+
+      {/* Email notification info */}
+      <Stack
+        direction="row"
+        spacing={1.5}
+        alignItems="flex-start"
+        sx={{
+          mt: 3,
+          p: 2,
+          bgcolor: 'rgba(143, 109, 95, 0.06)',
+          borderRadius: '8px'
+        }}
+      >
+        <MailOutlineIcon sx={{ color: '#8F6D5F', fontSize: 20, mt: 0.25 }} />
+        <Typography
+          sx={{
+            fontSize: '13px',
+            lineHeight: 1.5,
+            color: 'rgba(0, 0, 0, 0.6)'
+          }}
+        >
+          Na adres <strong>{createdEmail}</strong> został wysłany e-mail z linkiem do ustawienia
+          hasła do konta. Link jest ważny przez 48 godzin.
+        </Typography>
+      </Stack>
 
       {/* Action buttons */}
       <Stack direction="row" justifyContent="space-between" sx={{ mt: 4 }}>
@@ -635,8 +624,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
         </Button>
         <Button
           variant="contained"
-          startIcon={<ContentCopyIcon />}
-          onClick={handleCopyCredentials}
+          onClick={handleClose}
           sx={{
             bgcolor: '#1E1F21',
             color: '#FFFFFF',
@@ -651,7 +639,7 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
             }
           }}
         >
-          Skopiuj logowanie i hasło
+          Zakończ
         </Button>
       </Stack>
     </Box>
@@ -702,14 +690,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
               }}
             >
               Dodaj nowego użytkownika
-              {step === 2 && (
-                <Typography
-                  component="span"
-                  sx={{ color: '#D32F2F', fontSize: '13px', fontWeight: 400, ml: 1 }}
-                >
-                  (funkcjonalność w trakcie przeróbek)
-                </Typography>
-              )}
             </Typography>
             <IconButton onClick={handleClose} size="small" aria-label="Zamknij">
               <CloseIcon sx={{ color: '#8E9098' }} />
@@ -753,14 +733,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose, onSuccess 
             }}
           >
             Dodaj nowego użytkownika
-            {step === 2 && (
-              <Typography
-                component="span"
-                sx={{ color: '#D32F2F', fontSize: '13px', fontWeight: 400, ml: 1 }}
-              >
-                (funkcjonalność w trakcie przeróbek)
-              </Typography>
-            )}
           </Typography>
           <IconButton onClick={handleClose} size="medium" aria-label="Zamknij">
             <CloseIcon sx={{ color: '#8E9098' }} />
