@@ -151,59 +151,138 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
     return data.some((row) => selectedIds.has(getRowId(row))) && !allSelected;
   }, [data, selectedIds, getRowId, allSelected]);
 
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // -------------------------------------------------------------------------
+  // Fetch data — use a request counter to cancel stale fetches and a stable
+  // ref-based approach to avoid re-creating the callback on every state change.
+  // This eliminates duplicate requests caused by multiple setState batches.
+  // -------------------------------------------------------------------------
 
-    try {
-      const response = await fetcher({
-        page,
-        perPage,
-        search,
-        sortProperty,
-        sortOrder,
-        filters,
-        disabledColumns: stableDisabledColumns,
-        disabledFilters: stableDisabledFilters
-      });
+  const fetchCounterRef = useRef(0);
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
 
-      const normalizedMeta = normalizeMeta(response.meta);
-      setData(response.data);
-      setMeta(normalizedMeta);
+  // Ref for the previous fetch trigger — used to skip duplicate fetches
+  // when initial sort is applied from meta. Must be declared before fetchData
+  // so the closure can access it. Initialized with empty string; the real
+  // value is set after fetchTrigger is computed.
+  const prevTriggerRef = useRef('');
 
-      // Set initial sort from meta if available
-      if (!hasAppliedInitialSort.current && normalizedMeta.sortable.length > 0) {
-        const defaultSort = normalizedMeta.sortable[0];
-        setSortProperty(defaultSort.property);
-        setSortOrder(defaultSort.order);
-        hasAppliedInitialSort.current = true;
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Wystąpił błąd podczas pobierania danych';
-      setError(message);
-      setData([]);
-      setMeta(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    fetcher,
+  // Keep current params in a ref so fetchData itself never changes identity.
+  const paramsRef = useRef({
     page,
     perPage,
     search,
     sortProperty,
     sortOrder,
     filters,
-    stableDisabledColumns,
-    stableDisabledFilters
-  ]);
+    disabledColumns: stableDisabledColumns,
+    disabledFilters: stableDisabledFilters
+  });
+  paramsRef.current = {
+    page,
+    perPage,
+    search,
+    sortProperty,
+    sortOrder,
+    filters,
+    disabledColumns: stableDisabledColumns,
+    disabledFilters: stableDisabledFilters
+  };
 
-  // Initial fetch and refetch on params change
+  // Stable fetchData — never changes identity, reads params from ref.
+  const fetchData = useCallback(async () => {
+    const fetchId = ++fetchCounterRef.current;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetcherRef.current(paramsRef.current);
+
+      // Stale response — a newer fetch was already started
+      if (fetchId !== fetchCounterRef.current) return;
+
+      const normalizedMeta = normalizeMeta(response.meta);
+      setData(response.data);
+      setMeta(normalizedMeta);
+
+      // Set initial sort from meta if available.
+      // Because fetchData has a stable identity, updating sortProperty /
+      // sortOrder will NOT recreate it or trigger an extra fetch cycle.
+      // We also update prevTrigger so the trigger effect doesn't see a
+      // "changed" trigger and fire a redundant second fetch — the data we
+      // just received is already sorted by the backend's default.
+      if (!hasAppliedInitialSort.current && normalizedMeta.sortable.length > 0) {
+        const defaultSort = normalizedMeta.sortable[0];
+        setSortProperty(defaultSort.property);
+        setSortOrder(defaultSort.order);
+        hasAppliedInitialSort.current = true;
+        // Pre-compute the trigger string that will result from this state
+        // update so prevTrigger already matches it — preventing re-fetch.
+        const nextTrigger = JSON.stringify({
+          page: paramsRef.current.page,
+          perPage: paramsRef.current.perPage,
+          search: paramsRef.current.search,
+          sortProperty: defaultSort.property,
+          sortOrder: defaultSort.order,
+          filters: paramsRef.current.filters,
+          dc: paramsRef.current.disabledColumns,
+          df: paramsRef.current.disabledFilters
+        });
+        prevTriggerRef.current = nextTrigger;
+      }
+    } catch (err) {
+      if (fetchId !== fetchCounterRef.current) return;
+      const message =
+        err instanceof Error ? err.message : 'Wystąpił błąd podczas pobierania danych';
+      setError(message);
+      setData([]);
+      setMeta(null);
+    } finally {
+      if (fetchId === fetchCounterRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []); // stable — no dependencies
+
+  // Trigger fetch whenever any query param changes.
+  // We use a dedicated "fetch trigger" value that changes whenever relevant
+  // state changes, but fetchData itself stays stable so this effect only
+  // fires when params actually change.
+  const fetchTrigger = useMemo(
+    () => JSON.stringify({
+      page,
+      perPage,
+      search,
+      sortProperty,
+      sortOrder,
+      filters,
+      dc: stableDisabledColumns,
+      df: stableDisabledFilters
+    }),
+    [page, perPage, search, sortProperty, sortOrder, filters, stableDisabledColumns, stableDisabledFilters]
+  );
+
+  const isInitialMount = useRef(true);
+  // Initialize prevTriggerRef with the first computed trigger so the initial
+  // mount guard works correctly.
+  if (isInitialMount.current) {
+    prevTriggerRef.current = fetchTrigger;
+  }
+
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    // Always fetch on initial mount.
+    // On subsequent renders, only fetch if params actually changed.
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      fetchData();
+      return;
+    }
+    if (prevTriggerRef.current !== fetchTrigger) {
+      prevTriggerRef.current = fetchTrigger;
+      fetchData();
+    }
+  }, [fetchTrigger, fetchData]);
 
   // Actions
   const handleSetPage = useCallback((newPage: number) => {

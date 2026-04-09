@@ -113,8 +113,14 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
     return () => window.clearTimeout(debounceId);
   }, [searchInput, setSearch]);
 
+  // Track the previous refreshKey so we only refetch on actual changes,
+  // not on the initial mount (the controller already fetches on mount).
+  const prevRefreshKey = React.useRef(refreshKey);
   useEffect(() => {
     if (refreshKey === undefined) return;
+    // Skip the very first render — controller already handles the initial fetch.
+    if (prevRefreshKey.current === refreshKey) return;
+    prevRefreshKey.current = refreshKey;
     refetch();
   }, [refreshKey, refetch]);
 
