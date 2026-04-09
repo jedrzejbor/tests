@@ -1076,7 +1076,7 @@ const PolicyDetailsPage: React.FC = () => {
             '& .MuiTabs-indicator': {
               bgcolor: '#1E1F21'
             },
-            '&.Mui-disabled': {
+            '& .Mui-disabled': {
               display: 'none'
             }
           }}
