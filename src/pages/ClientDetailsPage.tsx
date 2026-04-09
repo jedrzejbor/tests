@@ -630,10 +630,13 @@ const ClientDetailsPage: React.FC = () => {
     setAddPolicyDialogOpen(true);
   }, []);
 
-  const handleViewPolicy = useCallback((row: PolicyRecord) => {
-    setSelectedPolicy(row);
-    setEditPolicyDialogOpen(true);
-  }, []);
+  const handleViewPolicy = useCallback(
+    (row: PolicyRecord) => {
+      if (!row.id) return;
+      navigate(`/app/policies/${row.id}`, { state: { policy: row } });
+    },
+    [navigate]
+  );
 
   const handleEditPolicy = useCallback((row: PolicyRecord) => {
     setSelectedPolicy(row);

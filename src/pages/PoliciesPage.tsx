@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
@@ -18,6 +19,7 @@ import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
 import type { ExtraRowAction } from '@/types/genericList';
 
 const PoliciesPage: React.FC = () => {
+  const navigate = useNavigate();
   const { addToast } = useUiStore();
   const { hasPermission } = usePermission();
 
@@ -38,9 +40,13 @@ const PoliciesPage: React.FC = () => {
 
   // ——— Row handlers ———
 
-  const handleViewPolicy = useCallback(() => {
-    // TODO: navigate to policy details page when available
-  }, []);
+  const handleViewPolicy = useCallback(
+    (row: PolicyRecord) => {
+      if (!row.id) return;
+      navigate(`/app/policies/${row.id}`, { state: { policy: row } });
+    },
+    [navigate]
+  );
 
   const handleEditPolicy = useCallback((row: PolicyRecord) => {
     setSelectedPolicy(row);

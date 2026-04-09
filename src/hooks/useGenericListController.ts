@@ -250,17 +250,27 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
   // state changes, but fetchData itself stays stable so this effect only
   // fires when params actually change.
   const fetchTrigger = useMemo(
-    () => JSON.stringify({
+    () =>
+      JSON.stringify({
+        page,
+        perPage,
+        search,
+        sortProperty,
+        sortOrder,
+        filters,
+        dc: stableDisabledColumns,
+        df: stableDisabledFilters
+      }),
+    [
       page,
       perPage,
       search,
       sortProperty,
       sortOrder,
       filters,
-      dc: stableDisabledColumns,
-      df: stableDisabledFilters
-    }),
-    [page, perPage, search, sortProperty, sortOrder, filters, stableDisabledColumns, stableDisabledFilters]
+      stableDisabledColumns,
+      stableDisabledFilters
+    ]
   );
 
   const isInitialMount = useRef(true);

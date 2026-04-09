@@ -211,6 +211,12 @@ const AppLayout = () => {
       breadcrumbs.push({ label: 'Szczegóły klienta' });
     }
 
+    // Handle dynamic routes like /app/policies/:policyId
+    if (path.startsWith('/app/policies/') && path !== '/app/policies') {
+      breadcrumbs.push({ label: 'Lista polis', href: '/app/policies' });
+      breadcrumbs.push({ label: `Karta polisy` });
+    }
+
     return breadcrumbs;
   };
 
