@@ -37,6 +37,7 @@ import {
 import {
   type ClientDetailsApiClient,
   type ClientDetailsResponse,
+  type ClientRecord,
   getClientDetails
 } from '@/services/clientsService';
 import type { ApiError } from '@/services/apiClient';
@@ -45,6 +46,7 @@ import { usePermission } from '@/hooks/usePermission';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
 import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
+import EditClientDialog from '@/components/dialogs/EditClientDialog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -200,6 +202,9 @@ const PolicyDetailsPage: React.FC = () => {
 
   // Archive dialog
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+
+  // Edit client dialog
+  const [editClientDialogOpen, setEditClientDialogOpen] = useState(false);
 
   // Mobile collapsible sections (for "Dane klienta" tab)
   const [registrationOpen, setRegistrationOpen] = useState(true);
@@ -368,6 +373,44 @@ const PolicyDetailsPage: React.FC = () => {
     [policyData, clientName, insurerName]
   );
 
+  // ClientRecord for EditClientDialog
+  const clientRecord: ClientRecord | null = useMemo(
+    () =>
+      clientData
+        ? {
+            id: clientData.id,
+            name: clientData.name,
+            parent_client: clientData.parent_client,
+            child_client: clientData.child_client,
+            type: clientData.type,
+            status: clientData.status,
+            authority_scope: clientData.authority_scope,
+            nip: clientData.nip,
+            city: clientData.city
+          }
+        : null,
+    [clientData]
+  );
+
+  const handleClientUpdated = useCallback(() => {
+    addToast({
+      id: crypto.randomUUID(),
+      message: 'Dane klienta zostały zaktualizowane',
+      severity: 'success'
+    });
+    // Re-fetch client data
+    if (policyData?.client_id) {
+      getClientDetails(policyData.client_id)
+        .then((res) => {
+          setClientData(mapClientData(res.client, res.meta));
+          setClientName(res.client.name || clientName);
+        })
+        .catch((err: unknown) => {
+          void err; // silent — toast already shown by EditClientDialog
+        });
+    }
+  }, [addToast, policyData?.client_id, mapClientData, clientName]);
+
   // Status color helper
   const statusColor = useMemo(() => {
     const s = clientData?.status?.toLowerCase() || '';
@@ -473,7 +516,7 @@ const PolicyDetailsPage: React.FC = () => {
             <Button
               variant="outlined"
               startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
-              onClick={() => navigate(`/app/clients/${clientData.id}`)}
+              onClick={() => setEditClientDialogOpen(true)}
               sx={{
                 borderColor: '#494B54',
                 color: '#494B54',
@@ -959,6 +1002,12 @@ const PolicyDetailsPage: React.FC = () => {
           policy={policyRecord}
           onSuccess={handleArchiveSuccess}
         />
+        <EditClientDialog
+          open={editClientDialogOpen}
+          onClose={() => setEditClientDialogOpen(false)}
+          client={clientRecord}
+          onSuccess={handleClientUpdated}
+        />
       </Stack>
     );
   }
@@ -1104,6 +1153,12 @@ const PolicyDetailsPage: React.FC = () => {
         onClose={handleArchiveClose}
         policy={policyRecord}
         onSuccess={handleArchiveSuccess}
+      />
+      <EditClientDialog
+        open={editClientDialogOpen}
+        onClose={() => setEditClientDialogOpen(false)}
+        client={clientRecord}
+        onSuccess={handleClientUpdated}
       />
     </Stack>
   );
