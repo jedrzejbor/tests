@@ -20,6 +20,7 @@ import {
   CardContent,
   Chip,
   Collapse,
+  Divider,
   IconButton,
   Stack,
   Tab,
@@ -32,7 +33,9 @@ import {
 import {
   type PolicyDetailsData,
   type PolicyRecord,
-  getPolicyDetails
+  type SelectOption,
+  getPolicyDetails,
+  getPolicyFormOptions
 } from '@/services/policiesService';
 import {
   type ClientDetailsApiClient,
@@ -45,8 +48,10 @@ import { useUiStore } from '@/store/uiStore';
 import { usePermission } from '@/hooks/usePermission';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
 import EditClientDialog from '@/components/dialogs/EditClientDialog';
+import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -206,10 +211,26 @@ const PolicyDetailsPage: React.FC = () => {
   // Edit client dialog
   const [editClientDialogOpen, setEditClientDialogOpen] = useState(false);
 
+  // Edit policy dialog
+  const [editPolicyDialogOpen, setEditPolicyDialogOpen] = useState(false);
+
+  // Form options for resolving IDs to labels
+  const [formOptions, setFormOptions] = useState<{
+    clients: SelectOption[];
+    insurance_companies: SelectOption[];
+    policy_types: SelectOption[];
+  } | null>(null);
+
   // Mobile collapsible sections (for "Dane klienta" tab)
   const [registrationOpen, setRegistrationOpen] = useState(true);
   const [addressOpen, setAddressOpen] = useState(true);
   const [relationsOpen, setRelationsOpen] = useState(true);
+
+  // Mobile collapsible sections (for "Dane polisy" tab)
+  const [policyInfoOpen, setPolicyInfoOpen] = useState(true);
+  const [paymentsOpen, setPaymentsOpen] = useState(true);
+  const [extraInfoOpen, setExtraInfoOpen] = useState(true);
+  const [attachmentsOpen, setAttachmentsOpen] = useState(true);
 
   // ---------------------------------------------------------------------------
   // Map client API data to local structure
@@ -290,16 +311,40 @@ const PolicyDetailsPage: React.FC = () => {
           setInsurerName(statePolicy.insurance_company || '');
         }
 
-        // 2. Fetch client details using client_id from policy
+        // 2. Fetch client details + form options in parallel
+        const promises: Promise<void>[] = [];
+
         if (policy.client_id) {
-          try {
-            const clientResponse = await getClientDetails(policy.client_id);
-            setClientData(mapClientData(clientResponse.client, clientResponse.meta));
-            setClientName(clientResponse.client.name || statePolicy?.client || '');
-          } catch {
-            // Client fetch failed — we still show what we have
-          }
+          promises.push(
+            getClientDetails(policy.client_id)
+              .then((clientResponse) => {
+                setClientData(mapClientData(clientResponse.client, clientResponse.meta));
+                setClientName(clientResponse.client.name || statePolicy?.client || '');
+              })
+              .catch(() => {
+                // Client fetch failed — we still show what we have
+              })
+          );
         }
+
+        promises.push(
+          getPolicyFormOptions()
+            .then((opts) => {
+              setFormOptions(opts);
+              // Resolve insurer name from options if not from state
+              if (!statePolicy?.insurance_company && policy.insurance_company_id) {
+                const found = opts.insurance_companies?.find(
+                  (o) => o.value === policy.insurance_company_id
+                );
+                if (found) setInsurerName(found.label);
+              }
+            })
+            .catch(() => {
+              // Form options fetch failed — non-critical
+            })
+        );
+
+        await Promise.all(promises);
       } catch (error) {
         const apiError = error as ApiError;
 
@@ -411,6 +456,41 @@ const PolicyDetailsPage: React.FC = () => {
     }
   }, [addToast, policyData?.client_id, mapClientData, clientName]);
 
+  const handlePolicyUpdated = useCallback(() => {
+    addToast({
+      id: crypto.randomUUID(),
+      message: 'Dane polisy zostały zaktualizowane',
+      severity: 'success'
+    });
+    // Re-fetch policy data
+    if (policyId) {
+      getPolicyDetails(policyId)
+        .then((res) => {
+          setPolicyData(res.policy);
+          setPolicyNumber(res.policy.number || policyNumber);
+        })
+        .catch((err: unknown) => {
+          void err;
+        });
+    }
+  }, [addToast, policyId, policyNumber]);
+
+  // Resolved names from form options
+  const insurerLabel = useMemo(() => {
+    if (!policyData || !formOptions) return insurerName;
+    return (
+      formOptions.insurance_companies?.find((o) => o.value === policyData.insurance_company_id)
+        ?.label || insurerName
+    );
+  }, [policyData, formOptions, insurerName]);
+
+  const policyTypeLabel = useMemo(() => {
+    if (!policyData || !formOptions) return '';
+    return (
+      formOptions.policy_types?.find((o) => o.value === policyData.policy_type_id)?.label || ''
+    );
+  }, [policyData, formOptions]);
+
   // Status color helper
   const statusColor = useMemo(() => {
     const s = clientData?.status?.toLowerCase() || '';
@@ -418,6 +498,11 @@ const PolicyDetailsPage: React.FC = () => {
     if (s === 'podstawowy') return 'warning';
     return 'default';
   }, [clientData?.status]);
+
+  const policyStatusColor = useMemo(() => {
+    // Placeholder — extend when backend provides policy status
+    return 'success' as const;
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Permission gate
@@ -883,6 +968,490 @@ const PolicyDetailsPage: React.FC = () => {
   };
 
   // ---------------------------------------------------------------------------
+  // Helper: format ISO date to DD.MM.YYYY
+  // ---------------------------------------------------------------------------
+  const formatDate = (iso: string | null | undefined): string => {
+    if (!iso) return '-';
+    const d = iso.slice(0, 10); // YYYY-MM-DD
+    const [y, m, day] = d.split('-');
+    return `${day}.${m}.${y}`;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Helper: format PLN string for display
+  // ---------------------------------------------------------------------------
+  const formatPln = (val: string | null | undefined): string => {
+    if (!val) return '-';
+    // Already formatted from backend (e.g. "2000,00 zł")
+    if (/zł|PLN/i.test(val)) return val.replace(/zł/i, 'PLN').trim();
+    // Raw number
+    const num = parseFloat(val.replace(/\s/g, '').replace(',', '.'));
+    if (isNaN(num)) return val;
+    return (
+      num.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' PLN'
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Dane polisy tab content — DESKTOP
+  // ---------------------------------------------------------------------------
+
+  const PolicyDataDesktop = () => {
+    if (!policyData) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Typography color="text.secondary">Brak danych polisy</Typography>
+        </Box>
+      );
+    }
+
+    const clauseLabels: string[] = [];
+    if (policyData.first_update_clause_of_su)
+      clauseLabels.push('Klauzulę pierwszej aktualizacji SU');
+    if (policyData.automatic_coverage_clause) clauseLabels.push('Dodaj składkę');
+    if (policyData.current_assets_settlement_clause)
+      clauseLabels.push('Klauzulę rozliczenia aktualnych aktywów');
+
+    // Resolve payment schedule deadline & final premium
+    const payments = policyData.payments || [];
+    const lastPaymentDate =
+      payments.length > 0 ? formatDate(payments[payments.length - 1].payment_date) : '-';
+    const lastPaymentAmount =
+      payments.length > 0 ? formatPln(payments[payments.length - 1].payment_total) : '-';
+
+    return (
+      <>
+        {/* Header: title + status + edit */}
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ px: 3, pt: 2 }}
+        >
+          <Typography sx={{ fontSize: '20px', fontWeight: 500, color: '#32343A' }}>
+            Dane polisy
+          </Typography>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Typography variant="body2" sx={{ color: '#74767F' }}>
+                Status polisy:
+              </Typography>
+              <Chip
+                label="Aktywna"
+                size="small"
+                color={policyStatusColor}
+                variant="outlined"
+                sx={{ fontWeight: 500 }}
+              />
+            </Stack>
+            <Button
+              variant="outlined"
+              startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
+              onClick={() => setEditPolicyDialogOpen(true)}
+              sx={{
+                borderColor: '#494B54',
+                color: '#494B54',
+                borderRadius: '8px',
+                px: 2,
+                py: 1,
+                fontSize: '14px',
+                fontWeight: 500,
+                textTransform: 'none',
+                '&:hover': { borderColor: '#32343A', bgcolor: 'rgba(0, 0, 0, 0.04)' }
+              }}
+            >
+              Edytuj
+            </Button>
+          </Stack>
+        </Stack>
+
+        {/* Section: Polisa */}
+        <Card
+          sx={{
+            borderRadius: 1,
+            boxShadow: 'none',
+            border: '1px solid',
+            borderColor: 'rgba(143, 109, 95, 0.12)',
+            mx: 3
+          }}
+        >
+          <CardContent sx={{ p: 2 }}>
+            <Typography
+              sx={{
+                fontWeight: 600,
+                color: '#32343A',
+                fontSize: '15px',
+                borderBottom: '1px solid',
+                borderColor: 'rgba(143, 109, 95, 0.12)',
+                pb: 0.75,
+                px: 1.5,
+                mb: 2
+              }}
+            >
+              Polisa:
+            </Typography>
+            <Stack direction="row">
+              <FieldItem label="Ubezpieczyciel" value={insurerLabel} />
+              <FieldItem label="Typ polisy" value={policyTypeLabel} />
+              <FieldItem label="Numer polisy" value={policyData.number} />
+              <FieldItem
+                label="Okres obowiązywania"
+                value={`${formatDate(policyData.date_from)}- ${formatDate(policyData.date_to)}`}
+              />
+              <FieldItem label="Opis" value={policyData.description || '-'} />
+            </Stack>
+          </CardContent>
+        </Card>
+
+        {/* Section: Składki */}
+        <Card
+          sx={{
+            borderRadius: 1,
+            boxShadow: 'none',
+            border: '1px solid',
+            borderColor: 'rgba(143, 109, 95, 0.12)',
+            mx: 3
+          }}
+        >
+          <CardContent sx={{ p: 2 }}>
+            <Typography
+              sx={{
+                fontWeight: 600,
+                color: '#32343A',
+                fontSize: '15px',
+                borderBottom: '1px solid',
+                borderColor: 'rgba(143, 109, 95, 0.12)',
+                pb: 0.75,
+                px: 1.5,
+                mb: 2
+              }}
+            >
+              Składki:
+            </Typography>
+            <Stack direction="row" sx={{ mb: 2 }}>
+              <FieldItem label="Składka łączna" value={formatPln(policyData.payment_total)} />
+              <FieldItem label="Ilość rat" value={String(policyData.payments_count || '-')} />
+              <FieldItem
+                label="Procent prowizji"
+                value={
+                  policyData.margin_percent ? `${parseFloat(policyData.margin_percent)}%` : '-'
+                }
+              />
+            </Stack>
+
+            {/* Individual payment rows */}
+            {payments.map((pm, idx) => (
+              <Stack key={pm.id} direction="row" alignItems="flex-start" sx={{ mb: 1.5 }}>
+                <Typography
+                  sx={{
+                    fontSize: '14px',
+                    color: '#32343A',
+                    fontWeight: 500,
+                    width: 24,
+                    pt: 1.5
+                  }}
+                >
+                  {idx + 1}.
+                </Typography>
+                <FieldItem
+                  label={`Termin ${idx === 0 ? 'pierwszej' : idx === 1 ? 'drugiej' : `${idx + 1}.`} składki`}
+                  value={formatDate(pm.payment_date)}
+                />
+                <FieldItem
+                  label={`Wartość ${idx === 0 ? 'pierwszej' : idx === 1 ? 'drugiej' : `${idx + 1}.`} składki`}
+                  value={formatPln(pm.payment_total)}
+                />
+              </Stack>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Section: Dodatkowe informacje */}
+        <Card
+          sx={{
+            borderRadius: 1,
+            boxShadow: 'none',
+            border: '1px solid',
+            borderColor: 'rgba(143, 109, 95, 0.12)',
+            mx: 3
+          }}
+        >
+          <CardContent sx={{ p: 2 }}>
+            <Typography
+              sx={{
+                fontWeight: 600,
+                color: '#32343A',
+                fontSize: '15px',
+                borderBottom: '1px solid',
+                borderColor: 'rgba(143, 109, 95, 0.12)',
+                pb: 0.75,
+                px: 1.5,
+                mb: 2
+              }}
+            >
+              Dodatkowe informacje:
+            </Typography>
+            <Stack direction="row">
+              <FieldItem
+                label="Polisa zawiera"
+                value={clauseLabels.length > 0 ? clauseLabels.join(', ') : '-'}
+              />
+              <FieldItem
+                label="Edycja zapisów umowy"
+                value={policyData.automatic_coverage_clause ? 'Dodaj składkę' : '-'}
+              />
+              <FieldItem label="Wartość składki" value={formatPln(policyData.payment_total)} />
+              <FieldItem label="Termin spłaty składek" value={lastPaymentDate} />
+              <FieldItem label="Składka końcowa" value={lastPaymentAmount} />
+            </Stack>
+          </CardContent>
+        </Card>
+
+        {/* Section: Załączniki */}
+        <Card
+          sx={{
+            borderRadius: 1,
+            boxShadow: 'none',
+            border: '1px solid',
+            borderColor: 'rgba(143, 109, 95, 0.12)',
+            mx: 3,
+            mb: 2
+          }}
+        >
+          <CardContent sx={{ p: 2 }}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              sx={{ mb: 2 }}
+            >
+              <Typography sx={{ fontWeight: 600, color: '#32343A', fontSize: '15px' }}>
+                Załączniki
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AttachFileIcon sx={{ fontSize: 16 }} />}
+                sx={{
+                  borderColor: '#D0D5DD',
+                  color: '#494B54',
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontSize: '13px'
+                }}
+              >
+                Dodaj
+              </Button>
+            </Stack>
+            {policyData.attachment ? (
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <AttachFileIcon sx={{ fontSize: 18, color: '#74767F' }} />
+                <Typography
+                  component="a"
+                  href={policyData.attachment}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    fontSize: '14px',
+                    color: '#32343A',
+                    textDecoration: 'none',
+                    '&:hover': { textDecoration: 'underline' }
+                  }}
+                >
+                  Załącznik 1
+                </Typography>
+              </Stack>
+            ) : (
+              <Typography variant="body2" sx={{ color: '#74767F' }}>
+                Brak załączników
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      </>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Dane polisy tab content — MOBILE
+  // ---------------------------------------------------------------------------
+
+  const PolicyDataMobile = () => {
+    if (!policyData) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+          <Typography color="text.secondary">Brak danych polisy</Typography>
+        </Box>
+      );
+    }
+
+    const payments = policyData.payments || [];
+
+    return (
+      <>
+        <Box sx={{ px: 1 }}>
+          {/* Header */}
+          <Box
+            sx={{
+              bgcolor: 'rgba(143, 109, 95, 0.08)',
+              borderRadius: '8px',
+              p: 1.5,
+              mb: 1
+            }}
+          >
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography sx={{ fontWeight: 500, color: '#32343A', fontSize: '15px' }}>
+                Dane polisy
+              </Typography>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Chip
+                  label="Aktywna"
+                  size="small"
+                  color={policyStatusColor}
+                  variant="outlined"
+                  sx={{ fontWeight: 500, fontSize: '12px' }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => setEditPolicyDialogOpen(true)}
+                  sx={{
+                    borderColor: '#494B54',
+                    color: '#494B54',
+                    borderRadius: '8px',
+                    textTransform: 'none',
+                    fontSize: '12px',
+                    py: 0.5
+                  }}
+                >
+                  Edytuj
+                </Button>
+              </Stack>
+            </Stack>
+          </Box>
+
+          {/* Polisa section */}
+          <Card
+            sx={{
+              borderRadius: 1,
+              boxShadow: 'none',
+              border: '1px solid',
+              borderColor: 'rgba(143, 109, 95, 0.12)',
+              mb: 1
+            }}
+          >
+            <CardContent sx={{ p: 1 }}>
+              <MobileSectionHeader
+                title="Polisa"
+                open={policyInfoOpen}
+                onToggle={() => setPolicyInfoOpen((v) => !v)}
+              />
+              <Collapse in={policyInfoOpen}>
+                <Stack sx={{ pb: 1 }}>
+                  <MobileFieldRow label="Ubezpieczyciel" value={insurerLabel} />
+                  <MobileFieldRow label="Typ polisy" value={policyTypeLabel} />
+                  <MobileFieldRow label="Numer polisy" value={policyData.number} />
+                  <MobileFieldRow
+                    label="Okres"
+                    value={`${formatDate(policyData.date_from)} - ${formatDate(policyData.date_to)}`}
+                  />
+                  <MobileFieldRow label="Opis" value={policyData.description || '-'} />
+                </Stack>
+              </Collapse>
+
+              <Divider sx={{ my: 0.5 }} />
+
+              <MobileSectionHeader
+                title="Składki"
+                open={paymentsOpen}
+                onToggle={() => setPaymentsOpen((v) => !v)}
+              />
+              <Collapse in={paymentsOpen}>
+                <Stack sx={{ pb: 1 }}>
+                  <MobileFieldRow
+                    label="Składka łączna"
+                    value={formatPln(policyData.payment_total)}
+                  />
+                  <MobileFieldRow
+                    label="Ilość rat"
+                    value={String(policyData.payments_count || '-')}
+                  />
+                  <MobileFieldRow
+                    label="Prowizja"
+                    value={
+                      policyData.margin_percent ? `${parseFloat(policyData.margin_percent)}%` : '-'
+                    }
+                  />
+                  {payments.map((pm, idx) => (
+                    <React.Fragment key={pm.id}>
+                      <MobileFieldRow
+                        label={`Termin składki ${idx + 1}`}
+                        value={formatDate(pm.payment_date)}
+                      />
+                      <MobileFieldRow
+                        label={`Wartość składki ${idx + 1}`}
+                        value={formatPln(pm.payment_total)}
+                      />
+                    </React.Fragment>
+                  ))}
+                </Stack>
+              </Collapse>
+
+              <Divider sx={{ my: 0.5 }} />
+
+              <MobileSectionHeader
+                title="Dodatkowe informacje"
+                open={extraInfoOpen}
+                onToggle={() => setExtraInfoOpen((v) => !v)}
+              />
+              <Collapse in={extraInfoOpen}>
+                <Stack sx={{ pb: 1 }}>
+                  <MobileFieldRow
+                    label="Polisa zawiera"
+                    value={
+                      [
+                        policyData.first_update_clause_of_su &&
+                          'Klauzulę pierwszej aktualizacji SU',
+                        policyData.automatic_coverage_clause && 'Dodaj składkę',
+                        policyData.current_assets_settlement_clause &&
+                          'Klauzulę rozliczenia aktualnych aktywów'
+                      ]
+                        .filter(Boolean)
+                        .join(', ') || '-'
+                    }
+                  />
+                  <MobileFieldRow
+                    label="Wartość składki"
+                    value={formatPln(policyData.payment_total)}
+                  />
+                </Stack>
+              </Collapse>
+
+              <Divider sx={{ my: 0.5 }} />
+
+              <MobileSectionHeader
+                title="Załączniki"
+                open={attachmentsOpen}
+                onToggle={() => setAttachmentsOpen((v) => !v)}
+              />
+              <Collapse in={attachmentsOpen}>
+                <Stack sx={{ pb: 1 }}>
+                  {policyData.attachment ? (
+                    <MobileFieldRow label="Załącznik 1" value="Pokaż" />
+                  ) : (
+                    <MobileFieldRow label="Brak załączników" value="" />
+                  )}
+                </Stack>
+              </Collapse>
+            </CardContent>
+          </Card>
+        </Box>
+      </>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
   // MOBILE VIEW
   // ---------------------------------------------------------------------------
 
@@ -972,7 +1541,13 @@ const PolicyDetailsPage: React.FC = () => {
         </Box>
 
         {/* Tab content */}
-        {activeTab === 0 ? <ClientDataMobile /> : <UnavailableTabContent />}
+        {activeTab === 0 ? (
+          <ClientDataMobile />
+        ) : activeTab === 2 ? (
+          <PolicyDataMobile />
+        ) : (
+          <UnavailableTabContent />
+        )}
 
         {/* Mobile action buttons */}
         {activeTab === 0 && (
@@ -1007,6 +1582,12 @@ const PolicyDetailsPage: React.FC = () => {
           onClose={() => setEditClientDialogOpen(false)}
           client={clientRecord}
           onSuccess={handleClientUpdated}
+        />
+        <EditPolicyDialog
+          open={editPolicyDialogOpen}
+          onClose={() => setEditPolicyDialogOpen(false)}
+          policy={policyRecord}
+          onSuccess={handlePolicyUpdated}
         />
       </Stack>
     );
@@ -1142,6 +1723,10 @@ const PolicyDetailsPage: React.FC = () => {
           <Stack spacing={3}>
             <ClientDataDesktop />
           </Stack>
+        ) : activeTab === 2 ? (
+          <Stack spacing={3}>
+            <PolicyDataDesktop />
+          </Stack>
         ) : (
           <UnavailableTabContent />
         )}
@@ -1159,6 +1744,12 @@ const PolicyDetailsPage: React.FC = () => {
         onClose={() => setEditClientDialogOpen(false)}
         client={clientRecord}
         onSuccess={handleClientUpdated}
+      />
+      <EditPolicyDialog
+        open={editPolicyDialogOpen}
+        onClose={() => setEditPolicyDialogOpen(false)}
+        policy={policyRecord}
+        onSuccess={handlePolicyUpdated}
       />
     </Stack>
   );
