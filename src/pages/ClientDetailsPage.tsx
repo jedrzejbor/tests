@@ -493,7 +493,7 @@ const ClientDetailsPage: React.FC = () => {
         return;
       }
       try {
-        await downloadAttachment(attachments[0].id);
+        await downloadAttachment(attachments[0].id, attachments[0].name || 'attachment');
       } catch (error) {
         const apiError = error as ApiError;
         addToast({

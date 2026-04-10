@@ -275,7 +275,10 @@ export const restoreDocument = async (documentId: string | number): Promise<void
 /**
  * Download attachment — returns blob URL for browser download
  */
-export const downloadAttachment = async (attachmentId: number): Promise<void> => {
+export const downloadAttachment = async (
+  attachmentId: number,
+  fallbackFilename = 'attachment'
+): Promise<void> => {
   const token = useAuthStore.getState().token;
   const headers: HeadersInit = { Accept: '*/*' };
   if (token) {
@@ -293,9 +296,19 @@ export const downloadAttachment = async (attachmentId: number): Promise<void> =>
   }
 
   // Extract filename from Content-Disposition header
+  // Supports: filename="foo.pdf", filename=foo.pdf, filename*=UTF-8''foo%20bar.pdf
   const disposition = response.headers.get('Content-Disposition') || '';
-  const match = disposition.match(/filename="?(.+?)"?$/);
-  const filename = match?.[1] || 'attachment';
+  let filename = fallbackFilename;
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+  if (utf8Match) {
+    filename = decodeURIComponent(utf8Match[1]);
+  } else {
+    const plainMatch = disposition.match(/filename="?([^"\s;]+)"?/i);
+    if (plainMatch) {
+      filename = plainMatch[1];
+    }
+  }
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
