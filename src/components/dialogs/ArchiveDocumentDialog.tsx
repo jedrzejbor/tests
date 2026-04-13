@@ -121,7 +121,7 @@ const ArchiveDocumentDialog: React.FC<ArchiveDocumentDialogProps> = ({
             alignItems="center"
             sx={{ py: 1.5, px: 1.5, minHeight: '40px' }}
           >
-            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Nazwa dokumentu</Typography>
+            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Rodzaj dokumentu</Typography>
             <Typography sx={{ fontSize: '14px', fontWeight: 500, color: '#32343A' }}>
               {doc?.name || '-'}
             </Typography>
@@ -136,7 +136,13 @@ const ArchiveDocumentDialog: React.FC<ArchiveDocumentDialogProps> = ({
           >
             <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Data</Typography>
             <Typography sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.87)' }}>
-              {doc?.date || '-'}
+              {doc?.date
+                ? (() => {
+                    const d = String(doc.date).slice(0, 10);
+                    const [y, m, day] = d.split('-');
+                    return `${day}.${m}.${y}`;
+                  })()
+                : '-'}
             </Typography>
           </Stack>
           <Divider sx={{ borderColor: 'rgba(143,109,95,0.08)' }} />
@@ -147,9 +153,44 @@ const ArchiveDocumentDialog: React.FC<ArchiveDocumentDialogProps> = ({
             alignItems="center"
             sx={{ py: 1.5, px: 1.5, minHeight: '40px' }}
           >
-            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Klient</Typography>
-            <Typography sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.87)' }}>
-              {doc?.client_name || '-'}
+            <Typography sx={{ fontSize: '14px', color: '#74767F', flexShrink: 0, mr: 2 }}>Opis</Typography>
+            <Typography
+              sx={{
+                fontSize: '14px',
+                color: 'rgba(0,0,0,0.87)',
+                textAlign: 'right',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '280px'
+              }}
+            >
+              {doc?.description || '-'}
+            </Typography>
+          </Stack>
+          <Divider sx={{ borderColor: 'rgba(143,109,95,0.08)' }} />
+
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            sx={{ py: 1.5, px: 1.5, minHeight: '40px' }}
+          >
+            <Typography sx={{ fontSize: '14px', color: '#74767F', flexShrink: 0, mr: 2 }}>Załącznik</Typography>
+            <Typography
+              sx={{
+                fontSize: '14px',
+                color: 'rgba(0,0,0,0.87)',
+                textAlign: 'right',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '280px'
+              }}
+            >
+              {Array.isArray(doc?.attachments) && doc.attachments.length > 0
+                ? doc.attachments.map((a) => a.name).join(', ')
+                : '-'}
             </Typography>
           </Stack>
         </Stack>
