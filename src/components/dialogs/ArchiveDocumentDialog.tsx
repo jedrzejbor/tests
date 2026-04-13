@@ -153,7 +153,9 @@ const ArchiveDocumentDialog: React.FC<ArchiveDocumentDialogProps> = ({
             alignItems="center"
             sx={{ py: 1.5, px: 1.5, minHeight: '40px' }}
           >
-            <Typography sx={{ fontSize: '14px', color: '#74767F', flexShrink: 0, mr: 2 }}>Opis</Typography>
+            <Typography sx={{ fontSize: '14px', color: '#74767F', flexShrink: 0, mr: 2 }}>
+              Opis
+            </Typography>
             <Typography
               sx={{
                 fontSize: '14px',
@@ -176,7 +178,9 @@ const ArchiveDocumentDialog: React.FC<ArchiveDocumentDialogProps> = ({
             alignItems="center"
             sx={{ py: 1.5, px: 1.5, minHeight: '40px' }}
           >
-            <Typography sx={{ fontSize: '14px', color: '#74767F', flexShrink: 0, mr: 2 }}>Załącznik</Typography>
+            <Typography sx={{ fontSize: '14px', color: '#74767F', flexShrink: 0, mr: 2 }}>
+              Załącznik
+            </Typography>
             <Typography
               sx={{
                 fontSize: '14px',
