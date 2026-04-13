@@ -183,7 +183,7 @@ export const archivePayment = async (
   paymentId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.post(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/archive`, { password });
+  await apiClient.delete(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/archive`, { password });
 };
 
 /**
@@ -193,7 +193,7 @@ export const forceDeletePayment = async (
   paymentId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.post(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/force`, { password });
+  await apiClient.delete(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/force`, { password });
 };
 
 /**
