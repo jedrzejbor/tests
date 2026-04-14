@@ -33,6 +33,7 @@ import ArchiveDocumentDialog from '@/components/dialogs/ArchiveDocumentDialog';
 import ForceDeleteDocumentDialog from '@/components/dialogs/ForceDeleteDocumentDialog';
 import AddPaymentDialog from '@/components/dialogs/AddPaymentDialog';
 import EditPaymentDialog from '@/components/dialogs/EditPaymentDialog';
+import ViewPaymentDialog from '@/components/dialogs/ViewPaymentDialog';
 import ArchivePaymentDialog from '@/components/dialogs/ArchivePaymentDialog';
 import ForceDeletePaymentDialog from '@/components/dialogs/ForceDeletePaymentDialog';
 import AddPolicyDialog from '@/components/dialogs/AddPolicyDialog';
@@ -233,6 +234,7 @@ const ClientDetailsPage: React.FC = () => {
 
   // Payment dialogs state
   const [addPaymentDialogOpen, setAddPaymentDialogOpen] = useState(false);
+  const [viewPaymentDialogOpen, setViewPaymentDialogOpen] = useState(false);
   const [editPaymentDialogOpen, setEditPaymentDialogOpen] = useState(false);
   const [archivePaymentDialogOpen, setArchivePaymentDialogOpen] = useState(false);
   const [forceDeletePaymentDialogOpen, setForceDeletePaymentDialogOpen] = useState(false);
@@ -546,7 +548,7 @@ const ClientDetailsPage: React.FC = () => {
 
   const handleViewPayment = useCallback((row: PaymentRecord) => {
     setSelectedPayment(row);
-    setEditPaymentDialogOpen(true);
+    setViewPaymentDialogOpen(true);
   }, []);
 
   const handleEditPayment = useCallback((row: PaymentRecord) => {
@@ -1191,6 +1193,14 @@ const ClientDetailsPage: React.FC = () => {
             onSuccess={handlePaymentSuccess}
           />
         )}
+        <ViewPaymentDialog
+          open={viewPaymentDialogOpen}
+          onClose={() => {
+            setViewPaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+        />
         <EditPaymentDialog
           open={editPaymentDialogOpen}
           onClose={() => {
@@ -1702,6 +1712,14 @@ const ClientDetailsPage: React.FC = () => {
           onSuccess={handlePaymentSuccess}
         />
       )}
+      <ViewPaymentDialog
+        open={viewPaymentDialogOpen}
+        onClose={() => {
+          setViewPaymentDialogOpen(false);
+          setSelectedPayment(null);
+        }}
+        payment={selectedPayment}
+      />
       <EditPaymentDialog
         open={editPaymentDialogOpen}
         onClose={() => {
