@@ -903,6 +903,7 @@ const ClientDetailsPage: React.FC = () => {
             return (
               <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
                 <GenericListView<DocumentRecord>
+                  key="client-documents"
                   title="Dokumenty"
                   fetcher={documentsFetcher}
                   handlers={documentHandlers}
@@ -920,6 +921,7 @@ const ClientDetailsPage: React.FC = () => {
             return (
               <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
                 <GenericListView<PolicyRecord>
+                  key="client-policies"
                   title="Polisy"
                   fetcher={policiesFetcher}
                   handlers={policyHandlers}
@@ -936,6 +938,7 @@ const ClientDetailsPage: React.FC = () => {
             return (
               <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
                 <GenericListView<PaymentRecord>
+                  key="client-payments"
                   title="Płatności składek"
                   fetcher={paymentsFetcher}
                   handlers={paymentHandlers}
@@ -1351,6 +1354,7 @@ const ClientDetailsPage: React.FC = () => {
           return (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <GenericListView<DocumentRecord>
+                key="client-documents-desktop"
                 title="Dokumenty"
                 fetcher={documentsFetcher}
                 handlers={documentHandlers}
@@ -1368,6 +1372,7 @@ const ClientDetailsPage: React.FC = () => {
           return (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <GenericListView<PolicyRecord>
+                key="client-policies-desktop"
                 title="Polisy"
                 fetcher={policiesFetcher}
                 handlers={policyHandlers}
@@ -1384,6 +1389,7 @@ const ClientDetailsPage: React.FC = () => {
           return (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <GenericListView<PaymentRecord>
+                key="client-payments-desktop"
                 title="Płatności składek"
                 fetcher={paymentsFetcher}
                 handlers={paymentHandlers}
