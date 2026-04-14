@@ -246,6 +246,13 @@ const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
                 helperText={errors.insurance_company_id?.message}
                 fullWidth
                 size="medium"
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      sx: { bgcolor: 'white', boxShadow: '0px 4px 12px rgba(0,0,0,0.15)' }
+                    }
+                  }
+                }}
               >
                 <MenuItem value="">
                   <em>Wybierz ubezpieczyciela</em>
@@ -273,6 +280,13 @@ const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
                 helperText={errors.policy_id?.message}
                 fullWidth
                 size="medium"
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      sx: { bgcolor: 'white', boxShadow: '0px 4px 12px rgba(0,0,0,0.15)' }
+                    }
+                  }
+                }}
               >
                 <MenuItem value="">
                   <em>Wybierz polisę</em>
@@ -336,6 +350,13 @@ const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
                 helperText={errors.status?.message}
                 fullWidth
                 size="medium"
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      sx: { bgcolor: 'white', boxShadow: '0px 4px 12px rgba(0,0,0,0.15)' }
+                    }
+                  }
+                }}
               >
                 <MenuItem value="">
                   <em>Wybierz status</em>
