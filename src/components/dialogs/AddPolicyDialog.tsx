@@ -107,6 +107,16 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
 
   const watchedPaymentsCount = watch('payments_count');
   const watchedPolicyTypeId = watch('policy_type_id');
+  const watchedPaymentDetails = watch('payment_details');
+  const watchedPaymentTotal = watch('payment_total');
+
+  // Calculate remaining amount (payment_total - sum of all amounts)
+  const paymentTotalNum = Number(watchedPaymentTotal) || 0;
+  const paymentDetailsSum = (watchedPaymentDetails || []).reduce(
+    (acc, d) => acc + (Number(d?.amount) || 0),
+    0
+  );
+  const remainingAmount = Math.round((paymentTotalNum - paymentDetailsSum) * 100) / 100;
 
   // Determine if selected policy type is a car type (name contains "Pojazd" or "komunikacyj")
   const selectedTypeLabel =
@@ -504,7 +514,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
-            label="Numer polis"
+            label="Numer polisy"
             {...register('number')}
             error={Boolean(errors.number)}
             helperText={errors.number?.message}
@@ -614,7 +624,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
             fullWidth
             size="medium"
             type="number"
-            inputProps={{ step: '0.01', min: '0' }}
+            inputProps={{ step: '0.01', min: '0', max: '10000000' }}
           />
           <TextField
             label="Procent prowizji"
@@ -651,6 +661,18 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
         />
 
         {/* Payment details rows */}
+        {paymentTotalNum > 0 && fields.length > 0 && (
+          <Typography
+            sx={{
+              fontSize: '13px',
+              color: remainingAmount < 0 ? 'error.main' : 'text.secondary',
+              fontWeight: remainingAmount < 0 ? 600 : 400
+            }}
+          >
+            Pozostała kwota do rozpisania: {remainingAmount.toFixed(2)} PLN z{' '}
+            {paymentTotalNum.toFixed(2)} PLN
+          </Typography>
+        )}
         {fields.map((field, index) => (
           <Stack
             key={field.id}
@@ -688,6 +710,11 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
               fullWidth
               size="medium"
               InputLabelProps={{ shrink: true }}
+              inputProps={{
+                ...(index > 0 && watchedPaymentDetails?.[index - 1]?.payment_date
+                  ? { min: watchedPaymentDetails[index - 1].payment_date }
+                  : {})
+              }}
             />
           </Stack>
         ))}
@@ -883,6 +910,34 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
     </Box>
   );
 
+  // Navigate to first step with validation errors
+  const handleValidationErrors = (fieldErrors: Record<string, unknown>) => {
+    const step1Keys = [
+      'client_id',
+      'insurance_company_id',
+      'bank_name',
+      'bank_account_number',
+      'description'
+    ];
+    const step2Keys = [
+      'policy_type_id',
+      'car_plates',
+      'number',
+      'date_signed_at',
+      'date_from',
+      'date_to',
+      'city'
+    ];
+    const errorKeys = Object.keys(fieldErrors);
+    if (errorKeys.some((k) => step1Keys.includes(k))) {
+      setStep(1);
+    } else if (errorKeys.some((k) => step2Keys.includes(k))) {
+      setStep(2);
+    } else {
+      setStep(3);
+    }
+  };
+
   // ——— Header ———
   const renderHeader = () => (
     <Stack
@@ -900,7 +955,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
           lineHeight: 1.6
         }}
       >
-        Dodaj nowego polisę
+        Dodaj nową polisę
       </Typography>
       <IconButton onClick={handleClose} size="small" sx={{ color: 'rgba(0,0,0,0.54)' }}>
         <CloseIcon />
@@ -912,7 +967,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
   const content = (
     <Box
       component="form"
-      onSubmit={handleSubmit(handleFormSubmit)}
+      onSubmit={handleSubmit(handleFormSubmit, handleValidationErrors)}
       sx={{
         '& .MuiOutlinedInput-root': { borderRadius: '4px' },
         '& .MuiOutlinedInput-notchedOutline': { borderRadius: '4px' }

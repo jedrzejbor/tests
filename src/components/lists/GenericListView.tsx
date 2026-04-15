@@ -24,6 +24,8 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import Tooltip from '@mui/material/Tooltip';
 import { useGenericListController } from '@/hooks/useGenericListController';
 import { ListToolbar } from './ListToolbar';
 import { DesktopTableRenderer } from './DesktopTableRenderer';
@@ -51,7 +53,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   disabledColumns,
   disabledFilters,
   disabledGeneralActions,
-  stateKey
+  stateKey,
+  filterLabelOverrides,
+  filterTooltips
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -595,6 +599,62 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             {/* Render filter inputs — changes are buffered in draftFilters */}
             {meta?.filtersDefs.map((filterDef) => {
               const currentValue = draftFilters[filterDef.key] || (filterDef.is_multiple ? [] : '');
+              const label = filterLabelOverrides?.[filterDef.key] ?? filterDef.label;
+              const tooltip = filterTooltips?.[filterDef.key];
+
+              const labelWithTooltip = tooltip ? (
+                <Stack direction="row" alignItems="center" spacing={0.5} component="span">
+                  <span>{label}</span>
+                  <Tooltip title={tooltip} arrow placement="top">
+                    <InfoOutlinedIcon
+                      sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }}
+                    />
+                  </Tooltip>
+                </Stack>
+              ) : (
+                label
+              );
+
+              // Date range filter — two date inputs
+              const isDateRange =
+                filterDef.type === 'date_range' ||
+                (filterDef.type === 'range' && /date/i.test(filterDef.key));
+
+              if (isDateRange) {
+                const rangeStr = typeof currentValue === 'string' ? currentValue : '';
+                const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+                const updateRange = (from: string, to: string) => {
+                  const val = from || to ? `${from},${to}` : '';
+                  setDraftFilters((prev) => ({ ...prev, [filterDef.key]: val }));
+                };
+                return (
+                  <Box key={filterDef.key} sx={{ mb: 2 }}>
+                    <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                      {labelWithTooltip}
+                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                      <TextField
+                        label="Od"
+                        value={rangeFrom}
+                        onChange={(e) => updateRange(e.target.value, rangeTo)}
+                        type="date"
+                        fullWidth
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <TextField
+                        label="Do"
+                        value={rangeTo}
+                        onChange={(e) => updateRange(rangeFrom, e.target.value)}
+                        type="date"
+                        fullWidth
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Stack>
+                  </Box>
+                );
+              }
 
               if (filterDef.type === 'select') {
                 // Normalize options from any backend format
@@ -602,10 +662,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
 
                 return (
                   <FormControl key={filterDef.key} fullWidth size="small" sx={{ mb: 2 }}>
-                    <InputLabel>{filterDef.label}</InputLabel>
+                    <InputLabel>{label}</InputLabel>
                     <Select
                       value={currentValue}
-                      label={filterDef.label}
+                      label={label}
                       multiple={filterDef.is_multiple}
                       onChange={(e) =>
                         setDraftFilters((prev) => ({
@@ -644,7 +704,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 return (
                   <Box key={filterDef.key} sx={{ mb: 2 }}>
                     <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-                      {filterDef.label}
+                      {labelWithTooltip}
                     </Typography>
                     <Stack direction="row" spacing={1}>
                       <TextField
@@ -671,7 +731,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               return (
                 <TextField
                   key={filterDef.key}
-                  label={filterDef.label}
+                  label={label}
                   value={currentValue}
                   onChange={(e) =>
                     setDraftFilters((prev) => ({ ...prev, [filterDef.key]: e.target.value }))
@@ -793,6 +853,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 bulkActions={bulkActions}
                 selectedCount={selectedRows.length}
                 onBulkAction={handleBulkAction}
+                filterLabelOverrides={filterLabelOverrides}
+                filterTooltips={filterTooltips}
               />
             )}
 
