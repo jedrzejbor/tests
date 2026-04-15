@@ -35,7 +35,8 @@ import {
   type PolicyRecord,
   type SelectOption,
   getPolicyDetails,
-  getPolicyFormOptions
+  getPolicyFormOptions,
+  downloadPolicyAttachment
 } from '@/services/policiesService';
 import {
   type ClientDetailsApiClient,
@@ -474,6 +475,19 @@ const PolicyDetailsPage: React.FC = () => {
         });
     }
   }, [addToast, policyId, policyNumber]);
+
+  const handleDownloadAttachment = useCallback(async () => {
+    if (!policyData?.attachment) return;
+    try {
+      await downloadPolicyAttachment(policyData.attachment);
+    } catch {
+      addToast({
+        id: crypto.randomUUID(),
+        message: 'Nie udało się pobrać załącznika',
+        severity: 'error'
+      });
+    }
+  }, [addToast, policyData?.attachment]);
 
   // Resolved names from form options
   const insurerLabel = useMemo(() => {
@@ -1093,6 +1107,9 @@ const PolicyDetailsPage: React.FC = () => {
             <Stack direction="row">
               <FieldItem label="Ubezpieczyciel" value={insurerLabel} />
               <FieldItem label="Typ polisy" value={policyTypeLabel} />
+              {policyData.car_plates && (
+                <FieldItem label="Nr rejestracyjny" value={policyData.car_plates} />
+              )}
               <FieldItem label="Numer polisy" value={policyData.number} />
               <FieldItem
                 label="Okres obowiązywania"
@@ -1247,14 +1264,12 @@ const PolicyDetailsPage: React.FC = () => {
               <Stack direction="row" alignItems="center" spacing={1}>
                 <AttachFileIcon sx={{ fontSize: 18, color: '#74767F' }} />
                 <Typography
-                  component="a"
-                  href={policyData.attachment}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={handleDownloadAttachment}
                   sx={{
                     fontSize: '14px',
                     color: '#32343A',
                     textDecoration: 'none',
+                    cursor: 'pointer',
                     '&:hover': { textDecoration: 'underline' }
                   }}
                 >
@@ -1351,6 +1366,9 @@ const PolicyDetailsPage: React.FC = () => {
                 <Stack sx={{ pb: 1 }}>
                   <MobileFieldRow label="Ubezpieczyciel" value={insurerLabel} />
                   <MobileFieldRow label="Typ polisy" value={policyTypeLabel} />
+                  {policyData.car_plates && (
+                    <MobileFieldRow label="Nr rejestracyjny" value={policyData.car_plates} />
+                  )}
                   <MobileFieldRow label="Numer polisy" value={policyData.number} />
                   <MobileFieldRow
                     label="Okres"
@@ -1438,7 +1456,28 @@ const PolicyDetailsPage: React.FC = () => {
               <Collapse in={attachmentsOpen}>
                 <Stack sx={{ pb: 1 }}>
                   {policyData.attachment ? (
-                    <MobileFieldRow label="Załącznik 1" value="Pokaż" />
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ py: 1, px: 0.5 }}
+                    >
+                      <Typography sx={{ fontSize: '13px', color: '#74767F' }}>
+                        Załącznik 1
+                      </Typography>
+                      <Typography
+                        onClick={handleDownloadAttachment}
+                        sx={{
+                          fontSize: '13px',
+                          color: '#32343A',
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          '&:hover': { textDecoration: 'underline' }
+                        }}
+                      >
+                        Pobierz
+                      </Typography>
+                    </Stack>
                   ) : (
                     <MobileFieldRow label="Brak załączników" value="" />
                   )}
