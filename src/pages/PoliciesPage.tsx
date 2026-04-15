@@ -152,7 +152,9 @@ const PoliciesPage: React.FC = () => {
   const hasBackendAction = (row: PolicyRecord, handler: string) =>
     row.actions?.some((a) => a.handler === handler) ?? false;
 
-  const isArchived = (row: PolicyRecord) => Boolean(row.deleted_at);
+  // A policy is archived when the backend includes "restore-policy" in its actions
+  // (backend does not send deleted_at in the table response)
+  const isArchived = (row: PolicyRecord) => hasBackendAction(row, 'restore-policy');
 
   // Extra row actions — shown based on frontend permissions,
   // but only when the backend didn't already include the same action.
@@ -221,6 +223,20 @@ const PoliciesPage: React.FC = () => {
         stateKey="/app/policies"
         disabledGeneralActions={!canCreatePolicy ? ['create-policy'] : undefined}
         extraRowActions={extraRowActions}
+        filterLabelOverrides={{
+          date_from: 'Początek okresu ubezpieczenia',
+          date_to: 'Koniec okresu ubezpieczenia'
+        }}
+        filterTooltips={{
+          date_from:
+            'Filtruje polisy, których początek obowiązywania mieści się w wybranym zakresie dat',
+          date_to:
+            'Filtruje polisy, których koniec obowiązywania mieści się w wybranym zakresie dat',
+          payment_date:
+            'Filtruje polisy posiadające przynajmniej jedną ratę z terminem płatności w wybranym zakresie dat',
+          payment_total:
+            'Filtruje polisy po wysokości składki — wpisz kwoty w groszach (np. 100000 = 1 000,00 zł)'
+        }}
       />
 
       <ArchivePolicyDialog
