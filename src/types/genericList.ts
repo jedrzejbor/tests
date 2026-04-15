@@ -240,6 +240,10 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
    * Use the route path, e.g. '/app/clients'.
    */
   stateKey?: string;
+  /** Override filter labels by key, e.g. { date_from: 'Początek okresu' } */
+  filterLabelOverrides?: Record<string, string>;
+  /** Tooltips shown next to filter labels by key */
+  filterTooltips?: Record<string, string>;
 }
 
 // ================== CONTROLLER STATE ==================
