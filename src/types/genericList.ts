@@ -244,6 +244,12 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
   filterLabelOverrides?: Record<string, string>;
   /** Tooltips shown next to filter labels by key */
   filterTooltips?: Record<string, string>;
+  /**
+   * Transform a filter's display value before it is sent to the backend.
+   * E.g. convert PLN string "100.59,500" to grosze string "10059,50000".
+   * Key: filter key, value: transform function.
+   */
+  filterTransformers?: Record<string, (displayValue: string) => string>;
 }
 
 // ================== CONTROLLER STATE ==================

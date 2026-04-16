@@ -99,9 +99,11 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
   // Search
   const [search, setSearch] = useState(saved?.search ?? '');
 
-  // Sort
-  const [sortProperty, setSortProperty] = useState(saved?.sortProperty ?? 'created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(saved?.sortOrder ?? 'desc');
+  // Sort — start with empty property so the initial fetch goes out without
+  // sort params, letting the backend use its default. After the first response
+  // the sort state is synced to sortable[0] from meta (see fetchData below).
+  const [sortProperty, setSortProperty] = useState(saved?.sortProperty ?? '');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(saved?.sortOrder ?? 'asc');
 
   // Filters
   const [filters, setFilters] = useState<FiltersState>(saved?.filters ?? {});
@@ -207,18 +209,14 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
       setMeta(normalizedMeta);
 
       // Set initial sort from meta if available.
-      // Because fetchData has a stable identity, updating sortProperty /
-      // sortOrder will NOT recreate it or trigger an extra fetch cycle.
-      // We also update prevTrigger so the trigger effect doesn't see a
-      // "changed" trigger and fire a redundant second fetch — the data we
-      // just received is already sorted by the backend's default.
+      // The backend already sorts by its default (sortable[0]) on the first
+      // request, so we just sync the UI state and pre-set prevTriggerRef to
+      // avoid a redundant second fetch.
       if (!hasAppliedInitialSort.current && normalizedMeta.sortable.length > 0) {
         const defaultSort = normalizedMeta.sortable[0];
         setSortProperty(defaultSort.property);
         setSortOrder(defaultSort.order);
         hasAppliedInitialSort.current = true;
-        // Pre-compute the trigger string that will result from this state
-        // update so prevTrigger already matches it — preventing re-fetch.
         const nextTrigger = JSON.stringify({
           page: paramsRef.current.page,
           perPage: paramsRef.current.perPage,
@@ -309,11 +307,20 @@ export function useGenericListController<T extends GenericRecord = GenericRecord
     setPage(1); // Reset to first page
   }, []);
 
-  const handleSetSort = useCallback((property: string, order: 'asc' | 'desc') => {
-    setSortProperty(property);
-    setSortOrder(order);
-    setPage(1); // Reset to first page
-  }, []);
+  const handleSetSort = useCallback(
+    (property: string, order: 'asc' | 'desc') => {
+      const sameSort = property === sortProperty && order === sortOrder;
+      setSortProperty(property);
+      setSortOrder(order);
+      setPage(1); // Reset to first page
+      // If the sort params didn't change, state won't update and the trigger
+      // effect won't fire — call fetchData directly to force a re-fetch.
+      if (sameSort) {
+        fetchData();
+      }
+    },
+    [sortProperty, sortOrder, fetchData]
+  );
 
   const handleSetFilter = useCallback((key: string, value: string | string[]) => {
     setFilters((prev) => ({

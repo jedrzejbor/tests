@@ -297,13 +297,24 @@ export const addDocumentSchema = z.object({
 
 export type AddDocumentFormValues = z.input<typeof addDocumentSchema>;
 
-export const editDocumentSchema = z.object({
-  name: z.string().min(1, 'Nazwa dokumentu jest wymagana'),
-  description: z.string().optional(),
-  date: z.string().min(1, 'Data dokumentu jest wymagana'),
-  keepExistingFile: z.boolean().optional(),
-  newFile: optionalFileValidator
-});
+export const editDocumentSchema = z
+  .object({
+    name: z.string().min(1, 'Nazwa dokumentu jest wymagana'),
+    description: z.string().optional(),
+    date: z.string().min(1, 'Data dokumentu jest wymagana'),
+    keepExistingFile: z.boolean().optional(),
+    newFile: optionalFileValidator
+  })
+  .superRefine((data, ctx) => {
+    // Attachment is always required — if the existing file was removed a new one must be provided
+    if (!data.keepExistingFile && !data.newFile) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['newFile'],
+        message: 'Załącznik jest wymagany — wybierz plik'
+      });
+    }
+  });
 
 export type EditDocumentFormValues = z.input<typeof editDocumentSchema>;
 

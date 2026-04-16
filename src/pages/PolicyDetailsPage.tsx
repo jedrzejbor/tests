@@ -1245,20 +1245,6 @@ const PolicyDetailsPage: React.FC = () => {
               <Typography sx={{ fontWeight: 600, color: '#32343A', fontSize: '15px' }}>
                 Załączniki
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AttachFileIcon sx={{ fontSize: 16 }} />}
-                sx={{
-                  borderColor: '#D0D5DD',
-                  color: '#494B54',
-                  borderRadius: '8px',
-                  textTransform: 'none',
-                  fontSize: '13px'
-                }}
-              >
-                Dodaj
-              </Button>
             </Stack>
             {policyData.attachment ? (
               <Stack direction="row" alignItems="center" spacing={1}>

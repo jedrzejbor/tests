@@ -65,6 +65,8 @@ interface ListToolbarProps {
   filterLabelOverrides?: Record<string, string>;
   /** Tooltips shown next to filter labels by key */
   filterTooltips?: Record<string, string>;
+  /** Transform display value to backend value before sending (e.g. PLN → grosze) */
+  filterTransformers?: Record<string, (displayValue: string) => string>;
 }
 
 export const ListToolbar = ({
@@ -85,7 +87,8 @@ export const ListToolbar = ({
   selectedCount,
   onBulkAction,
   filterLabelOverrides,
-  filterTooltips
+  filterTooltips,
+  filterTransformers
 }: ListToolbarProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -205,6 +208,7 @@ export const ListToolbar = ({
       if (filterDef.type === 'range') {
         const rangeStr = typeof currentValue === 'string' ? currentValue : '';
         const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+        const hasTransformer = !!filterTransformers?.[filterDef.key];
         const updateRange = (from: string, to: string) => {
           const val = from || to ? `${from},${to}` : '';
           onFilterChange(filterDef.key, val);
@@ -222,6 +226,7 @@ export const ListToolbar = ({
                 type="number"
                 fullWidth
                 size="small"
+                inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
               />
               <TextField
                 label="Do"
@@ -230,6 +235,7 @@ export const ListToolbar = ({
                 type="number"
                 fullWidth
                 size="small"
+                inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
               />
             </Stack>
           </Box>

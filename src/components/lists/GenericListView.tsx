@@ -55,7 +55,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   disabledGeneralActions,
   stateKey,
   filterLabelOverrides,
-  filterTooltips
+  filterTooltips,
+  filterTransformers
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -67,9 +68,27 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   // Draft filter state — applied only when user clicks "Zastosuj"
   const [draftFilters, setDraftFilters] = useState<FiltersState>({});
 
+  // Wrap fetcher to apply filterTransformers to filter values before the API call.
+  // This way the UI state keeps the display values (e.g. PLN) while the backend
+  // receives the transformed values (e.g. grosze).
+  const wrappedFetcher = useCallback(
+    (params: Parameters<typeof fetcher>[0]) => {
+      if (!filterTransformers) return fetcher(params);
+      const transformedFilters = { ...params.filters };
+      for (const [key, transform] of Object.entries(filterTransformers)) {
+        const val = transformedFilters[key];
+        if (typeof val === 'string' && val) {
+          transformedFilters[key] = transform(val);
+        }
+      }
+      return fetcher({ ...params, filters: transformedFilters });
+    },
+    [fetcher, filterTransformers]
+  );
+
   // Initialize controller
   const controller = useGenericListController<T>({
-    fetcher,
+    fetcher: wrappedFetcher,
     rowKey,
     initialPerPage,
     disabledColumns,
@@ -697,6 +716,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               if (filterDef.type === 'range') {
                 const rangeStr = typeof currentValue === 'string' ? currentValue : '';
                 const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+                const hasTransformer = !!filterTransformers?.[filterDef.key];
                 const updateRange = (from: string, to: string) => {
                   const val = from || to ? `${from},${to}` : '';
                   setDraftFilters((prev) => ({ ...prev, [filterDef.key]: val }));
@@ -714,6 +734,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         type="number"
                         fullWidth
                         size="small"
+                        inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
                       />
                       <TextField
                         label="Do"
@@ -722,6 +743,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         type="number"
                         fullWidth
                         size="small"
+                        inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
                       />
                     </Stack>
                   </Box>
@@ -761,8 +783,11 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 variant="contained"
                 fullWidth
                 onClick={() => {
-                  // Apply all draft filters at once
-                  Object.entries(draftFilters).forEach(([key, value]) => setFilter(key, value));
+                  // Apply all draft filters at once (display values only;
+                  // transformation to backend format happens in wrappedFetcher)
+                  Object.entries(draftFilters).forEach(([key, value]) => {
+                    setFilter(key, value);
+                  });
                   // Clear any previously set keys not present in draft
                   Object.keys(filters).forEach((key) => {
                     if (!(key in draftFilters)) setFilter(key, '');
@@ -855,6 +880,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 onBulkAction={handleBulkAction}
                 filterLabelOverrides={filterLabelOverrides}
                 filterTooltips={filterTooltips}
+                filterTransformers={filterTransformers}
               />
             )}
 
