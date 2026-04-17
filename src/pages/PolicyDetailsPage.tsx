@@ -514,9 +514,20 @@ const PolicyDetailsPage: React.FC = () => {
   }, [clientData?.status]);
 
   const policyStatusColor = useMemo(() => {
-    // Placeholder — extend when backend provides policy status
-    return 'success' as const;
-  }, []);
+    const key = policyData?.status?.key || '';
+    switch (key) {
+      case 'active':
+        return 'success' as const;
+      case 'expired':
+        return 'default' as const;
+      case 'cancelled':
+        return 'error' as const;
+      case 'pending':
+        return 'warning' as const;
+      default:
+        return 'default' as const;
+    }
+  }, [policyData?.status?.key]);
 
   // ---------------------------------------------------------------------------
   // Permission gate
@@ -1051,7 +1062,7 @@ const PolicyDetailsPage: React.FC = () => {
                 Status polisy:
               </Typography>
               <Chip
-                label="Aktywna"
+                label={policyData?.status?.label || 'Nieznany'}
                 size="small"
                 color={policyStatusColor}
                 variant="outlined"
@@ -1306,7 +1317,7 @@ const PolicyDetailsPage: React.FC = () => {
               </Typography>
               <Stack direction="row" alignItems="center" spacing={1}>
                 <Chip
-                  label="Aktywna"
+                  label={policyData?.status?.label || 'Nieznany'}
                   size="small"
                   color={policyStatusColor}
                   variant="outlined"

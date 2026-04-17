@@ -52,6 +52,7 @@ export interface PolicyDetailsData {
   current_assets_settlement_clause: boolean;
   attachment: string; // URL or empty string
   payments: PolicyPaymentDetail[];
+  status: { label: string; key: string };
 }
 
 export interface PolicyDetailsResponse {
