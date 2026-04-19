@@ -33,6 +33,7 @@ import ArchiveDocumentDialog from '@/components/dialogs/ArchiveDocumentDialog';
 import ForceDeleteDocumentDialog from '@/components/dialogs/ForceDeleteDocumentDialog';
 import AddPaymentDialog from '@/components/dialogs/AddPaymentDialog';
 import EditPaymentDialog from '@/components/dialogs/EditPaymentDialog';
+import ViewPaymentDialog from '@/components/dialogs/ViewPaymentDialog';
 import ArchivePaymentDialog from '@/components/dialogs/ArchivePaymentDialog';
 import ForceDeletePaymentDialog from '@/components/dialogs/ForceDeletePaymentDialog';
 import AddPolicyDialog from '@/components/dialogs/AddPolicyDialog';
@@ -233,6 +234,7 @@ const ClientDetailsPage: React.FC = () => {
 
   // Payment dialogs state
   const [addPaymentDialogOpen, setAddPaymentDialogOpen] = useState(false);
+  const [viewPaymentDialogOpen, setViewPaymentDialogOpen] = useState(false);
   const [editPaymentDialogOpen, setEditPaymentDialogOpen] = useState(false);
   const [archivePaymentDialogOpen, setArchivePaymentDialogOpen] = useState(false);
   const [forceDeletePaymentDialogOpen, setForceDeletePaymentDialogOpen] = useState(false);
@@ -493,7 +495,7 @@ const ClientDetailsPage: React.FC = () => {
         return;
       }
       try {
-        await downloadAttachment(attachments[0].id);
+        await downloadAttachment(attachments[0].id, attachments[0].name || 'attachment');
       } catch (error) {
         const apiError = error as ApiError;
         addToast({
@@ -546,7 +548,7 @@ const ClientDetailsPage: React.FC = () => {
 
   const handleViewPayment = useCallback((row: PaymentRecord) => {
     setSelectedPayment(row);
-    setEditPaymentDialogOpen(true);
+    setViewPaymentDialogOpen(true);
   }, []);
 
   const handleEditPayment = useCallback((row: PaymentRecord) => {
@@ -630,10 +632,13 @@ const ClientDetailsPage: React.FC = () => {
     setAddPolicyDialogOpen(true);
   }, []);
 
-  const handleViewPolicy = useCallback((row: PolicyRecord) => {
-    setSelectedPolicy(row);
-    setEditPolicyDialogOpen(true);
-  }, []);
+  const handleViewPolicy = useCallback(
+    (row: PolicyRecord) => {
+      if (!row.id) return;
+      navigate(`/app/policies/${row.id}`, { state: { policy: row } });
+    },
+    [navigate]
+  );
 
   const handleEditPolicy = useCallback((row: PolicyRecord) => {
     setSelectedPolicy(row);
@@ -900,6 +905,7 @@ const ClientDetailsPage: React.FC = () => {
             return (
               <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
                 <GenericListView<DocumentRecord>
+                  key="client-documents"
                   title="Dokumenty"
                   fetcher={documentsFetcher}
                   handlers={documentHandlers}
@@ -917,6 +923,7 @@ const ClientDetailsPage: React.FC = () => {
             return (
               <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
                 <GenericListView<PolicyRecord>
+                  key="client-policies"
                   title="Polisy"
                   fetcher={policiesFetcher}
                   handlers={policyHandlers}
@@ -933,6 +940,7 @@ const ClientDetailsPage: React.FC = () => {
             return (
               <Box sx={{ px: 1, flex: 1, minHeight: 0 }}>
                 <GenericListView<PaymentRecord>
+                  key="client-payments"
                   title="Płatności składek"
                   fetcher={paymentsFetcher}
                   handlers={paymentHandlers}
@@ -1185,6 +1193,14 @@ const ClientDetailsPage: React.FC = () => {
             onSuccess={handlePaymentSuccess}
           />
         )}
+        <ViewPaymentDialog
+          open={viewPaymentDialogOpen}
+          onClose={() => {
+            setViewPaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+        />
         <EditPaymentDialog
           open={editPaymentDialogOpen}
           onClose={() => {
@@ -1348,6 +1364,7 @@ const ClientDetailsPage: React.FC = () => {
           return (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <GenericListView<DocumentRecord>
+                key="client-documents-desktop"
                 title="Dokumenty"
                 fetcher={documentsFetcher}
                 handlers={documentHandlers}
@@ -1365,6 +1382,7 @@ const ClientDetailsPage: React.FC = () => {
           return (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <GenericListView<PolicyRecord>
+                key="client-policies-desktop"
                 title="Polisy"
                 fetcher={policiesFetcher}
                 handlers={policyHandlers}
@@ -1381,6 +1399,7 @@ const ClientDetailsPage: React.FC = () => {
           return (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <GenericListView<PaymentRecord>
+                key="client-payments-desktop"
                 title="Płatności składek"
                 fetcher={paymentsFetcher}
                 handlers={paymentHandlers}
@@ -1693,6 +1712,14 @@ const ClientDetailsPage: React.FC = () => {
           onSuccess={handlePaymentSuccess}
         />
       )}
+      <ViewPaymentDialog
+        open={viewPaymentDialogOpen}
+        onClose={() => {
+          setViewPaymentDialogOpen(false);
+          setSelectedPayment(null);
+        }}
+        payment={selectedPayment}
+      />
       <EditPaymentDialog
         open={editPaymentDialogOpen}
         onClose={() => {

@@ -118,15 +118,7 @@ const buildQueryString = (params: FetcherParams): string => {
 export const fetchPaymentsTable = async (
   params: FetcherParams
 ): Promise<GenericListResponse<PaymentRecord>> => {
-  // Some table resources don't allow sorting by `created_at` (payments uses
-  // `payment_date` etc.). Map common invalid/default sort keys to allowed
-  // properties to avoid 422 responses from the backend.
-  const safeParams: FetcherParams = { ...params };
-  if (safeParams.sortProperty === 'created_at') {
-    safeParams.sortProperty = 'payment_date';
-  }
-
-  const queryString = buildQueryString(safeParams);
+  const queryString = buildQueryString(params);
   const endpoint = `${API_ENDPOINTS.PAYMENTS_TABLE}?${queryString}`;
 
   if (!import.meta.env.PROD) console.debug('[paymentsService] GET', endpoint);
@@ -183,7 +175,7 @@ export const archivePayment = async (
   paymentId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.post(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/archive`, { password });
+  await apiClient.delete(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/archive`, { password });
 };
 
 /**
@@ -193,7 +185,7 @@ export const forceDeletePayment = async (
   paymentId: string | number,
   password: string
 ): Promise<void> => {
-  await apiClient.post(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/force`, { password });
+  await apiClient.delete(`${API_ENDPOINTS.PAYMENTS}/${paymentId}/force`, { password });
 };
 
 /**

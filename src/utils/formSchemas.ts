@@ -297,13 +297,24 @@ export const addDocumentSchema = z.object({
 
 export type AddDocumentFormValues = z.input<typeof addDocumentSchema>;
 
-export const editDocumentSchema = z.object({
-  name: z.string().min(1, 'Nazwa dokumentu jest wymagana'),
-  description: z.string().optional(),
-  date: z.string().min(1, 'Data dokumentu jest wymagana'),
-  keepExistingFile: z.boolean().optional(),
-  newFile: optionalFileValidator
-});
+export const editDocumentSchema = z
+  .object({
+    name: z.string().min(1, 'Nazwa dokumentu jest wymagana'),
+    description: z.string().optional(),
+    date: z.string().min(1, 'Data dokumentu jest wymagana'),
+    keepExistingFile: z.boolean().optional(),
+    newFile: optionalFileValidator
+  })
+  .superRefine((data, ctx) => {
+    // Attachment is always required — if the existing file was removed a new one must be provided
+    if (!data.keepExistingFile && !data.newFile) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['newFile'],
+        message: 'Załącznik jest wymagany — wybierz plik'
+      });
+    }
+  });
 
 export type EditDocumentFormValues = z.input<typeof editDocumentSchema>;
 
@@ -429,7 +440,10 @@ export const addPolicySchema = z
     /** Total premium in PLN (display) — converted to grosze before submit */
     payment_total: z.preprocess(
       numberPreprocess,
-      z.number().min(1, 'Wysokość składki jest wymagana')
+      z
+        .number()
+        .min(1, 'Wysokość składki jest wymagana')
+        .max(10_000_000, 'Maksymalna kwota to 10 000 000 PLN')
     ),
     margin_percent: z.preprocess(
       numberPreprocess,
@@ -452,6 +466,45 @@ export const addPolicySchema = z
   .refine((data) => !data.date_to || !data.date_from || data.date_to >= data.date_from, {
     path: ['date_to'],
     message: 'Koniec obowiązywania musi być po początku'
+  })
+  .superRefine((data, ctx) => {
+    // ── Sum of instalments must not exceed payment_total ──
+    if (
+      typeof data.payment_total === 'number' &&
+      Array.isArray(data.payment_details) &&
+      data.payment_details.length > 0
+    ) {
+      const total = data.payment_total;
+      const sum = data.payment_details.reduce((acc: number, d: { amount?: number }) => {
+        return acc + (typeof d.amount === 'number' ? d.amount : 0);
+      }, 0);
+
+      // Round to avoid floating-point issues
+      if (Math.round(sum * 100) > Math.round(total * 100)) {
+        data.payment_details.forEach((_: unknown, i: number) => {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['payment_details', i, 'amount'],
+            message: `Suma rat (${sum.toFixed(2)} PLN) przekracza wysokość składki (${total.toFixed(2)} PLN)`
+          });
+        });
+      }
+    }
+
+    // ── Each subsequent payment_date must be >= the previous one ──
+    if (Array.isArray(data.payment_details) && data.payment_details.length > 1) {
+      for (let i = 1; i < data.payment_details.length; i++) {
+        const prev = data.payment_details[i - 1]?.payment_date;
+        const curr = data.payment_details[i]?.payment_date;
+        if (prev && curr && curr < prev) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['payment_details', i, 'payment_date'],
+            message: 'Data musi być równa lub późniejsza niż poprzednia rata'
+          });
+        }
+      }
+    }
   });
 
 export type AddPolicyFormValues = z.input<typeof addPolicySchema>;
@@ -480,7 +533,10 @@ export const editPolicySchema = z
 
     payment_total: z.preprocess(
       numberPreprocess,
-      z.number().min(1, 'Wysokość składki jest wymagana')
+      z
+        .number()
+        .min(1, 'Wysokość składki jest wymagana')
+        .max(10_000_000, 'Maksymalna kwota to 10 000 000 PLN')
     ),
     margin_percent: z.preprocess(
       numberPreprocess,
@@ -503,6 +559,44 @@ export const editPolicySchema = z
   .refine((data) => !data.date_to || !data.date_from || data.date_to >= data.date_from, {
     path: ['date_to'],
     message: 'Koniec obowiązywania musi być po początku'
+  })
+  .superRefine((data, ctx) => {
+    // ── Sum of instalments must not exceed payment_total ──
+    if (
+      typeof data.payment_total === 'number' &&
+      Array.isArray(data.payment_details) &&
+      data.payment_details.length > 0
+    ) {
+      const total = data.payment_total;
+      const sum = data.payment_details.reduce((acc: number, d: { amount?: number }) => {
+        return acc + (typeof d.amount === 'number' ? d.amount : 0);
+      }, 0);
+
+      if (Math.round(sum * 100) > Math.round(total * 100)) {
+        data.payment_details.forEach((_: unknown, i: number) => {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['payment_details', i, 'amount'],
+            message: `Suma rat (${sum.toFixed(2)} PLN) przekracza wysokość składki (${total.toFixed(2)} PLN)`
+          });
+        });
+      }
+    }
+
+    // ── Each subsequent payment_date must be >= the previous one ──
+    if (Array.isArray(data.payment_details) && data.payment_details.length > 1) {
+      for (let i = 1; i < data.payment_details.length; i++) {
+        const prev = data.payment_details[i - 1]?.payment_date;
+        const curr = data.payment_details[i]?.payment_date;
+        if (prev && curr && curr < prev) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['payment_details', i, 'payment_date'],
+            message: 'Data musi być równa lub późniejsza niż poprzednia rata'
+          });
+        }
+      }
+    }
   });
 
 export type EditPolicyFormValues = z.input<typeof editPolicySchema>;

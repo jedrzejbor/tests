@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
@@ -18,6 +19,7 @@ import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
 import type { ExtraRowAction } from '@/types/genericList';
 
 const PoliciesPage: React.FC = () => {
+  const navigate = useNavigate();
   const { addToast } = useUiStore();
   const { hasPermission } = usePermission();
 
@@ -38,9 +40,13 @@ const PoliciesPage: React.FC = () => {
 
   // ——— Row handlers ———
 
-  const handleViewPolicy = useCallback(() => {
-    // TODO: navigate to policy details page when available
-  }, []);
+  const handleViewPolicy = useCallback(
+    (row: PolicyRecord) => {
+      if (!row.id) return;
+      navigate(`/app/policies/${row.id}`, { state: { policy: row } });
+    },
+    [navigate]
+  );
 
   const handleEditPolicy = useCallback((row: PolicyRecord) => {
     setSelectedPolicy(row);
@@ -146,7 +152,9 @@ const PoliciesPage: React.FC = () => {
   const hasBackendAction = (row: PolicyRecord, handler: string) =>
     row.actions?.some((a) => a.handler === handler) ?? false;
 
-  const isArchived = (row: PolicyRecord) => Boolean(row.deleted_at);
+  // A policy is archived when the backend includes "restore-policy" in its actions
+  // (backend does not send deleted_at in the table response)
+  const isArchived = (row: PolicyRecord) => hasBackendAction(row, 'restore-policy');
 
   // Extra row actions — shown based on frontend permissions,
   // but only when the backend didn't already include the same action.
@@ -215,6 +223,30 @@ const PoliciesPage: React.FC = () => {
         stateKey="/app/policies"
         disabledGeneralActions={!canCreatePolicy ? ['create-policy'] : undefined}
         extraRowActions={extraRowActions}
+        filterLabelOverrides={{
+          date_from: 'Początek okresu ubezpieczenia',
+          date_to: 'Koniec okresu ubezpieczenia'
+        }}
+        filterTooltips={{
+          date_from:
+            'Filtruje polisy, których początek obowiązywania mieści się w wybranym zakresie dat',
+          date_to:
+            'Filtruje polisy, których koniec obowiązywania mieści się w wybranym zakresie dat',
+          payment_date:
+            'Filtruje polisy posiadające przynajmniej jedną ratę z terminem płatności w wybranym zakresie dat',
+          payment_total: 'Filtruje polisy po wysokości składki — wpisz kwoty w PLN (np. 1000,59)'
+        }}
+        filterTransformers={{
+          payment_total: (val) => {
+            return val
+              .split(',')
+              .map((part) => {
+                const n = parseFloat(part.replace(',', '.'));
+                return isNaN(n) ? '' : String(Math.round(n * 100));
+              })
+              .join(',');
+          }
+        }}
       />
 
       <ArchivePolicyDialog

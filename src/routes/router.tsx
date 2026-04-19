@@ -12,6 +12,7 @@ import UserDetailsPage from '@/pages/UserDetailsPage';
 import ClientsPage from '@/pages/ClientsPage';
 import ClientDetailsPage from '@/pages/ClientDetailsPage';
 import PoliciesPage from '@/pages/PoliciesPage';
+import PolicyDetailsPage from '@/pages/PolicyDetailsPage';
 import ResetPasswordTokenPage from '@/pages/ResetPasswordTokenPage';
 import SetPasswordTokenPage from '@/pages/SetPasswordTokenPage';
 import AppErrorBoundary from '@/routes/AppErrorBoundary';
@@ -113,6 +114,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <PoliciesPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '/app/policies/:policyId',
+        element: (
+          <ProtectedRoute>
+            <PolicyDetailsPage />
           </ProtectedRoute>
         )
       },

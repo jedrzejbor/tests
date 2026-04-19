@@ -24,6 +24,8 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import Tooltip from '@mui/material/Tooltip';
 import { useGenericListController } from '@/hooks/useGenericListController';
 import { ListToolbar } from './ListToolbar';
 import { DesktopTableRenderer } from './DesktopTableRenderer';
@@ -51,7 +53,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   disabledColumns,
   disabledFilters,
   disabledGeneralActions,
-  stateKey
+  stateKey,
+  filterLabelOverrides,
+  filterTooltips,
+  filterTransformers
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -63,9 +68,27 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   // Draft filter state — applied only when user clicks "Zastosuj"
   const [draftFilters, setDraftFilters] = useState<FiltersState>({});
 
+  // Wrap fetcher to apply filterTransformers to filter values before the API call.
+  // This way the UI state keeps the display values (e.g. PLN) while the backend
+  // receives the transformed values (e.g. grosze).
+  const wrappedFetcher = useCallback(
+    (params: Parameters<typeof fetcher>[0]) => {
+      if (!filterTransformers) return fetcher(params);
+      const transformedFilters = { ...params.filters };
+      for (const [key, transform] of Object.entries(filterTransformers)) {
+        const val = transformedFilters[key];
+        if (typeof val === 'string' && val) {
+          transformedFilters[key] = transform(val);
+        }
+      }
+      return fetcher({ ...params, filters: transformedFilters });
+    },
+    [fetcher, filterTransformers]
+  );
+
   // Initialize controller
   const controller = useGenericListController<T>({
-    fetcher,
+    fetcher: wrappedFetcher,
     rowKey,
     initialPerPage,
     disabledColumns,
@@ -113,8 +136,14 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
     return () => window.clearTimeout(debounceId);
   }, [searchInput, setSearch]);
 
+  // Track the previous refreshKey so we only refetch on actual changes,
+  // not on the initial mount (the controller already fetches on mount).
+  const prevRefreshKey = React.useRef(refreshKey);
   useEffect(() => {
     if (refreshKey === undefined) return;
+    // Skip the very first render — controller already handles the initial fetch.
+    if (prevRefreshKey.current === refreshKey) return;
+    prevRefreshKey.current = refreshKey;
     refetch();
   }, [refreshKey, refetch]);
 
@@ -589,6 +618,62 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             {/* Render filter inputs — changes are buffered in draftFilters */}
             {meta?.filtersDefs.map((filterDef) => {
               const currentValue = draftFilters[filterDef.key] || (filterDef.is_multiple ? [] : '');
+              const label = filterLabelOverrides?.[filterDef.key] ?? filterDef.label;
+              const tooltip = filterTooltips?.[filterDef.key];
+
+              const labelWithTooltip = tooltip ? (
+                <Stack direction="row" alignItems="center" spacing={0.5} component="span">
+                  <span>{label}</span>
+                  <Tooltip title={tooltip} arrow placement="top">
+                    <InfoOutlinedIcon
+                      sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }}
+                    />
+                  </Tooltip>
+                </Stack>
+              ) : (
+                label
+              );
+
+              // Date range filter — two date inputs
+              const isDateRange =
+                filterDef.type === 'date_range' ||
+                (filterDef.type === 'range' && /date/i.test(filterDef.key));
+
+              if (isDateRange) {
+                const rangeStr = typeof currentValue === 'string' ? currentValue : '';
+                const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+                const updateRange = (from: string, to: string) => {
+                  const val = from || to ? `${from},${to}` : '';
+                  setDraftFilters((prev) => ({ ...prev, [filterDef.key]: val }));
+                };
+                return (
+                  <Box key={filterDef.key} sx={{ mb: 2 }}>
+                    <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                      {labelWithTooltip}
+                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                      <TextField
+                        label="Od"
+                        value={rangeFrom}
+                        onChange={(e) => updateRange(e.target.value, rangeTo)}
+                        type="date"
+                        fullWidth
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <TextField
+                        label="Do"
+                        value={rangeTo}
+                        onChange={(e) => updateRange(rangeFrom, e.target.value)}
+                        type="date"
+                        fullWidth
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Stack>
+                  </Box>
+                );
+              }
 
               if (filterDef.type === 'select') {
                 // Normalize options from any backend format
@@ -596,10 +681,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
 
                 return (
                   <FormControl key={filterDef.key} fullWidth size="small" sx={{ mb: 2 }}>
-                    <InputLabel>{filterDef.label}</InputLabel>
+                    <InputLabel>{label}</InputLabel>
                     <Select
                       value={currentValue}
-                      label={filterDef.label}
+                      label={label}
                       multiple={filterDef.is_multiple}
                       onChange={(e) =>
                         setDraftFilters((prev) => ({
@@ -631,6 +716,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               if (filterDef.type === 'range') {
                 const rangeStr = typeof currentValue === 'string' ? currentValue : '';
                 const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+                const hasTransformer = !!filterTransformers?.[filterDef.key];
                 const updateRange = (from: string, to: string) => {
                   const val = from || to ? `${from},${to}` : '';
                   setDraftFilters((prev) => ({ ...prev, [filterDef.key]: val }));
@@ -638,7 +724,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 return (
                   <Box key={filterDef.key} sx={{ mb: 2 }}>
                     <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-                      {filterDef.label}
+                      {labelWithTooltip}
                     </Typography>
                     <Stack direction="row" spacing={1}>
                       <TextField
@@ -648,6 +734,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         type="number"
                         fullWidth
                         size="small"
+                        inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
                       />
                       <TextField
                         label="Do"
@@ -656,6 +743,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         type="number"
                         fullWidth
                         size="small"
+                        inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
                       />
                     </Stack>
                   </Box>
@@ -665,7 +753,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               return (
                 <TextField
                   key={filterDef.key}
-                  label={filterDef.label}
+                  label={label}
                   value={currentValue}
                   onChange={(e) =>
                     setDraftFilters((prev) => ({ ...prev, [filterDef.key]: e.target.value }))
@@ -695,8 +783,11 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 variant="contained"
                 fullWidth
                 onClick={() => {
-                  // Apply all draft filters at once
-                  Object.entries(draftFilters).forEach(([key, value]) => setFilter(key, value));
+                  // Apply all draft filters at once (display values only;
+                  // transformation to backend format happens in wrappedFetcher)
+                  Object.entries(draftFilters).forEach(([key, value]) => {
+                    setFilter(key, value);
+                  });
                   // Clear any previously set keys not present in draft
                   Object.keys(filters).forEach((key) => {
                     if (!(key in draftFilters)) setFilter(key, '');
@@ -787,6 +878,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 bulkActions={bulkActions}
                 selectedCount={selectedRows.length}
                 onBulkAction={handleBulkAction}
+                filterLabelOverrides={filterLabelOverrides}
+                filterTooltips={filterTooltips}
+                filterTransformers={filterTransformers}
               />
             )}
 

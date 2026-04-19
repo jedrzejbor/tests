@@ -52,6 +52,7 @@ export interface PolicyDetailsData {
   current_assets_settlement_clause: boolean;
   attachment: string; // URL or empty string
   payments: PolicyPaymentDetail[];
+  status: { label: string; key: string };
 }
 
 export interface PolicyDetailsResponse {
@@ -370,4 +371,54 @@ export const forceDeletePolicy = async (
  */
 export const restorePolicy = async (policyId: string | number): Promise<void> => {
   await apiClient.post(`/api/policy/${policyId}/restore`);
+};
+
+/**
+ * Download a policy attachment via the dedicated API endpoint.
+ *
+ * The `attachmentUrl` is taken directly from the `attachment` field
+ * returned by `GET /api/policy/{id}` (e.g. "http://…/api/policy/attachment/15").
+ * The backend streams the file with `Content-Disposition: attachment`.
+ */
+export const downloadPolicyAttachment = async (
+  attachmentUrl: string,
+  fallbackFilename = 'zalacznik'
+): Promise<void> => {
+  if (!attachmentUrl) return;
+
+  const token = useAuthStore.getState().token;
+  const headers: HeadersInit = { Accept: '*/*' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(attachmentUrl, { method: 'GET', headers });
+
+  if (!response.ok) {
+    throw { message: 'Nie udało się pobrać załącznika', status: response.status };
+  }
+
+  // Try to get filename from Content-Disposition header
+  const disposition = response.headers.get('Content-Disposition') || '';
+  let filename = fallbackFilename;
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+  if (utf8Match) {
+    filename = decodeURIComponent(utf8Match[1]);
+  } else {
+    const plainMatch = disposition.match(/filename="?([^"\s;]+)"?/i);
+    if (plainMatch) {
+      filename = plainMatch[1];
+    }
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
 };

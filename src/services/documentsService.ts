@@ -152,16 +152,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 export const fetchDocumentsTable = async (
   params: FetcherParams
 ): Promise<GenericListResponse<DocumentRecord>> => {
-  // Some callers (or shared table UI) may request sorting by keys that the
-  // documents table doesn't accept (e.g. `created_at` or `payment_date`).
-  // Map those to the documents resource's allowed sortable property `date`
-  // to avoid backend 422 validation errors.
-  const safeParams: FetcherParams = { ...params };
-  if (safeParams.sortProperty === 'created_at' || safeParams.sortProperty === 'payment_date') {
-    safeParams.sortProperty = 'date';
-  }
-
-  const queryString = buildQueryString(safeParams);
+  const queryString = buildQueryString(params);
   const endpoint = `${API_ENDPOINTS.DOCUMENTS_TABLE}?${queryString}`;
 
   if (!import.meta.env.PROD) console.debug('[documentsService] GET', endpoint);
@@ -284,7 +275,10 @@ export const restoreDocument = async (documentId: string | number): Promise<void
 /**
  * Download attachment — returns blob URL for browser download
  */
-export const downloadAttachment = async (attachmentId: number): Promise<void> => {
+export const downloadAttachment = async (
+  attachmentId: number,
+  fallbackFilename = 'attachment'
+): Promise<void> => {
   const token = useAuthStore.getState().token;
   const headers: HeadersInit = { Accept: '*/*' };
   if (token) {
@@ -302,9 +296,19 @@ export const downloadAttachment = async (attachmentId: number): Promise<void> =>
   }
 
   // Extract filename from Content-Disposition header
+  // Supports: filename="foo.pdf", filename=foo.pdf, filename*=UTF-8''foo%20bar.pdf
   const disposition = response.headers.get('Content-Disposition') || '';
-  const match = disposition.match(/filename="?(.+?)"?$/);
-  const filename = match?.[1] || 'attachment';
+  let filename = fallbackFilename;
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+  if (utf8Match) {
+    filename = decodeURIComponent(utf8Match[1]);
+  } else {
+    const plainMatch = disposition.match(/filename="?([^"\s;]+)"?/i);
+    if (plainMatch) {
+      filename = plainMatch[1];
+    }
+  }
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
