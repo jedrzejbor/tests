@@ -34,7 +34,9 @@ export interface PolicyDetailsData {
   id: number;
   client_id: number;
   insurance_company_id: number;
+  insurance_company_name?: string;
   policy_type_id: number;
+  policy_type_name?: string;
   number: string;
   car_plates: string | null;
   date_signed_at: string;
