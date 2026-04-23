@@ -408,7 +408,10 @@ const numberPreprocess = (value: unknown) =>
 const paymentDetailSchema = z.object({
   id: z.number().int().optional(),
   /** Amount displayed in PLN (e.g. "1200.00") — converted to grosze before submit */
-  amount: z.preprocess(numberPreprocess, z.number().min(1, 'Kwota raty jest wymagana')),
+  amount: z.preprocess(
+    numberPreprocess,
+    z.number({ message: 'Kwota raty jest wymagana' }).min(1, 'Kwota raty jest wymagana')
+  ),
   payment_date: z.string().min(1, 'Data raty jest wymagana')
 });
 
@@ -447,7 +450,10 @@ export const addPolicySchema = z
     ),
     margin_percent: z.preprocess(
       numberPreprocess,
-      z.number().min(0, 'Wartość od 0 do 100').max(100, 'Wartość od 0 do 100')
+      z
+        .number({ message: 'Procent prowizji jest wymagany' })
+        .min(0, 'Wartość musi wynosić od 0 do 100')
+        .max(100, 'Wartość musi wynosić od 0 do 100')
     ),
     payments_count: z.preprocess(
       numberPreprocess,
@@ -468,7 +474,7 @@ export const addPolicySchema = z
     message: 'Koniec obowiązywania musi być po początku'
   })
   .superRefine((data, ctx) => {
-    // ── Sum of instalments must not exceed payment_total ──
+    // ── Sum of instalments must equal payment_total ──
     if (
       typeof data.payment_total === 'number' &&
       Array.isArray(data.payment_details) &&
@@ -480,12 +486,17 @@ export const addPolicySchema = z
       }, 0);
 
       // Round to avoid floating-point issues
-      if (Math.round(sum * 100) > Math.round(total * 100)) {
+      if (Math.round(sum * 100) !== Math.round(total * 100)) {
+        const lastIdx = data.payment_details.length - 1;
+        // Mark all amount fields as invalid (empty message) for red border
         data.payment_details.forEach((_: unknown, i: number) => {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['payment_details', i, 'amount'],
-            message: `Suma rat (${sum.toFixed(2)} PLN) przekracza wysokość składki (${total.toFixed(2)} PLN)`
+            message:
+              i === lastIdx
+                ? `Suma rat musi być równa wysokości składki (${total.toFixed(2)} PLN)`
+                : ' '
           });
         });
       }
@@ -540,7 +551,10 @@ export const editPolicySchema = z
     ),
     margin_percent: z.preprocess(
       numberPreprocess,
-      z.number().min(0, 'Wartość od 0 do 100').max(100, 'Wartość od 0 do 100')
+      z
+        .number({ message: 'Procent prowizji jest wymagany' })
+        .min(0, 'Wartość musi wynosić od 0 do 100')
+        .max(100, 'Wartość musi wynosić od 0 do 100')
     ),
     payments_count: z.preprocess(
       numberPreprocess,
@@ -561,7 +575,7 @@ export const editPolicySchema = z
     message: 'Koniec obowiązywania musi być po początku'
   })
   .superRefine((data, ctx) => {
-    // ── Sum of instalments must not exceed payment_total ──
+    // ── Sum of instalments must equal payment_total ──
     if (
       typeof data.payment_total === 'number' &&
       Array.isArray(data.payment_details) &&
@@ -572,12 +586,16 @@ export const editPolicySchema = z
         return acc + (typeof d.amount === 'number' ? d.amount : 0);
       }, 0);
 
-      if (Math.round(sum * 100) > Math.round(total * 100)) {
+      if (Math.round(sum * 100) !== Math.round(total * 100)) {
+        const lastIdx = data.payment_details.length - 1;
         data.payment_details.forEach((_: unknown, i: number) => {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['payment_details', i, 'amount'],
-            message: `Suma rat (${sum.toFixed(2)} PLN) przekracza wysokość składki (${total.toFixed(2)} PLN)`
+            message:
+              i === lastIdx
+                ? `Suma rat musi być równa wysokości składki (${total.toFixed(2)} PLN)`
+                : ' '
           });
         });
       }

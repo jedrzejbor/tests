@@ -197,9 +197,13 @@ const PolicyDetailsPage: React.FC = () => {
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { addToast } = useUiStore();
   const { hasPermission } = usePermission();
+  const canViewClientList = hasPermission('client view-list');
+  const canEditClient = hasPermission('client edit');
+  const canEditPolicy = hasPermission('policy edit');
 
   const [policyData, setPolicyData] = useState<PolicyDetailsData | null>(null);
   const [clientData, setClientData] = useState<ClientData | null>(null);
+  const [clientAccessDenied, setClientAccessDenied] = useState(false);
   const [clientName, setClientName] = useState<string>('');
   const [insurerName, setInsurerName] = useState<string>('');
   const [policyNumber, setPolicyNumber] = useState<string>('');
@@ -309,23 +313,39 @@ const PolicyDetailsPage: React.FC = () => {
         // Use names from state if we have them (backend only returns IDs)
         if (statePolicy) {
           setClientName(statePolicy.client || '');
-          setInsurerName(statePolicy.insurance_company || '');
+          setInsurerName(policy.insurance_company_name || statePolicy.insurance_company || '');
+        }
+
+        if (!statePolicy?.insurance_company) {
+          setInsurerName(policy.insurance_company_name || '');
         }
 
         // 2. Fetch client details + form options in parallel
         const promises: Promise<void>[] = [];
 
-        if (policy.client_id) {
+        if (policy.client_id && canViewClientList) {
           promises.push(
             getClientDetails(policy.client_id)
               .then((clientResponse) => {
+                setClientAccessDenied(false);
                 setClientData(mapClientData(clientResponse.client, clientResponse.meta));
                 setClientName(clientResponse.client.name || statePolicy?.client || '');
               })
-              .catch(() => {
+              .catch((clientError) => {
+                const apiError = clientError as ApiError;
+                if (apiError?.status === 403) {
+                  setClientAccessDenied(true);
+                  setClientData(null);
+                  return;
+                }
                 // Client fetch failed — we still show what we have
               })
           );
+        } else if (!canViewClientList) {
+          setClientAccessDenied(true);
+          setClientData(null);
+        } else {
+          setClientAccessDenied(false);
         }
 
         promises.push(
@@ -380,7 +400,7 @@ const PolicyDetailsPage: React.FC = () => {
     };
 
     fetchData();
-  }, [policyId, addToast, mapClientData, location.state]);
+  }, [policyId, addToast, canViewClientList, mapClientData, location.state]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -491,17 +511,31 @@ const PolicyDetailsPage: React.FC = () => {
 
   // Resolved names from form options
   const insurerLabel = useMemo(() => {
-    if (!policyData || !formOptions) return insurerName;
+    if (!policyData) return insurerName;
+
+    if (!formOptions) {
+      return policyData.insurance_company_name || insurerName;
+    }
+
     return (
       formOptions.insurance_companies?.find((o) => o.value === policyData.insurance_company_id)
-        ?.label || insurerName
+        ?.label ||
+      policyData.insurance_company_name ||
+      insurerName
     );
   }, [policyData, formOptions, insurerName]);
 
   const policyTypeLabel = useMemo(() => {
-    if (!policyData || !formOptions) return '';
+    if (!policyData) return '';
+
+    if (!formOptions) {
+      return policyData.policy_type_name || '';
+    }
+
     return (
-      formOptions.policy_types?.find((o) => o.value === policyData.policy_type_id)?.label || ''
+      formOptions.policy_types?.find((o) => o.value === policyData.policy_type_id)?.label ||
+      policyData.policy_type_name ||
+      ''
     );
   }, [policyData, formOptions]);
 
@@ -528,6 +562,8 @@ const PolicyDetailsPage: React.FC = () => {
         return 'default' as const;
     }
   }, [policyData?.status?.key]);
+
+  const shouldShowClientNoAccess = !canViewClientList || clientAccessDenied;
 
   // ---------------------------------------------------------------------------
   // Permission gate
@@ -586,6 +622,14 @@ const PolicyDetailsPage: React.FC = () => {
   // ---------------------------------------------------------------------------
 
   const ClientDataDesktop = () => {
+    if (shouldShowClientNoAccess) {
+      return (
+        <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+          <NoAccessContent />
+        </Box>
+      );
+    }
+
     if (!clientData) {
       return (
         <Box sx={{ textAlign: 'center', py: 6 }}>
@@ -623,27 +667,29 @@ const PolicyDetailsPage: React.FC = () => {
                 />
               </Stack>
             )}
-            <Button
-              variant="outlined"
-              startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
-              onClick={() => setEditClientDialogOpen(true)}
-              sx={{
-                borderColor: '#494B54',
-                color: '#494B54',
-                borderRadius: '8px',
-                px: 2,
-                py: 1,
-                fontSize: '14px',
-                fontWeight: 500,
-                textTransform: 'none',
-                '&:hover': {
-                  borderColor: '#32343A',
-                  bgcolor: 'rgba(0, 0, 0, 0.04)'
-                }
-              }}
-            >
-              Edytuj
-            </Button>
+            {canEditClient && (
+              <Button
+                variant="outlined"
+                startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
+                onClick={() => setEditClientDialogOpen(true)}
+                sx={{
+                  borderColor: '#494B54',
+                  color: '#494B54',
+                  borderRadius: '8px',
+                  px: 2,
+                  py: 1,
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: '#32343A',
+                    bgcolor: 'rgba(0, 0, 0, 0.04)'
+                  }
+                }}
+              >
+                Edytuj
+              </Button>
+            )}
           </Stack>
         </Stack>
 
@@ -892,6 +938,14 @@ const PolicyDetailsPage: React.FC = () => {
   );
 
   const ClientDataMobile = () => {
+    if (shouldShowClientNoAccess) {
+      return (
+        <Box sx={{ px: 1, py: 2, display: 'flex', justifyContent: 'center' }}>
+          <NoAccessContent />
+        </Box>
+      );
+    }
+
     if (!clientData) {
       return (
         <Box sx={{ textAlign: 'center', py: 6 }}>
@@ -1069,24 +1123,26 @@ const PolicyDetailsPage: React.FC = () => {
                 sx={{ fontWeight: 500 }}
               />
             </Stack>
-            <Button
-              variant="outlined"
-              startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
-              onClick={() => setEditPolicyDialogOpen(true)}
-              sx={{
-                borderColor: '#494B54',
-                color: '#494B54',
-                borderRadius: '8px',
-                px: 2,
-                py: 1,
-                fontSize: '14px',
-                fontWeight: 500,
-                textTransform: 'none',
-                '&:hover': { borderColor: '#32343A', bgcolor: 'rgba(0, 0, 0, 0.04)' }
-              }}
-            >
-              Edytuj
-            </Button>
+            {canEditPolicy && (
+              <Button
+                variant="outlined"
+                startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
+                onClick={() => setEditPolicyDialogOpen(true)}
+                sx={{
+                  borderColor: '#494B54',
+                  color: '#494B54',
+                  borderRadius: '8px',
+                  px: 2,
+                  py: 1,
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  '&:hover': { borderColor: '#32343A', bgcolor: 'rgba(0, 0, 0, 0.04)' }
+                }}
+              >
+                Edytuj
+              </Button>
+            )}
           </Stack>
         </Stack>
 
@@ -1323,22 +1379,24 @@ const PolicyDetailsPage: React.FC = () => {
                   variant="outlined"
                   sx={{ fontWeight: 500, fontSize: '12px' }}
                 />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
-                  onClick={() => setEditPolicyDialogOpen(true)}
-                  sx={{
-                    borderColor: '#494B54',
-                    color: '#494B54',
-                    borderRadius: '8px',
-                    textTransform: 'none',
-                    fontSize: '12px',
-                    py: 0.5
-                  }}
-                >
-                  Edytuj
-                </Button>
+                {canEditPolicy && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => setEditPolicyDialogOpen(true)}
+                    sx={{
+                      borderColor: '#494B54',
+                      color: '#494B54',
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      fontSize: '12px',
+                      py: 0.5
+                    }}
+                  >
+                    Edytuj
+                  </Button>
+                )}
               </Stack>
             </Stack>
           </Box>
@@ -1613,12 +1671,14 @@ const PolicyDetailsPage: React.FC = () => {
           policy={policyRecord}
           onSuccess={handleArchiveSuccess}
         />
-        <EditClientDialog
-          open={editClientDialogOpen}
-          onClose={() => setEditClientDialogOpen(false)}
-          client={clientRecord}
-          onSuccess={handleClientUpdated}
-        />
+        {canEditClient && (
+          <EditClientDialog
+            open={editClientDialogOpen}
+            onClose={() => setEditClientDialogOpen(false)}
+            client={clientRecord}
+            onSuccess={handleClientUpdated}
+          />
+        )}
         <EditPolicyDialog
           open={editPolicyDialogOpen}
           onClose={() => setEditPolicyDialogOpen(false)}
@@ -1775,18 +1835,22 @@ const PolicyDetailsPage: React.FC = () => {
         policy={policyRecord}
         onSuccess={handleArchiveSuccess}
       />
-      <EditClientDialog
-        open={editClientDialogOpen}
-        onClose={() => setEditClientDialogOpen(false)}
-        client={clientRecord}
-        onSuccess={handleClientUpdated}
-      />
-      <EditPolicyDialog
-        open={editPolicyDialogOpen}
-        onClose={() => setEditPolicyDialogOpen(false)}
-        policy={policyRecord}
-        onSuccess={handlePolicyUpdated}
-      />
+      {canEditClient && (
+        <EditClientDialog
+          open={editClientDialogOpen}
+          onClose={() => setEditClientDialogOpen(false)}
+          client={clientRecord}
+          onSuccess={handleClientUpdated}
+        />
+      )}
+      {canEditPolicy && (
+        <EditPolicyDialog
+          open={editPolicyDialogOpen}
+          onClose={() => setEditPolicyDialogOpen(false)}
+          policy={policyRecord}
+          onSuccess={handlePolicyUpdated}
+        />
+      )}
     </Stack>
   );
 };

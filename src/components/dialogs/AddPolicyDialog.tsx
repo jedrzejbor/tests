@@ -73,6 +73,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
     reset,
     setError,
     trigger,
+    clearErrors,
     formState: { errors }
   } = useForm<AddPolicyFormValues>({
     resolver: zodResolver(addPolicySchema),
@@ -122,6 +123,23 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
   const selectedTypeLabel =
     policyTypeOptions.find((o) => o.value === Number(watchedPolicyTypeId))?.label || '';
   const isCarType = /pojazd|komunikacyj|oc|ac|autocasco/i.test(selectedTypeLabel);
+
+  // Clear / re-show sum-check errors on all payment_details amount fields
+  // whenever any amount or payment_total changes.
+  useEffect(() => {
+    const details = watchedPaymentDetails || [];
+    const hasAmountErrors = details.some((_, i) => errors.payment_details?.[i]?.amount);
+    if (!hasAmountErrors) return;
+
+    const total = Number(watchedPaymentTotal) || 0;
+    const sum = details.reduce((acc, d) => acc + (Number(d?.amount) || 0), 0);
+    const sumMismatch = Math.round(sum * 100) !== Math.round(total * 100);
+
+    if (!sumMismatch) {
+      // Sum is now valid — clear all amount errors at once
+      details.forEach((_, i) => clearErrors(`payment_details.${i}.amount`));
+    }
+  }, [paymentDetailsSum, watchedPaymentTotal]);
 
   // Sync payment_details rows with payments_count
   useEffect(() => {
@@ -692,17 +710,21 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
               {index + 1}
             </Typography>
             <TextField
-              label={`Wartość ${index === 0 ? 'pierwszej' : index === 1 ? 'drugiej' : `${index + 1}.`} składki`}
+              label={`Wartość ${index + 1}. składki`}
               {...register(`payment_details.${index}.amount`)}
               error={Boolean(errors.payment_details?.[index]?.amount)}
-              helperText={errors.payment_details?.[index]?.amount?.message}
+              helperText={
+                errors.payment_details?.[index]?.amount?.message?.trim()
+                  ? errors.payment_details[index].amount.message
+                  : undefined
+              }
               fullWidth
               size="medium"
               type="number"
               inputProps={{ step: '0.01', min: '0' }}
             />
             <TextField
-              label={`Termin spłaty ${index === 0 ? 'pierwszej' : index === 1 ? 'drugiej' : `${index + 1}.`} składki`}
+              label={`Termin spłaty ${index + 1}. składki`}
               type="date"
               {...register(`payment_details.${index}.payment_date`)}
               error={Boolean(errors.payment_details?.[index]?.payment_date)}

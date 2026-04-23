@@ -234,7 +234,7 @@ const PoliciesPage: React.FC = () => {
             'Filtruje polisy, których koniec obowiązywania mieści się w wybranym zakresie dat',
           payment_date:
             'Filtruje polisy posiadające przynajmniej jedną ratę z terminem płatności w wybranym zakresie dat',
-          payment_total: 'Filtruje polisy po wysokości składki — wpisz kwoty w PLN (np. 1000,59)'
+          payment_total: 'Filtruje polisy po wysokości składki - wpisz kwoty w PLN (np. 1000,59)'
         }}
         filterTransformers={{
           payment_total: (val) => {

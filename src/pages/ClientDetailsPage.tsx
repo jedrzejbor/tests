@@ -208,6 +208,8 @@ const ClientDetailsPage: React.FC = () => {
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { addToast } = useUiStore();
   const { hasPermission } = usePermission();
+  const canEditClient = hasPermission('client edit');
+  const canArchiveClient = hasPermission('client archive');
 
   // Filter tabs based on user permissions
   const visibleTabs = useMemo(
@@ -394,7 +396,10 @@ const ClientDetailsPage: React.FC = () => {
 
   const handleBack = () => navigate('/app/clients');
 
-  const handleEditClient = () => setEditDialogOpen(true);
+  const handleEditClient = () => {
+    if (!canEditClient) return;
+    setEditDialogOpen(true);
+  };
 
   const handleEditDialogClose = () => setEditDialogOpen(false);
 
@@ -414,7 +419,10 @@ const ClientDetailsPage: React.FC = () => {
     }
   }, [addToast, clientId, location.state, mapFromApiClient]);
 
-  const handleDeleteClient = () => setDeleteDialogOpen(true);
+  const handleDeleteClient = () => {
+    if (!canArchiveClient) return;
+    setDeleteDialogOpen(true);
+  };
 
   const handleDeleteDialogClose = () => setDeleteDialogOpen(false);
 
@@ -932,6 +940,30 @@ const ClientDetailsPage: React.FC = () => {
                   refreshKey={policyRefreshKey}
                   disabledColumns={POLICIES_DISABLED_COLUMNS}
                   disabledFilters={POLICIES_DISABLED_FILTERS}
+                  filterLabelOverrides={{
+                    date_from: 'Początek okresu ubezpieczenia',
+                    date_to: 'Koniec okresu ubezpieczenia'
+                  }}
+                  filterTooltips={{
+                    date_from:
+                      'Filtruje polisy, których początek obowiązywania mieści się w wybranym zakresie dat',
+                    date_to:
+                      'Filtruje polisy, których koniec obowiązywania mieści się w wybranym zakresie dat',
+                    payment_date:
+                      'Filtruje polisy posiadające przynajmniej jedną ratę z terminem płatności w wybranym zakresie dat',
+                    payment_total:
+                      'Filtruje polisy po wysokości składki - wpisz kwoty w PLN (np. 1000,59)'
+                  }}
+                  filterTransformers={{
+                    payment_total: (val) =>
+                      val
+                        .split(',')
+                        .map((part) => {
+                          const n = parseFloat(part.replace(',', '.'));
+                          return isNaN(n) ? '' : String(Math.round(n * 100));
+                        })
+                        .join(',')
+                  }}
                 />
               </Box>
             );
@@ -1100,54 +1132,62 @@ const ClientDetailsPage: React.FC = () => {
 
               {/* Mobile action buttons */}
               <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
-                  onClick={handleEditClient}
-                  sx={{
-                    borderColor: '#494B54',
-                    color: '#494B54',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    textTransform: 'none'
-                  }}
-                >
-                  Edytuj
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
-                  onClick={handleDeleteClient}
-                  sx={{
-                    borderColor: '#D0D5DD',
-                    color: '#1E1F21',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    textTransform: 'none'
-                  }}
-                >
-                  Usuń klienta
-                </Button>
+                {canEditClient && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
+                    onClick={handleEditClient}
+                    sx={{
+                      borderColor: '#494B54',
+                      color: '#494B54',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      textTransform: 'none'
+                    }}
+                  >
+                    Edytuj
+                  </Button>
+                )}
+                {canArchiveClient && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
+                    onClick={handleDeleteClient}
+                    sx={{
+                      borderColor: '#D0D5DD',
+                      color: '#1E1F21',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      textTransform: 'none'
+                    }}
+                  >
+                    Usuń klienta
+                  </Button>
+                )}
               </Stack>
             </>
           );
         })()}
 
         {/* Dialogs */}
-        <EditClientDialog
-          open={editDialogOpen}
-          onClose={handleEditDialogClose}
-          client={clientRecord}
-          onSuccess={handleClientUpdated}
-        />
-        <ArchiveClientDialog
-          open={deleteDialogOpen}
-          onClose={handleDeleteDialogClose}
-          client={clientRecord}
-          onSuccess={handleClientDeleted}
-        />
+        {canEditClient && (
+          <EditClientDialog
+            open={editDialogOpen}
+            onClose={handleEditDialogClose}
+            client={clientRecord}
+            onSuccess={handleClientUpdated}
+          />
+        )}
+        {canArchiveClient && (
+          <ArchiveClientDialog
+            open={deleteDialogOpen}
+            onClose={handleDeleteDialogClose}
+            client={clientRecord}
+            onSuccess={handleClientDeleted}
+          />
+        )}
 
         {clientData?.id && (
           <AddDocumentDialog
@@ -1300,28 +1340,30 @@ const ClientDetailsPage: React.FC = () => {
         </Typography>
 
         <Stack direction="row" spacing={2}>
-          <Button
-            variant="outlined"
-            startIcon={<DeleteOutlineIcon />}
-            onClick={handleDeleteClient}
-            sx={{
-              borderColor: '#D0D5DD',
-              color: '#1E1F21',
-              borderRadius: '8px',
-              px: 2.25,
-              py: 1,
-              fontSize: '14px',
-              fontWeight: 500,
-              textTransform: 'none',
-              boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
-              '&:hover': {
+          {canArchiveClient && (
+            <Button
+              variant="outlined"
+              startIcon={<DeleteOutlineIcon />}
+              onClick={handleDeleteClient}
+              sx={{
                 borderColor: '#D0D5DD',
-                bgcolor: 'rgba(0, 0, 0, 0.04)'
-              }
-            }}
-          >
-            Usuń klienta
-          </Button>
+                color: '#1E1F21',
+                borderRadius: '8px',
+                px: 2.25,
+                py: 1,
+                fontSize: '14px',
+                fontWeight: 500,
+                textTransform: 'none',
+                boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
+                '&:hover': {
+                  borderColor: '#D0D5DD',
+                  bgcolor: 'rgba(0, 0, 0, 0.04)'
+                }
+              }}
+            >
+              Usuń klienta
+            </Button>
+          )}
           {/* 'Wyślij powiadomienie' button removed per request */}
         </Stack>
       </Stack>
@@ -1391,6 +1433,30 @@ const ClientDetailsPage: React.FC = () => {
                 refreshKey={policyRefreshKey}
                 disabledColumns={POLICIES_DISABLED_COLUMNS}
                 disabledFilters={POLICIES_DISABLED_FILTERS}
+                filterLabelOverrides={{
+                  date_from: 'Początek okresu ubezpieczenia',
+                  date_to: 'Koniec okresu ubezpieczenia'
+                }}
+                filterTooltips={{
+                  date_from:
+                    'Filtruje polisy, których początek obowiązywania mieści się w wybranym zakresie dat',
+                  date_to:
+                    'Filtruje polisy, których koniec obowiązywania mieści się w wybranym zakresie dat',
+                  payment_date:
+                    'Filtruje polisy posiadające przynajmniej jedną ratę z terminem płatności w wybranym zakresie dat',
+                  payment_total:
+                    'Filtruje polisy po wysokości składki - wpisz kwoty w PLN (np. 1000,59)'
+                }}
+                filterTransformers={{
+                  payment_total: (val) =>
+                    val
+                      .split(',')
+                      .map((part) => {
+                        const n = parseFloat(part.replace(',', '.'));
+                        return isNaN(n) ? '' : String(Math.round(n * 100));
+                      })
+                      .join(',')
+                }}
               />
             </Box>
           );
@@ -1430,27 +1496,29 @@ const ClientDetailsPage: React.FC = () => {
               >
                 Szczegółowe dane klienta:
               </Typography>
-              <Button
-                variant="outlined"
-                startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
-                onClick={handleEditClient}
-                sx={{
-                  borderColor: '#494B54',
-                  color: '#494B54',
-                  borderRadius: '8px',
-                  px: 2,
-                  py: 1,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  '&:hover': {
-                    borderColor: '#32343A',
-                    bgcolor: 'rgba(0, 0, 0, 0.04)'
-                  }
-                }}
-              >
-                Edytuj
-              </Button>
+              {canEditClient && (
+                <Button
+                  variant="outlined"
+                  startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
+                  onClick={handleEditClient}
+                  sx={{
+                    borderColor: '#494B54',
+                    color: '#494B54',
+                    borderRadius: '8px',
+                    px: 2,
+                    py: 1,
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    '&:hover': {
+                      borderColor: '#32343A',
+                      bgcolor: 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }}
+                >
+                  Edytuj
+                </Button>
+              )}
             </Stack>
 
             {/* Section 1: Dane rejestracyjne klienta */}
@@ -1655,18 +1723,22 @@ const ClientDetailsPage: React.FC = () => {
       })()}
 
       {/* Dialogs */}
-      <EditClientDialog
-        open={editDialogOpen}
-        onClose={handleEditDialogClose}
-        client={clientRecord}
-        onSuccess={handleClientUpdated}
-      />
-      <ArchiveClientDialog
-        open={deleteDialogOpen}
-        onClose={handleDeleteDialogClose}
-        client={clientRecord}
-        onSuccess={handleClientDeleted}
-      />
+      {canEditClient && (
+        <EditClientDialog
+          open={editDialogOpen}
+          onClose={handleEditDialogClose}
+          client={clientRecord}
+          onSuccess={handleClientUpdated}
+        />
+      )}
+      {canArchiveClient && (
+        <ArchiveClientDialog
+          open={deleteDialogOpen}
+          onClose={handleDeleteDialogClose}
+          client={clientRecord}
+          onSuccess={handleClientDeleted}
+        />
+      )}
 
       {clientData?.id && (
         <AddDocumentDialog
