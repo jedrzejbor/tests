@@ -39,6 +39,36 @@ const inputSx = {
   }
 } as const;
 
+const selectMenuProps = {
+  PaperProps: {
+    sx: {
+      bgcolor: '#FFFFFF',
+      backgroundImage: 'none',
+      border: '1px solid #E5E7EB',
+      boxShadow: '0 12px 32px rgba(16, 24, 40, 0.12)',
+      '& .MuiMenu-list': {
+        bgcolor: '#FFFFFF'
+      }
+    }
+  }
+} as const;
+
+const autocompleteSlotProps = {
+  paper: {
+    sx: {
+      bgcolor: '#FFFFFF',
+      backgroundImage: 'none',
+      border: '1px solid #E5E7EB',
+      boxShadow: '0 12px 32px rgba(16, 24, 40, 0.12)'
+    }
+  },
+  listbox: {
+    sx: {
+      bgcolor: '#FFFFFF'
+    }
+  }
+} as const;
+
 // ================== SECTION CARD ==================
 
 interface SectionCardProps {
@@ -136,12 +166,18 @@ const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({ value, onChange
       fullWidth
       options={options}
       loading={loading}
+      slotProps={autocompleteSlotProps}
       value={value}
       onChange={(_e, newValue) => onChange(newValue)}
       onInputChange={(_e, newInput) => setInputValue(newInput)}
       getOptionLabel={(option) => option.label}
       isOptionEqualToValue={(option, val) => option.id === val.id}
       noOptionsText={inputValue.length > 0 ? 'Brak wyników' : 'Wpisz numer polisy…'}
+      sx={{
+        '& .MuiOutlinedInput-root': {
+          bgcolor: '#FFFFFF'
+        }
+      }}
       renderInput={(params) => (
         <TextField
           {...params}
@@ -297,15 +333,17 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
           defaultValue=""
           rules={requiredRule}
           render={({ field: f, fieldState }) => (
-            <FormControl fullWidth error={!!fieldState.error}>
+            <FormControl fullWidth error={!!fieldState.error} sx={inputSx}>
               <InputLabel>{field.label}</InputLabel>
               <Select
                 {...f}
                 label={field.label}
+                MenuProps={selectMenuProps}
                 sx={{
                   borderRadius: '8px',
                   bgcolor: '#FFFFFF',
-                  '& fieldset': { borderColor: '#E5E7EB' }
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E5E7EB' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C0C2C9' }
                 }}
               >
                 {field.options?.map((opt) => (
@@ -334,16 +372,22 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
               : undefined
           }}
           render={({ field: f, fieldState }) => (
-            <FormControl fullWidth error={!!fieldState.error}>
+            <FormControl fullWidth error={!!fieldState.error} sx={inputSx}>
               <InputLabel>{field.label}</InputLabel>
               <Select
                 {...f}
                 multiple
                 label={field.label}
+                MenuProps={selectMenuProps}
                 input={
                   <OutlinedInput
                     label={field.label}
-                    sx={{ borderRadius: '8px', bgcolor: '#FFFFFF' }}
+                    sx={{
+                      borderRadius: '8px',
+                      bgcolor: '#FFFFFF',
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E5E7EB' },
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C0C2C9' }
+                    }}
                   />
                 }
                 renderValue={(selected: number[]) =>
