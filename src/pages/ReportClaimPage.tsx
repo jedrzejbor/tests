@@ -13,7 +13,6 @@ import {
   FormControl,
   FormControlLabel,
   FormHelperText,
-  InputLabel,
   ListItemText,
   MenuItem,
   OutlinedInput,
@@ -37,6 +36,25 @@ const inputSx = {
     '& fieldset': { borderColor: '#E5E7EB' },
     '&:hover fieldset': { borderColor: '#C0C2C9' }
   }
+} as const;
+
+const dynamicLabelSx = {
+  color: 'rgba(0, 0, 0, 0.60)',
+  fontFeatureSettings: "'liga' off, 'clig' off",
+  fontFamily: 'Inter',
+  fontSize: '14px',
+  fontStyle: 'normal',
+  fontWeight: 400,
+  lineHeight: '143%',
+  letterSpacing: '0.17px',
+  pb: '12px'
+} as const;
+
+const dynamicPlaceholderSx = {
+  color: 'rgba(0, 0, 0, 0.60)',
+  fontFamily: 'Inter',
+  fontSize: '14px',
+  fontWeight: 400
 } as const;
 
 const selectMenuProps = {
@@ -207,6 +225,16 @@ interface DynamicFieldProps {
   control: ReturnType<typeof useForm>['control'];
 }
 
+const ExternalLabelField: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children
+}) => (
+  <Box>
+    <Typography sx={dynamicLabelSx}>{label}</Typography>
+    {children}
+  </Box>
+);
+
 const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
   const requiredRule = field.required ? { required: `Pole "${field.label}" jest wymagane` } : {};
 
@@ -219,17 +247,18 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
           defaultValue=""
           rules={requiredRule}
           render={({ field: f, fieldState }) => (
-            <TextField
-              {...f}
-              label={field.label}
-              fullWidth
-              multiline
-              minRows={3}
-              placeholder="Wpisz"
-              error={!!fieldState.error}
-              helperText={fieldState.error?.message}
-              sx={inputSx}
-            />
+            <ExternalLabelField label={field.label}>
+              <TextField
+                {...f}
+                fullWidth
+                multiline
+                minRows={3}
+                placeholder="Wpisz"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+                sx={inputSx}
+              />
+            </ExternalLabelField>
           )}
         />
       );
@@ -245,15 +274,17 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
             validate: (v) => v === '' || !isNaN(Number(v)) || 'Wartość musi być liczbą'
           }}
           render={({ field: f, fieldState }) => (
-            <TextField
-              {...f}
-              label={field.label}
-              type="number"
-              fullWidth
-              error={!!fieldState.error}
-              helperText={fieldState.error?.message}
-              sx={inputSx}
-            />
+            <ExternalLabelField label={field.label}>
+              <TextField
+                {...f}
+                type="number"
+                fullWidth
+                placeholder="Wpisz"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+                sx={inputSx}
+              />
+            </ExternalLabelField>
           )}
         />
       );
@@ -289,16 +320,16 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
           defaultValue=""
           rules={requiredRule}
           render={({ field: f, fieldState }) => (
-            <TextField
-              {...f}
-              label={field.label}
-              type="date"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              error={!!fieldState.error}
-              helperText={fieldState.error?.message}
-              sx={inputSx}
-            />
+            <ExternalLabelField label={field.label}>
+              <TextField
+                {...f}
+                type="date"
+                fullWidth
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+                sx={inputSx}
+              />
+            </ExternalLabelField>
           )}
         />
       );
@@ -311,16 +342,16 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
           defaultValue=""
           rules={requiredRule}
           render={({ field: f, fieldState }) => (
-            <TextField
-              {...f}
-              label={field.label}
-              type="datetime-local"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              error={!!fieldState.error}
-              helperText={fieldState.error?.message}
-              sx={inputSx}
-            />
+            <ExternalLabelField label={field.label}>
+              <TextField
+                {...f}
+                type="datetime-local"
+                fullWidth
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+                sx={inputSx}
+              />
+            </ExternalLabelField>
           )}
         />
       );
@@ -333,27 +364,37 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
           defaultValue=""
           rules={requiredRule}
           render={({ field: f, fieldState }) => (
-            <FormControl fullWidth error={!!fieldState.error} sx={inputSx}>
-              <InputLabel>{field.label}</InputLabel>
-              <Select
-                {...f}
-                label={field.label}
-                MenuProps={selectMenuProps}
-                sx={{
-                  borderRadius: '8px',
-                  bgcolor: '#FFFFFF',
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E5E7EB' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C0C2C9' }
-                }}
-              >
-                {field.options?.map((opt) => (
-                  <MenuItem key={opt.id} value={opt.id}>
-                    {opt.label}
-                  </MenuItem>
-                ))}
-              </Select>
-              {fieldState.error && <FormHelperText>{fieldState.error.message}</FormHelperText>}
-            </FormControl>
+            <ExternalLabelField label={field.label}>
+              <FormControl fullWidth error={!!fieldState.error} sx={inputSx}>
+                <Select
+                  {...f}
+                  displayEmpty
+                  MenuProps={selectMenuProps}
+                  renderValue={(selected) =>
+                    selected === '' ? (
+                      <Typography component="span" sx={dynamicPlaceholderSx}>
+                        Wpisz
+                      </Typography>
+                    ) : (
+                      field.options?.find((opt) => opt.id === selected)?.label
+                    )
+                  }
+                  sx={{
+                    borderRadius: '8px',
+                    bgcolor: '#FFFFFF',
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E5E7EB' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C0C2C9' }
+                  }}
+                >
+                  {field.options?.map((opt) => (
+                    <MenuItem key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {fieldState.error && <FormHelperText>{fieldState.error.message}</FormHelperText>}
+              </FormControl>
+            </ExternalLabelField>
           )}
         />
       );
@@ -372,40 +413,46 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
               : undefined
           }}
           render={({ field: f, fieldState }) => (
-            <FormControl fullWidth error={!!fieldState.error} sx={inputSx}>
-              <InputLabel>{field.label}</InputLabel>
-              <Select
-                {...f}
-                multiple
-                label={field.label}
-                MenuProps={selectMenuProps}
-                input={
-                  <OutlinedInput
-                    label={field.label}
-                    sx={{
-                      borderRadius: '8px',
-                      bgcolor: '#FFFFFF',
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E5E7EB' },
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C0C2C9' }
-                    }}
-                  />
-                }
-                renderValue={(selected: number[]) =>
-                  selected
-                    .map((id) => field.options?.find((o) => o.id === id)?.label ?? id)
-                    .join(', ')
-                }
-                sx={{ borderRadius: '8px', bgcolor: '#FFFFFF' }}
-              >
-                {field.options?.map((opt) => (
-                  <MenuItem key={opt.id} value={opt.id}>
-                    <Checkbox checked={((f.value as number[]) ?? []).includes(opt.id)} />
-                    <ListItemText primary={opt.label} />
-                  </MenuItem>
-                ))}
-              </Select>
-              {fieldState.error && <FormHelperText>{fieldState.error.message}</FormHelperText>}
-            </FormControl>
+            <ExternalLabelField label={field.label}>
+              <FormControl fullWidth error={!!fieldState.error} sx={inputSx}>
+                <Select
+                  {...f}
+                  multiple
+                  displayEmpty
+                  MenuProps={selectMenuProps}
+                  input={
+                    <OutlinedInput
+                      sx={{
+                        borderRadius: '8px',
+                        bgcolor: '#FFFFFF',
+                        '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E5E7EB' },
+                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C0C2C9' }
+                      }}
+                    />
+                  }
+                  renderValue={(selected: number[]) =>
+                    selected.length === 0 ? (
+                      <Typography component="span" sx={dynamicPlaceholderSx}>
+                        Wpisz
+                      </Typography>
+                    ) : (
+                      selected
+                        .map((id) => field.options?.find((o) => o.id === id)?.label ?? id)
+                        .join(', ')
+                    )
+                  }
+                  sx={{ borderRadius: '8px', bgcolor: '#FFFFFF' }}
+                >
+                  {field.options?.map((opt) => (
+                    <MenuItem key={opt.id} value={opt.id}>
+                      <Checkbox checked={((f.value as number[]) ?? []).includes(opt.id)} />
+                      <ListItemText primary={opt.label} />
+                    </MenuItem>
+                  ))}
+                </Select>
+                {fieldState.error && <FormHelperText>{fieldState.error.message}</FormHelperText>}
+              </FormControl>
+            </ExternalLabelField>
           )}
         />
       );
@@ -656,17 +703,18 @@ const ReportClaimPage: React.FC = () => {
                   defaultValue=""
                   rules={{ required: 'Miejsce zdarzenia jest wymagane' }}
                   render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      label="Miejsce zdarzenia objętego ochroną ubezpieczeniową (kraj, adres, opis miejsca)"
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      placeholder="Wpisz"
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={inputSx}
-                    />
+                    <ExternalLabelField label="Miejsce zdarzenia objętego ochroną ubezpieczeniową (kraj, adres, opis miejsca)">
+                      <TextField
+                        {...f}
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        placeholder="Wpisz"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        sx={inputSx}
+                      />
+                    </ExternalLabelField>
                   )}
                 />
                 <Controller
@@ -675,17 +723,18 @@ const ReportClaimPage: React.FC = () => {
                   defaultValue=""
                   rules={{ required: 'Okoliczności zajścia zdarzenia są wymagane' }}
                   render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      label="Okoliczności zajścia zdarzenia (wszystkie okoliczności towarzyszące zdarzeniu ubezpieczeniowemu oraz powstania szkody)"
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      placeholder="Wpisz"
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={inputSx}
-                    />
+                    <ExternalLabelField label="Okoliczności zajścia zdarzenia (wszystkie okoliczności towarzyszące zdarzeniu ubezpieczeniowemu oraz powstania szkody)">
+                      <TextField
+                        {...f}
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        placeholder="Wpisz"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        sx={inputSx}
+                      />
+                    </ExternalLabelField>
                   )}
                 />
               </SectionCard>
