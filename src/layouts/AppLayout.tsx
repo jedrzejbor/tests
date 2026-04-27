@@ -217,6 +217,12 @@ const AppLayout = () => {
       breadcrumbs.push({ label: `Karta polisy` });
     }
 
+    // Handle /app/damages/new
+    if (path === '/app/damages/new') {
+      breadcrumbs.push({ label: 'Szkody', href: '/app/damages' });
+      breadcrumbs.push({ label: 'Zgłoś szkodę' });
+    }
+
     return breadcrumbs;
   };
 

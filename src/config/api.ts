@@ -31,7 +31,10 @@ export const API_ENDPOINTS = {
   // Policies
   POLICIES_TABLE: '/api/resource/policy/policy',
   POLICY: '/api/policy',
-  POLICY_FORM_OPTIONS: '/api/policy/form-options'
+  POLICY_FORM_OPTIONS: '/api/policy/form-options',
+  // Claims
+  POLICY_CLAIM_FORM: '/api/policy/form',
+  CLAIMS: '/api/claims'
   // Tutaj dodawaj kolejne endpointy
 } as const;
 
