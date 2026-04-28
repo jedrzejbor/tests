@@ -981,6 +981,7 @@ const ClientDetailsPage: React.FC = () => {
                   refreshKey={paymentRefreshKey}
                   disabledColumns={PAYMENTS_DISABLED_COLUMNS}
                   disabledFilters={PAYMENTS_DISABLED_FILTERS}
+                  disabledGeneralActions={['payments-create']}
                 />
                 {/* <UnavailableTabContent /> */}
               </Box>
@@ -1474,6 +1475,7 @@ const ClientDetailsPage: React.FC = () => {
                 refreshKey={paymentRefreshKey}
                 disabledColumns={['client_name']}
                 disabledFilters={['client']}
+                disabledGeneralActions={['payments-create']}
               />
               {/* <UnavailableTabContent /> */}
             </Box>
