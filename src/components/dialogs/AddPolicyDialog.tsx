@@ -199,8 +199,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
     'number',
     'date_signed_at',
     'date_from',
-    'date_to',
-    'city'
+    'date_to'
   ];
 
   const handleNext = async () => {
@@ -228,7 +227,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
         date_signed_at: data.date_signed_at,
         date_from: data.date_from,
         date_to: data.date_to,
-        city: data.city,
+        city: '',
         bank_name: data.bank_name,
         bank_account_number: data.bank_account_number,
         description: data.description || null,
@@ -284,8 +283,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
           'number',
           'date_signed_at',
           'date_from',
-          'date_to',
-          'city'
+          'date_to'
         ];
         const errorKeys = Object.keys(apiError.errors);
         if (errorKeys.some((k) => step1Keys.includes(k))) {
@@ -573,15 +571,6 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
             InputLabelProps={{ shrink: true }}
           />
         </Stack>
-
-        <TextField
-          label="Miasto"
-          {...register('city')}
-          error={Boolean(errors.city)}
-          helperText={errors.city?.message}
-          fullWidth
-          size="medium"
-        />
       </Stack>
 
       <Stack direction="row" justifyContent="space-between" sx={{ mt: 4 }}>
@@ -947,8 +936,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
       'number',
       'date_signed_at',
       'date_from',
-      'date_to',
-      'city'
+      'date_to'
     ];
     const errorKeys = Object.keys(fieldErrors);
     if (errorKeys.some((k) => step1Keys.includes(k))) {

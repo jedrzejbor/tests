@@ -437,7 +437,7 @@ export const addPolicySchema = z
     date_signed_at: z.string().min(1, 'Data zawarcia jest wymagana'),
     date_from: z.string().min(1, 'Początek obowiązywania jest wymagany'),
     date_to: z.string().min(1, 'Koniec obowiązywania jest wymagany'),
-    city: z.string().min(1, 'Miasto jest wymagane'),
+    city: z.string().optional(),
 
     // Step 3 — payment details
     /** Total premium in PLN (display) — converted to grosze before submit */
