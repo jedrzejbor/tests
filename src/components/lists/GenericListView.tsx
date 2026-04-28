@@ -53,6 +53,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   disabledColumns,
   disabledFilters,
   disabledGeneralActions,
+  mobileCardVariant = 'default',
+  mobileTitle,
+  mobilePrimaryActionLabel,
   stateKey,
   filterLabelOverrides,
   filterTooltips,
@@ -60,6 +63,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isPolicyMobile = isMobile && mobileCardVariant === 'policy';
 
   // State for menus and drawers
   const [sortAnchorEl, setSortAnchorEl] = useState<null | HTMLElement>(null);
@@ -801,12 +805,20 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
           </Drawer>
         </Box>
       ) : (
-        <>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           {/* Mobile layout - white wrapper */}
           <Box
             sx={{
               bgcolor: '#FFFFFF',
-              borderRadius: '12px',
+              borderRadius: isPolicyMobile ? '16px' : '12px',
               overflow: 'hidden',
               p: 2,
               mb: '76px' /* leave space for bottom navigation on mobile */
@@ -825,11 +837,12 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                   sx={{
                     fontSize: '20px',
                     fontWeight: 300,
-                    lineHeight: '28px',
-                    color: '#1E1F21'
+                    lineHeight: '32px',
+                    letterSpacing: '-0.4px',
+                    color: '#32343A'
                   }}
                 >
-                  {title}
+                  {mobileTitle ?? title}
                 </Typography>
 
                 {meta.generalActions
@@ -846,7 +859,12 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         borderRadius: '8px',
                         fontWeight: 500,
                         fontSize: '14px',
+                        lineHeight: '24px',
+                        letterSpacing: '0.4px',
                         px: 2,
+                        py: 1,
+                        minWidth: isPolicyMobile ? '101px' : undefined,
+                        height: isPolicyMobile ? '40px' : undefined,
                         bgcolor: '#1E1F21',
                         color: 'white',
                         '&:hover': {
@@ -854,7 +872,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         }
                       }}
                     >
-                      {action.label}
+                      {mobilePrimaryActionLabel ?? action.label}
                     </Button>
                   ))}
               </Stack>
@@ -881,6 +899,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 filterLabelOverrides={filterLabelOverrides}
                 filterTooltips={filterTooltips}
                 filterTransformers={filterTransformers}
+                mobileVariant={mobileCardVariant}
               />
             )}
 
@@ -891,6 +910,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               onRowAction={handleRowAction}
               getRowId={getRowId}
               extraRowActions={extraRowActions}
+              variant={mobileCardVariant}
             />
 
             {/* Mobile Pagination */}
@@ -906,7 +926,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               </Stack>
             )}
           </Box>
-        </>
+        </Box>
       )}
     </Box>
   );

@@ -43,27 +43,28 @@ interface MobileCardListRendererProps<T extends GenericRecord = GenericRecord> {
   getRowId: (row: T) => string;
   /** Frontend-defined actions appended after backend actions in the kebab menu */
   extraRowActions?: ExtraRowAction<T>[];
+  variant?: 'default' | 'policy';
 }
 
 // Get status chip styles
 const getStatusChipStyles = (status: string) => {
   const lowerStatus = status?.toLowerCase() || '';
-  if (lowerStatus.includes('aktywny') || lowerStatus.includes('active')) {
-    return {
-      bgcolor: '#ECFDF3',
-      color: '#027A48',
-      dotColor: '#12B76A'
-    };
-  }
   if (
     lowerStatus.includes('nieaktywny') ||
     lowerStatus.includes('inactive') ||
-    lowerStatus.includes('nieaktywny')
+    lowerStatus.includes('archiwalny')
   ) {
     return {
       bgcolor: '#FEF3F2',
       color: '#B42318',
       dotColor: '#F04438'
+    };
+  }
+  if (lowerStatus.includes('aktywny') || lowerStatus.includes('active')) {
+    return {
+      bgcolor: '#E8F5E9',
+      color: '#2E7D32',
+      dotColor: '#4CAF50'
     };
   }
   if (lowerStatus.includes('pending') || lowerStatus.includes('oczekuje')) {
@@ -80,13 +81,36 @@ const getStatusChipStyles = (status: string) => {
   };
 };
 
+const getStringValue = (row: GenericRecord, property: string): string => {
+  const value = row[property];
+  return value === undefined || value === null ? '' : String(value).trim();
+};
+
+const formatDateToken = (value: string): string => {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return value;
+  return `${match[3]}.${match[2]}.${match[1]}`;
+};
+
+const formatPolicyDateRange = (value: string): string => {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  if (/^od:/i.test(normalized)) return normalized;
+
+  const [from, to] = normalized.split(/\s+(?:-|–|—|do)\s+/i);
+  if (!from || !to) return normalized;
+
+  return `Od: ${formatDateToken(from)} Do: ${formatDateToken(to)}`;
+};
+
 export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>({
   columns,
   data,
   loading,
   onRowAction,
   getRowId,
-  extraRowActions = []
+  extraRowActions = [],
+  variant = 'default'
 }: MobileCardListRendererProps<T>) => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [menuRow, setMenuRow] = useState<T | null>(null);
@@ -198,7 +222,151 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
         {data.map((row, index) => {
           const rowId = getRowId(row);
           const rowActions = (row.actions as ActionDef[]) || [];
+          const visibleExtraActions = extraRowActions.filter((ea) => !ea.show || ea.show(row));
           const isLast = index === data.length - 1;
+
+          if (variant === 'policy') {
+            const client = getStringValue(row, 'client');
+            const dateRange = formatPolicyDateRange(getStringValue(row, 'date_range'));
+            const type = getStringValue(row, 'type');
+            const insuranceCompany = getStringValue(row, 'insurance_company');
+            const city = getStringValue(row, 'city');
+            const number = getStringValue(row, 'number');
+            const status = getStringValue(row, 'status');
+            const hasActions = rowActions.length > 0 || visibleExtraActions.length > 0;
+
+            return (
+              <Box key={rowId}>
+                <Box sx={{ px: 2, pt: 2, pb: 3 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Typography
+                      sx={{
+                        color: '#1E1F21',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        lineHeight: 1.5,
+                        letterSpacing: '0.15px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        flex: 1,
+                        pr: 1
+                      }}
+                    >
+                      {client || '—'}
+                    </Typography>
+
+                    {hasActions && (
+                      <IconButton
+                        aria-label="Akcje polisy"
+                        onClick={(e) => handleMenuOpen(e, row)}
+                        sx={{ color: '#1E1F21', p: 0.5, mt: -0.5, mr: -0.5 }}
+                      >
+                        <MoreVertIcon sx={{ fontSize: 24 }} />
+                      </IconButton>
+                    )}
+                  </Stack>
+
+                  <Stack spacing={0.5} sx={{ mt: 0 }}>
+                    {dateRange && (
+                      <Typography
+                        sx={{
+                          color: '#74767F',
+                          fontSize: '14px',
+                          lineHeight: 1.43,
+                          letterSpacing: '0.17px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {dateRange}
+                      </Typography>
+                    )}
+                    <Stack spacing={0}>
+                      {[type, insuranceCompany, city].filter(Boolean).map((value) => (
+                        <Typography
+                          key={value}
+                          sx={{
+                            color: '#74767F',
+                            fontSize: '14px',
+                            lineHeight: 1.43,
+                            letterSpacing: '0.17px',
+                            width: '231px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {value}
+                        </Typography>
+                      ))}
+                    </Stack>
+                  </Stack>
+
+                  {number && (
+                    <Typography
+                      sx={{
+                        color: '#1E1F21',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        lineHeight: 1.5,
+                        letterSpacing: '0.15px',
+                        mt: 0.5,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Nr. polisy {number}
+                    </Typography>
+                  )}
+
+                  {status && (
+                    <Box
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        height: '20px',
+                        bgcolor: '#E8F5E9',
+                        borderRadius: '16px',
+                        pl: '8px',
+                        pr: '2px',
+                        py: '3px',
+                        mt: 1,
+                        width: 'fit-content'
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          bgcolor: '#4CAF50',
+                          flexShrink: 0
+                        }}
+                      />
+                      <Typography
+                        component="span"
+                        sx={{
+                          color: '#2E7D32',
+                          fontSize: '12px',
+                          fontWeight: 400,
+                          lineHeight: '14px',
+                          letterSpacing: '0.16px',
+                          whiteSpace: 'nowrap',
+                          px: '6px'
+                        }}
+                      >
+                        {status}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                {!isLast && <Divider sx={{ mx: 2, borderColor: '#E0E0E0' }} />}
+              </Box>
+            );
+          }
 
           // Get values
           const titleValue = titleColumn?.property ? String(row[titleColumn.property] || '') : '';
@@ -235,7 +403,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                     {titleValue || '—'}
                   </Typography>
 
-                  {rowActions.length > 0 && (
+                  {(rowActions.length > 0 || visibleExtraActions.length > 0) && (
                     <IconButton
                       size="small"
                       onClick={(e) => handleMenuOpen(e, row)}
@@ -378,7 +546,6 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                       }}
                     />
                   )}
-
                   {/* Account type chip */}
                   {accountTypeValue && (
                     <Chip

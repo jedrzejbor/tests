@@ -221,6 +221,9 @@ const PoliciesPage: React.FC = () => {
         initialPerPage={10}
         refreshKey={refreshKey}
         stateKey="/app/policies"
+        mobileCardVariant="policy"
+        mobileTitle="Polisy"
+        mobilePrimaryActionLabel="Dodaj"
         disabledGeneralActions={!canCreatePolicy ? ['create-policy'] : undefined}
         extraRowActions={extraRowActions}
         filterLabelOverrides={{

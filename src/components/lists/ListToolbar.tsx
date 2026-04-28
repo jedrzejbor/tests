@@ -67,6 +67,7 @@ interface ListToolbarProps {
   filterTooltips?: Record<string, string>;
   /** Transform display value to backend value before sending (e.g. PLN → grosze) */
   filterTransformers?: Record<string, (displayValue: string) => string>;
+  mobileVariant?: 'default' | 'policy';
 }
 
 export const ListToolbar = ({
@@ -88,7 +89,8 @@ export const ListToolbar = ({
   onBulkAction,
   filterLabelOverrides,
   filterTooltips,
-  filterTransformers
+  filterTransformers,
+  mobileVariant = 'default'
 }: ListToolbarProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -259,8 +261,10 @@ export const ListToolbar = ({
 
   // Mobile layout
   if (isMobile) {
+    const isPolicyMobile = mobileVariant === 'policy';
+
     return (
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: isPolicyMobile ? 3 : 2 }}>
         {/* Title row with add button */}
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           {/* General Actions (mobile: just primary action) */}
@@ -293,44 +297,60 @@ export const ListToolbar = ({
           fullWidth
           size="small"
           InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
+            startAdornment: (
+              <InputAdornment position="start">
                 <SearchIcon sx={{ color: '#8E9098', fontSize: 20 }} />
               </InputAdornment>
             )
           }}
           sx={{
-            mb: 2,
+            mb: isPolicyMobile ? 1 : 2,
             bgcolor: 'background.paper',
             '& .MuiOutlinedInput-root': {
               borderRadius: '8px',
+              height: isPolicyMobile ? '44px' : undefined,
+              fontSize: isPolicyMobile ? '16px' : undefined,
+              lineHeight: isPolicyMobile ? '20px' : undefined,
               '& fieldset': {
-                borderColor: '#E5E7EB'
+                borderColor: isPolicyMobile ? '#D0D5DD' : '#E5E7EB'
               }
+            },
+            '& .MuiInputBase-input::placeholder': {
+              color: '#74767F',
+              opacity: 1
             }
           }}
         />
 
         {/* Sort and Filter row */}
-        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent={isPolicyMobile ? 'space-between' : 'flex-start'}
+          sx={{ mb: isPolicyMobile ? 0 : 2, gap: 2 }}
+        >
           {/* Sort button (Alfabetycznie) */}
           <Button
             variant="outlined"
-            startIcon={<SortIcon sx={{ fontSize: 18 }} />}
+            startIcon={<SortIcon sx={{ fontSize: isPolicyMobile ? 24 : 18 }} />}
             onClick={handleSortClick}
             sx={{
-              color: '#32343A',
+              color: '#1E1F21',
               textTransform: 'none',
-              borderColor: '#E5E7EB',
+              borderColor: isPolicyMobile ? '#D0D5DD' : '#E5E7EB',
               borderRadius: '8px',
               fontWeight: 500,
               fontSize: '14px',
-              justifyContent: 'flex-start',
-              px: '16px',
-              py: '12px',
+              lineHeight: '24px',
+              letterSpacing: '0.4px',
+              justifyContent: 'center',
+              px: isPolicyMobile ? '22px' : '16px',
+              py: isPolicyMobile ? '8px' : '12px',
               bgcolor: 'white',
-              width: 'auto',
+              width: isPolicyMobile ? '119px' : 'auto',
+              height: isPolicyMobile ? '44px' : undefined,
               minWidth: 0,
+              boxShadow: isPolicyMobile ? '0px 1px 2px rgba(16, 24, 40, 0.05)' : 'none',
               '&:hover': {
                 borderColor: '#D0D5DD',
                 bgcolor: '#FAFAFA'
@@ -341,26 +361,30 @@ export const ListToolbar = ({
           </Button>
 
           {/* spacer to push Filter button to the right */}
-          <Box sx={{ flex: 1 }} />
+          {!isPolicyMobile && <Box sx={{ flex: 1 }} />}
 
           {/* Filter button */}
           <Button
             variant="outlined"
-            startIcon={<FilterListIcon sx={{ fontSize: 18 }} />}
+            startIcon={<FilterListIcon sx={{ fontSize: isPolicyMobile ? 24 : 18 }} />}
             onClick={handleFilterDrawerToggle}
             sx={{
-              color: '#32343A',
+              color: '#1E1F21',
               textTransform: 'none',
-              borderColor: '#E5E7EB',
+              borderColor: isPolicyMobile ? '#D0D5DD' : '#E5E7EB',
               borderRadius: '8px',
               fontWeight: 500,
               fontSize: '14px',
-              justifyContent: 'flex-start',
-              px: '16px',
-              py: '12px',
+              lineHeight: '24px',
+              letterSpacing: '0.4px',
+              justifyContent: 'center',
+              px: isPolicyMobile ? '18px' : '16px',
+              py: isPolicyMobile ? '8px' : '12px',
               bgcolor: 'white',
-              width: 'auto',
+              width: isPolicyMobile ? '122px' : 'auto',
+              height: isPolicyMobile ? '44px' : undefined,
               minWidth: 0,
+              boxShadow: isPolicyMobile ? '0px 1px 2px rgba(16, 24, 40, 0.05)' : 'none',
               '&:hover': {
                 borderColor: '#D0D5DD',
                 bgcolor: '#FAFAFA'
