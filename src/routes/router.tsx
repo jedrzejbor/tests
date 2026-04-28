@@ -13,6 +13,7 @@ import ClientsPage from '@/pages/ClientsPage';
 import ClientDetailsPage from '@/pages/ClientDetailsPage';
 import PoliciesPage from '@/pages/PoliciesPage';
 import PolicyDetailsPage from '@/pages/PolicyDetailsPage';
+import PaymentsPage from '@/pages/PaymentsPage';
 import ClaimsPage from '@/pages/ClaimsPage';
 import ReportClaimPage from '@/pages/ReportClaimPage';
 import ResetPasswordTokenPage from '@/pages/ResetPasswordTokenPage';
@@ -155,7 +156,7 @@ export const router = createBrowserRouter([
         path: '/app/payments',
         element: (
           <ProtectedRoute>
-            <UnavailablePage />
+            <PaymentsPage />
           </ProtectedRoute>
         )
       },
