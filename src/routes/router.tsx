@@ -137,6 +137,14 @@ export const router = createBrowserRouter([
         )
       },
       {
+        path: '/app/damages/:claimId/edit',
+        element: (
+          <ProtectedRoute>
+            <ReportClaimPage />
+          </ProtectedRoute>
+        )
+      },
+      {
         path: '/app/damages',
         element: (
           <ProtectedRoute>

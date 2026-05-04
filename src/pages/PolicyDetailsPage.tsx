@@ -652,12 +652,9 @@ const PolicyDetailsPage: React.FC = () => {
       });
     }, []);
 
-    const handleEditClaim = useCallback(() => {
-      addToast({
-        id: crypto.randomUUID(),
-        message: 'Edycja szkody nie jest jeszcze dostępna',
-        severity: 'info'
-      });
+    const handleEditClaim = useCallback((row: ClaimRecord) => {
+      if (!row.id) return;
+      navigate(`/app/damages/${row.id}/edit`);
     }, []);
 
     const handleArchiveClaim = useCallback((row: ClaimRecord) => {
@@ -780,6 +777,7 @@ const PolicyDetailsPage: React.FC = () => {
           mobileTitle="Szkody"
           mobilePrimaryActionLabel="Zgłoś"
           disabledGeneralActions={!hasPermission('claim create') ? ['create-claim'] : undefined}
+          disabledFilters={['policy_status']}
           extraRowActions={extraRowActions}
           filterLabelOverrides={{
             claim_date: 'Data szkody',

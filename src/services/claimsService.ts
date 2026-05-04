@@ -41,6 +41,8 @@ const CLAIM_SORT_FALLBACKS: Record<string, string> = {
   client_name: 'created_at'
 };
 
+const CLAIM_FILTER_BLOCKLIST = new Set(['policy_status']);
+
 export type ClaimMeta = Record<string, ClaimMetaValue>;
 
 export interface ClaimCreatePayload {
@@ -173,6 +175,8 @@ const buildQueryString = (params: FetcherParams): string => {
   }
 
   Object.entries(params.filters).forEach(([key, value]) => {
+    if (CLAIM_FILTER_BLOCKLIST.has(key)) return;
+
     if (value !== undefined && value !== null && value !== '') {
       if (Array.isArray(value)) {
         const nonEmpty = value.filter((v) => v !== undefined && v !== null && v !== '');

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import {
@@ -22,8 +22,13 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { fetchClaimFormDefinition, submitClaim } from '@/services/claimsService';
-import type { ClaimFormField } from '@/services/claimsService';
+import {
+  fetchClaimFormDefinition,
+  getClaimDetails,
+  submitClaim,
+  updateClaim
+} from '@/services/claimsService';
+import type { ClaimFormField, ClaimUpdatePayload } from '@/services/claimsService';
 import { fetchPoliciesTable, getPolicyDetails } from '@/services/policiesService';
 import type { PolicyRecord } from '@/services/policiesService';
 
@@ -496,20 +501,23 @@ export const STATIC_FIELD_KEYS = {
 
 const ReportClaimPage: React.FC = () => {
   const navigate = useNavigate();
+  const { claimId } = useParams<{ claimId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const rawPolicyId = searchParams.get('policyId');
+  const isEditMode = Boolean(claimId);
 
   const [policyOption, setPolicyOption] = useState<PolicyOption | null>(null);
   const [policyError, setPolicyError] = useState<string | undefined>(undefined);
 
   const [fields, setFields] = useState<ClaimFormField[]>([]);
   const [loadingFields, setLoadingFields] = useState(false);
+  const [loadingClaim, setLoadingClaim] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { control, handleSubmit, watch } = useForm<Record<string, unknown>>({
+  const { control, handleSubmit, reset, watch } = useForm<Record<string, unknown>>({
     mode: 'onBlur',
     reValidateMode: 'onChange',
     defaultValues: {
@@ -522,9 +530,58 @@ const ReportClaimPage: React.FC = () => {
   const isExclusiveClaim = Boolean(watch(STATIC_FIELD_KEYS.isExclusiveClaim));
   const isTransferred = Boolean(watch(STATIC_FIELD_KEYS.isTransferred));
 
+  const buildPayload = (data: Record<string, unknown>): ClaimUpdatePayload => {
+    const meta: Record<string, string | number | boolean | number[]> = {};
+
+    const eventDate = data[STATIC_FIELD_KEYS.eventDate];
+    const place = data[STATIC_FIELD_KEYS.placeOfAccident];
+    const circumstances = data[STATIC_FIELD_KEYS.circumstances];
+    if (eventDate) meta[STATIC_FIELD_KEYS.eventDate] = String(eventDate);
+    if (place) meta[STATIC_FIELD_KEYS.placeOfAccident] = String(place);
+    if (circumstances) meta[STATIC_FIELD_KEYS.circumstances] = String(circumstances);
+
+    for (const field of fields) {
+      const raw = data[field.key];
+      if (raw === undefined || raw === '') continue;
+
+      if (field.type === 'number') {
+        meta[field.key] = Number(raw);
+      } else if (field.type === 'bool') {
+        meta[field.key] = Boolean(raw);
+      } else if (field.type === 'select-single') {
+        meta[field.key] = Number(raw);
+      } else if (field.type === 'select-multi') {
+        meta[field.key] = (raw as number[]).map(Number);
+      } else {
+        meta[field.key] = String(raw);
+      }
+    }
+
+    const optionalString = (value: unknown) => (value ? String(value) : undefined);
+
+    return {
+      claim_date: String(data[STATIC_FIELD_KEYS.eventDate]),
+      is_vat_payer: Boolean(data[STATIC_FIELD_KEYS.isVatPayer]),
+      is_exclusive_claim: Boolean(data[STATIC_FIELD_KEYS.isExclusiveClaim]),
+      is_transferred: Boolean(data[STATIC_FIELD_KEYS.isTransferred]),
+      street: String(data[STATIC_FIELD_KEYS.street]),
+      street_no: String(data[STATIC_FIELD_KEYS.streetNo]),
+      city: String(data[STATIC_FIELD_KEYS.city]),
+      postal: String(data[STATIC_FIELD_KEYS.postal]),
+      reported_date: optionalString(data[STATIC_FIELD_KEYS.reportedDate]),
+      number: optionalString(data[STATIC_FIELD_KEYS.claimNumber]),
+      claim_description: optionalString(circumstances),
+      claim_address: optionalString(place),
+      exclusive_claim_note: optionalString(data[STATIC_FIELD_KEYS.exclusiveClaimNote]),
+      transferred_note: optionalString(data[STATIC_FIELD_KEYS.transferredNote]),
+      payout_account_no: optionalString(data[STATIC_FIELD_KEYS.payoutAccountNo]),
+      meta
+    };
+  };
+
   // Pre-load policy if arriving with ?policyId in URL
   useEffect(() => {
-    if (!rawPolicyId) return;
+    if (!rawPolicyId || isEditMode) return;
 
     getPolicyDetails(rawPolicyId)
       .then((res) => {
@@ -537,7 +594,61 @@ const ReportClaimPage: React.FC = () => {
         });
       })
       .catch(() => setPolicyError('Nie udało się pobrać wybranej polisy'));
-  }, [rawPolicyId]);
+  }, [rawPolicyId, isEditMode]);
+
+  useEffect(() => {
+    if (!claimId) return;
+
+    let cancelled = false;
+    setLoadingClaim(true);
+    setSubmitError(null);
+
+    getClaimDetails(claimId)
+      .then((res) => {
+        if (cancelled) return;
+        const claim = res.claim;
+        const policy = claim.policy;
+        const meta = claim.meta ?? {};
+
+        setPolicyOption({
+          id: claim.policy_id,
+          label: policy?.number ?? `Polisa #${claim.policy_id}`,
+          clientName: '',
+          policyNumber: policy?.number ?? ''
+        });
+
+        reset({
+          ...meta,
+          [STATIC_FIELD_KEYS.reportedDate]: claim.reported_date ?? '',
+          [STATIC_FIELD_KEYS.eventDate]: claim.claim_date ?? '',
+          [STATIC_FIELD_KEYS.claimNumber]: claim.number ?? '',
+          [STATIC_FIELD_KEYS.placeOfAccident]: claim.claim_address ?? '',
+          [STATIC_FIELD_KEYS.circumstances]: claim.claim_description ?? '',
+          [STATIC_FIELD_KEYS.street]: claim.address?.street ?? '',
+          [STATIC_FIELD_KEYS.streetNo]: claim.address?.street_no ?? '',
+          [STATIC_FIELD_KEYS.city]: claim.address?.city ?? '',
+          [STATIC_FIELD_KEYS.postal]: claim.address?.postal ?? '',
+          [STATIC_FIELD_KEYS.isVatPayer]: claim.is_vat_payer,
+          [STATIC_FIELD_KEYS.isExclusiveClaim]: claim.is_exclusive_claim,
+          [STATIC_FIELD_KEYS.exclusiveClaimNote]: claim.exclusive_claim_note ?? '',
+          [STATIC_FIELD_KEYS.isTransferred]: claim.is_transferred,
+          [STATIC_FIELD_KEYS.transferredNote]: claim.transferred_note ?? '',
+          [STATIC_FIELD_KEYS.payoutAccountNo]: claim.payout_account_no ?? ''
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = (err as { message?: string }).message;
+        setSubmitError(message ?? 'Nie udało się pobrać danych szkody.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingClaim(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [claimId, reset]);
 
   // Fetch dynamic form definition whenever policy changes
   useEffect(() => {
@@ -565,6 +676,7 @@ const ReportClaimPage: React.FC = () => {
   }, [policyOption]);
 
   const handlePolicyChange = (opt: PolicyOption | null) => {
+    if (isEditMode) return;
     setPolicyOption(opt);
     setPolicyError(undefined);
     setSearchParams(opt ? { policyId: String(opt.id) } : {}, { replace: true });
@@ -579,64 +691,13 @@ const ReportClaimPage: React.FC = () => {
     setSubmitting(true);
     setSubmitError(null);
 
-    const normalizedFields: Record<string, string | number | boolean | number[]> = {};
-
-    // Static fields
-    const eventDate = data[STATIC_FIELD_KEYS.eventDate];
-    const place = data[STATIC_FIELD_KEYS.placeOfAccident];
-    const circumstances = data[STATIC_FIELD_KEYS.circumstances];
-    if (eventDate) normalizedFields[STATIC_FIELD_KEYS.eventDate] = String(eventDate);
-    if (place) normalizedFields[STATIC_FIELD_KEYS.placeOfAccident] = String(place);
-    if (circumstances) normalizedFields[STATIC_FIELD_KEYS.circumstances] = String(circumstances);
-
-    // Dynamic fields from API
-    for (const field of fields) {
-      const raw = data[field.key];
-      if (raw === undefined || raw === '') continue;
-
-      if (field.type === 'number') {
-        normalizedFields[field.key] = Number(raw);
-      } else if (field.type === 'bool') {
-        normalizedFields[field.key] = Boolean(raw);
-      } else if (field.type === 'select-single') {
-        normalizedFields[field.key] = Number(raw);
-      } else if (field.type === 'select-multi') {
-        normalizedFields[field.key] = (raw as number[]).map(Number);
-      } else {
-        normalizedFields[field.key] = String(raw);
-      }
-    }
-
     try {
-      await submitClaim({
-        policy_id: policyOption.id,
-        claim_date: String(data[STATIC_FIELD_KEYS.eventDate]),
-        is_vat_payer: Boolean(data[STATIC_FIELD_KEYS.isVatPayer]),
-        is_exclusive_claim: Boolean(data[STATIC_FIELD_KEYS.isExclusiveClaim]),
-        is_transferred: Boolean(data[STATIC_FIELD_KEYS.isTransferred]),
-        street: String(data[STATIC_FIELD_KEYS.street]),
-        street_no: String(data[STATIC_FIELD_KEYS.streetNo]),
-        city: String(data[STATIC_FIELD_KEYS.city]),
-        postal: String(data[STATIC_FIELD_KEYS.postal]),
-        reported_date: data[STATIC_FIELD_KEYS.reportedDate]
-          ? String(data[STATIC_FIELD_KEYS.reportedDate])
-          : undefined,
-        number: data[STATIC_FIELD_KEYS.claimNumber]
-          ? String(data[STATIC_FIELD_KEYS.claimNumber])
-          : undefined,
-        claim_description: circumstances ? String(circumstances) : undefined,
-        claim_address: place ? String(place) : undefined,
-        exclusive_claim_note: data[STATIC_FIELD_KEYS.exclusiveClaimNote]
-          ? String(data[STATIC_FIELD_KEYS.exclusiveClaimNote])
-          : undefined,
-        transferred_note: data[STATIC_FIELD_KEYS.transferredNote]
-          ? String(data[STATIC_FIELD_KEYS.transferredNote])
-          : undefined,
-        payout_account_no: data[STATIC_FIELD_KEYS.payoutAccountNo]
-          ? String(data[STATIC_FIELD_KEYS.payoutAccountNo])
-          : undefined,
-        meta: normalizedFields
-      });
+      const payload = buildPayload(data);
+      if (isEditMode && claimId) {
+        await updateClaim(claimId, payload);
+      } else {
+        await submitClaim({ policy_id: policyOption.id, ...payload });
+      }
       navigate('/app/damages');
     } catch (err) {
       const message = (err as { message?: string }).message;
@@ -647,6 +708,7 @@ const ReportClaimPage: React.FC = () => {
   };
 
   const noPolicy = policyOption === null;
+  const pageTitle = isEditMode ? 'Edytuj szkodę' : 'Zgłoś szkodę';
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -675,7 +737,7 @@ const ReportClaimPage: React.FC = () => {
                 variant="h5"
                 sx={{ fontSize: '32px', fontWeight: 300, lineHeight: '44px', color: '#1E1F21' }}
               >
-                Zgłoś szkodę
+                {pageTitle}
               </Typography>
               {policyOption?.clientName && (
                 <Typography sx={{ fontSize: '16px', fontWeight: 500, color: '#32343A', mt: 0.5 }}>
@@ -725,7 +787,7 @@ const ReportClaimPage: React.FC = () => {
                   value={policyOption}
                   onChange={handlePolicyChange}
                   error={policyError}
-                  disabled={!!rawPolicyId}
+                  disabled={!!rawPolicyId || isEditMode}
                 />
               </SectionCard>
 
@@ -1020,7 +1082,7 @@ const ReportClaimPage: React.FC = () => {
               <Button
                 type="submit"
                 variant="contained"
-                disabled={submitting || noPolicy}
+                disabled={submitting || noPolicy || loadingClaim}
                 startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
                 sx={{
                   borderRadius: '8px',
@@ -1033,7 +1095,7 @@ const ReportClaimPage: React.FC = () => {
                   '&.Mui-disabled': { bgcolor: '#E5E7EB', color: '#9CA3AF' }
                 }}
               >
-                {submitting ? 'Wysyłanie…' : 'Zgłoś szkodę'}
+                {submitting ? 'Wysyłanie…' : isEditMode ? 'Zapisz zmiany' : 'Zgłoś szkodę'}
               </Button>
             </Stack>
           </Box>
