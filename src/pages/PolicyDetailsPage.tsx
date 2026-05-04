@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
@@ -45,14 +48,23 @@ import {
   getClientDetails
 } from '@/services/clientsService';
 import type { ApiError } from '@/services/apiClient';
+import {
+  createPolicyClaimsFetcher,
+  forceDeleteClaim,
+  restoreClaim,
+  type ClaimRecord
+} from '@/services/claimsService';
 import { useUiStore } from '@/store/uiStore';
 import { usePermission } from '@/hooks/usePermission';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
+import ClaimPasswordDialog from '@/components/dialogs/ClaimPasswordDialog';
 import EditClientDialog from '@/components/dialogs/EditClientDialog';
 import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
+import { GenericListView } from '@/components/lists';
+import type { ExtraRowAction } from '@/types/genericList';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -616,6 +628,190 @@ const PolicyDetailsPage: React.FC = () => {
       </Typography>
     </Box>
   );
+
+  // ---------------------------------------------------------------------------
+  // Szkody tab content
+  // ---------------------------------------------------------------------------
+
+  const ClaimsTabContent = () => {
+    const [archiveClaimDialogOpen, setArchiveClaimDialogOpen] = useState(false);
+    const [forceDeleteClaimDialogOpen, setForceDeleteClaimDialogOpen] = useState(false);
+    const [selectedClaim, setSelectedClaim] = useState<ClaimRecord | null>(null);
+    const [claimsRefreshKey, setClaimsRefreshKey] = useState(0);
+
+    const canEditClaim = hasPermission('claim edit');
+    const canArchiveClaim = hasPermission('claim archive');
+    const canRestoreClaim = hasPermission('claim restore');
+    const canDeleteClaim = hasPermission('claim delete');
+
+    const handleViewClaim = useCallback(() => {
+      addToast({
+        id: crypto.randomUUID(),
+        message: 'Widok szczegółów szkody nie jest jeszcze dostępny',
+        severity: 'info'
+      });
+    }, []);
+
+    const handleEditClaim = useCallback(() => {
+      addToast({
+        id: crypto.randomUUID(),
+        message: 'Edycja szkody nie jest jeszcze dostępna',
+        severity: 'info'
+      });
+    }, []);
+
+    const handleArchiveClaim = useCallback((row: ClaimRecord) => {
+      setSelectedClaim(row);
+      setArchiveClaimDialogOpen(true);
+    }, []);
+
+    const handleForceDeleteClaim = useCallback((row: ClaimRecord) => {
+      setSelectedClaim(row);
+      setForceDeleteClaimDialogOpen(true);
+    }, []);
+
+    const handleRestoreClaim = useCallback(async (row: ClaimRecord) => {
+      if (!row.id) return;
+
+      try {
+        await restoreClaim(row.id);
+        addToast({
+          id: crypto.randomUUID(),
+          message: 'Szkoda została przywrócona',
+          severity: 'success'
+        });
+        setClaimsRefreshKey((key) => key + 1);
+      } catch (error) {
+        const apiError = error as ApiError;
+        addToast({
+          id: crypto.randomUUID(),
+          message: apiError?.message || 'Nie udało się przywrócić szkody',
+          severity: 'error'
+        });
+      }
+    }, []);
+
+    const handleCreateClaim = useCallback(() => {
+      navigate(`/app/damages/new?policyId=${policyId}`);
+    }, []);
+
+    const handleClaimChanged = useCallback(() => {
+      setClaimsRefreshKey((key) => key + 1);
+    }, []);
+
+    const handlers = useMemo(
+      () => ({
+        'view-claim': handleViewClaim,
+        'edit-claim': handleEditClaim,
+        'archive-claim': handleArchiveClaim,
+        'delete-claim': handleForceDeleteClaim,
+        'restore-claim': handleRestoreClaim,
+        'create-claim': handleCreateClaim
+      }),
+      [
+        handleViewClaim,
+        handleEditClaim,
+        handleArchiveClaim,
+        handleForceDeleteClaim,
+        handleRestoreClaim,
+        handleCreateClaim
+      ]
+    );
+
+    const hasBackendAction = (row: ClaimRecord, handler: string) =>
+      row.actions?.some((action) => action.handler === handler) ?? false;
+
+    const isArchived = (row: ClaimRecord) =>
+      Boolean(row.deleted_at) || hasBackendAction(row, 'restore-claim');
+
+    const extraRowActions: ExtraRowAction<ClaimRecord>[] = useMemo(
+      () => [
+        {
+          handler: 'view-claim',
+          label: 'Szczegóły',
+          icon: <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />,
+          show: (row) => !isArchived(row) && !hasBackendAction(row, 'view-claim')
+        },
+        {
+          handler: 'edit-claim',
+          label: 'Edytuj',
+          icon: <EditOutlinedIcon sx={{ fontSize: 18 }} />,
+          show: (row) => canEditClaim && !isArchived(row) && !hasBackendAction(row, 'edit-claim')
+        },
+        {
+          handler: 'archive-claim',
+          label: 'Archiwizuj',
+          icon: <ArchiveOutlinedIcon sx={{ fontSize: 18 }} />,
+          type: 'button_archive',
+          show: (row) =>
+            canArchiveClaim && !isArchived(row) && !hasBackendAction(row, 'archive-claim')
+        },
+        {
+          handler: 'restore-claim',
+          label: 'Przywróć',
+          icon: <RestoreOutlinedIcon sx={{ fontSize: 18 }} />,
+          type: 'button_restore',
+          show: (row) =>
+            canRestoreClaim && isArchived(row) && !hasBackendAction(row, 'restore-claim')
+        },
+        {
+          handler: 'delete-claim',
+          label: 'Usuń',
+          icon: <DeleteOutlineIcon sx={{ fontSize: 18 }} />,
+          type: 'button_delete',
+          show: (row) => canDeleteClaim && isArchived(row) && !hasBackendAction(row, 'delete-claim')
+        }
+      ],
+      [canEditClaim, canArchiveClaim, canRestoreClaim, canDeleteClaim]
+    );
+
+    const fetcher = useMemo(() => createPolicyClaimsFetcher(policyId, policyData.number), []);
+
+    return (
+      <Box sx={{ '& > div': { minHeight: 0 } }}>
+        <GenericListView<ClaimRecord>
+          title="Szkody przypisane do polisy"
+          fetcher={fetcher}
+          handlers={handlers}
+          rowKey={(row) => String(row.id || row.number)}
+          initialPerPage={10}
+          refreshKey={claimsRefreshKey}
+          stateKey={`/app/policies/${policyId}/claims`}
+          mobileTitle="Szkody"
+          mobilePrimaryActionLabel="Zgłoś"
+          disabledGeneralActions={!hasPermission('claim create') ? ['create-claim'] : undefined}
+          extraRowActions={extraRowActions}
+          filterLabelOverrides={{
+            claim_date: 'Data szkody',
+            reported_date: 'Data zgłoszenia'
+          }}
+        />
+
+        <ClaimPasswordDialog
+          open={archiveClaimDialogOpen}
+          onClose={() => {
+            setArchiveClaimDialogOpen(false);
+            setSelectedClaim(null);
+          }}
+          claim={selectedClaim}
+          mode="archive"
+          onSuccess={handleClaimChanged}
+        />
+
+        <ClaimPasswordDialog
+          open={forceDeleteClaimDialogOpen}
+          onClose={() => {
+            setForceDeleteClaimDialogOpen(false);
+            setSelectedClaim(null);
+          }}
+          claim={selectedClaim}
+          mode="delete"
+          onSuccess={handleClaimChanged}
+          action={forceDeleteClaim}
+        />
+      </Box>
+    );
+  };
 
   // ---------------------------------------------------------------------------
   // Dane klienta tab content
@@ -1639,6 +1835,10 @@ const PolicyDetailsPage: React.FC = () => {
           <ClientDataMobile />
         ) : activeTab === 2 ? (
           <PolicyDataMobile />
+        ) : activeTab === 7 ? (
+          <Box sx={{ px: 2, py: 2 }}>
+            <ClaimsTabContent />
+          </Box>
         ) : (
           <UnavailableTabContent />
         )}
@@ -1823,6 +2023,8 @@ const PolicyDetailsPage: React.FC = () => {
           <Stack spacing={3}>
             <PolicyDataDesktop />
           </Stack>
+        ) : activeTab === 7 ? (
+          <ClaimsTabContent />
         ) : (
           <UnavailableTabContent />
         )}

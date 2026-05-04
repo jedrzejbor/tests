@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, type Control } from 'react-hook-form';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import {
   Autocomplete,
@@ -24,7 +24,7 @@ import {
 } from '@mui/material';
 import { fetchClaimFormDefinition, submitClaim } from '@/services/claimsService';
 import type { ClaimFormField } from '@/services/claimsService';
-import { fetchPoliciesTable } from '@/services/policiesService';
+import { fetchPoliciesTable, getPolicyDetails } from '@/services/policiesService';
 import type { PolicyRecord } from '@/services/policiesService';
 
 // ================== SHARED STYLES ==================
@@ -134,9 +134,15 @@ interface PolicyAutocompleteProps {
   value: PolicyOption | null;
   onChange: (option: PolicyOption | null) => void;
   error?: string;
+  disabled?: boolean;
 }
 
-const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({ value, onChange, error }) => {
+const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({
+  value,
+  onChange,
+  error,
+  disabled
+}) => {
   const [inputValue, setInputValue] = useState('');
   const [options, setOptions] = useState<PolicyOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -184,6 +190,7 @@ const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({ value, onChange
       fullWidth
       options={options}
       loading={loading}
+      disabled={disabled}
       slotProps={autocompleteSlotProps}
       value={value}
       onChange={(_e, newValue) => onChange(newValue)}
@@ -194,6 +201,9 @@ const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({ value, onChange
       sx={{
         '& .MuiOutlinedInput-root': {
           bgcolor: '#FFFFFF'
+        },
+        '&.Mui-disabled .MuiOutlinedInput-root': {
+          bgcolor: '#F9FAFB'
         }
       }}
       renderInput={(params) => (
@@ -222,7 +232,7 @@ const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({ value, onChange
 
 interface DynamicFieldProps {
   field: ClaimFormField;
-  control: ReturnType<typeof useForm>['control'];
+  control: Control<Record<string, unknown>>;
 }
 
 const ExternalLabelField: React.FC<{ label: string; children: React.ReactNode }> = ({
@@ -467,7 +477,19 @@ const DynamicField: React.FC<DynamicFieldProps> = ({ field, control }) => {
 export const STATIC_FIELD_KEYS = {
   eventDate: '__event_date',
   placeOfAccident: '__place_of_accident',
-  circumstances: '__circumstances'
+  circumstances: '__circumstances',
+  street: '__street',
+  streetNo: '__street_no',
+  city: '__city',
+  postal: '__postal',
+  reportedDate: '__reported_date',
+  claimNumber: '__claim_number',
+  isVatPayer: '__is_vat_payer',
+  isExclusiveClaim: '__is_exclusive_claim',
+  exclusiveClaimNote: '__exclusive_claim_note',
+  isTransferred: '__is_transferred',
+  transferredNote: '__transferred_note',
+  payoutAccountNo: '__payout_account_no'
 } as const;
 
 // ================== PAGE ==================
@@ -487,34 +509,35 @@ const ReportClaimPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { control, handleSubmit } = useForm({ mode: 'onBlur', reValidateMode: 'onChange' });
+  const { control, handleSubmit, watch } = useForm<Record<string, unknown>>({
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
+    defaultValues: {
+      [STATIC_FIELD_KEYS.isVatPayer]: false,
+      [STATIC_FIELD_KEYS.isExclusiveClaim]: false,
+      [STATIC_FIELD_KEYS.isTransferred]: false
+    }
+  });
+
+  const isExclusiveClaim = Boolean(watch(STATIC_FIELD_KEYS.isExclusiveClaim));
+  const isTransferred = Boolean(watch(STATIC_FIELD_KEYS.isTransferred));
 
   // Pre-load policy if arriving with ?policyId in URL
   useEffect(() => {
     if (!rawPolicyId) return;
 
-    fetchPoliciesTable({
-      page: 1,
-      perPage: 1,
-      search: '',
-      sortProperty: '',
-      sortOrder: 'asc',
-      filters: { id: rawPolicyId }
-    })
+    getPolicyDetails(rawPolicyId)
       .then((res) => {
-        const rows = res.data as PolicyRecord[];
-        if (rows.length > 0) {
-          const r = rows[0];
-          setPolicyOption({
-            id: Number(r.id),
-            label: r.number ?? `Polisa #${r.id}`,
-            clientName: r.client ?? '',
-            policyNumber: r.number ?? ''
-          });
-        }
+        const policy = res.policy;
+        setPolicyOption({
+          id: policy.id,
+          label: policy.number ?? `Polisa #${policy.id}`,
+          clientName: '',
+          policyNumber: policy.number ?? ''
+        });
       })
-      .catch(() => undefined);
-  }, []);
+      .catch(() => setPolicyError('Nie udało się pobrać wybranej polisy'));
+  }, [rawPolicyId]);
 
   // Fetch dynamic form definition whenever policy changes
   useEffect(() => {
@@ -585,7 +608,35 @@ const ReportClaimPage: React.FC = () => {
     }
 
     try {
-      await submitClaim({ policy_id: policyOption.id, fields: normalizedFields });
+      await submitClaim({
+        policy_id: policyOption.id,
+        claim_date: String(data[STATIC_FIELD_KEYS.eventDate]),
+        is_vat_payer: Boolean(data[STATIC_FIELD_KEYS.isVatPayer]),
+        is_exclusive_claim: Boolean(data[STATIC_FIELD_KEYS.isExclusiveClaim]),
+        is_transferred: Boolean(data[STATIC_FIELD_KEYS.isTransferred]),
+        street: String(data[STATIC_FIELD_KEYS.street]),
+        street_no: String(data[STATIC_FIELD_KEYS.streetNo]),
+        city: String(data[STATIC_FIELD_KEYS.city]),
+        postal: String(data[STATIC_FIELD_KEYS.postal]),
+        reported_date: data[STATIC_FIELD_KEYS.reportedDate]
+          ? String(data[STATIC_FIELD_KEYS.reportedDate])
+          : undefined,
+        number: data[STATIC_FIELD_KEYS.claimNumber]
+          ? String(data[STATIC_FIELD_KEYS.claimNumber])
+          : undefined,
+        claim_description: circumstances ? String(circumstances) : undefined,
+        claim_address: place ? String(place) : undefined,
+        exclusive_claim_note: data[STATIC_FIELD_KEYS.exclusiveClaimNote]
+          ? String(data[STATIC_FIELD_KEYS.exclusiveClaimNote])
+          : undefined,
+        transferred_note: data[STATIC_FIELD_KEYS.transferredNote]
+          ? String(data[STATIC_FIELD_KEYS.transferredNote])
+          : undefined,
+        payout_account_no: data[STATIC_FIELD_KEYS.payoutAccountNo]
+          ? String(data[STATIC_FIELD_KEYS.payoutAccountNo])
+          : undefined,
+        meta: normalizedFields
+      });
       navigate('/app/damages');
     } catch (err) {
       const message = (err as { message?: string }).message;
@@ -674,11 +725,29 @@ const ReportClaimPage: React.FC = () => {
                   value={policyOption}
                   onChange={handlePolicyChange}
                   error={policyError}
+                  disabled={!!rawPolicyId}
                 />
               </SectionCard>
 
               {/* ── Szczegóły zdarzenia — zawsze statyczna ─ */}
               <SectionCard title="Szczegóły zdarzenia">
+                <Controller
+                  name={STATIC_FIELD_KEYS.reportedDate}
+                  control={control}
+                  defaultValue=""
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      label="Data zgłoszenia"
+                      type="date"
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      sx={inputSx}
+                    />
+                  )}
+                />
                 <Controller
                   name={STATIC_FIELD_KEYS.eventDate}
                   control={control}
@@ -691,6 +760,21 @@ const ReportClaimPage: React.FC = () => {
                       type="date"
                       fullWidth
                       InputLabelProps={{ shrink: true }}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      sx={inputSx}
+                    />
+                  )}
+                />
+                <Controller
+                  name={STATIC_FIELD_KEYS.claimNumber}
+                  control={control}
+                  defaultValue=""
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      label="Nr szkody"
+                      fullWidth
                       error={!!fieldState.error}
                       helperText={fieldState.error?.message}
                       sx={inputSx}
@@ -735,6 +819,159 @@ const ReportClaimPage: React.FC = () => {
                         sx={inputSx}
                       />
                     </ExternalLabelField>
+                  )}
+                />
+              </SectionCard>
+
+              <SectionCard title="Adres zdarzenia">
+                <Controller
+                  name={STATIC_FIELD_KEYS.street}
+                  control={control}
+                  defaultValue=""
+                  rules={{ required: 'Ulica jest wymagana' }}
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      label="Ulica"
+                      fullWidth
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      sx={inputSx}
+                    />
+                  )}
+                />
+                <Controller
+                  name={STATIC_FIELD_KEYS.streetNo}
+                  control={control}
+                  defaultValue=""
+                  rules={{ required: 'Numer jest wymagany' }}
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      label="Numer"
+                      fullWidth
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      sx={inputSx}
+                    />
+                  )}
+                />
+                <Controller
+                  name={STATIC_FIELD_KEYS.city}
+                  control={control}
+                  defaultValue=""
+                  rules={{ required: 'Miasto jest wymagane' }}
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      label="Miasto"
+                      fullWidth
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      sx={inputSx}
+                    />
+                  )}
+                />
+                <Controller
+                  name={STATIC_FIELD_KEYS.postal}
+                  control={control}
+                  defaultValue=""
+                  rules={{ required: 'Kod pocztowy jest wymagany' }}
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      label="Kod pocztowy"
+                      fullWidth
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      sx={inputSx}
+                    />
+                  )}
+                />
+              </SectionCard>
+
+              <SectionCard title="Rozliczenie">
+                <Controller
+                  name={STATIC_FIELD_KEYS.isVatPayer}
+                  control={control}
+                  render={({ field: f }) => (
+                    <FormControlLabel
+                      control={<Checkbox {...f} checked={!!f.value} />}
+                      label="Poszkodowany jest płatnikiem VAT"
+                    />
+                  )}
+                />
+                <Controller
+                  name={STATIC_FIELD_KEYS.isExclusiveClaim}
+                  control={control}
+                  render={({ field: f }) => (
+                    <FormControlLabel
+                      control={<Checkbox {...f} checked={!!f.value} />}
+                      label="Roszczenie wyłączne"
+                    />
+                  )}
+                />
+                {isExclusiveClaim && (
+                  <Controller
+                    name={STATIC_FIELD_KEYS.exclusiveClaimNote}
+                    control={control}
+                    defaultValue=""
+                    render={({ field: f, fieldState }) => (
+                      <TextField
+                        {...f}
+                        label="Notatka do roszczenia wyłącznego"
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        sx={inputSx}
+                      />
+                    )}
+                  />
+                )}
+                <Controller
+                  name={STATIC_FIELD_KEYS.isTransferred}
+                  control={control}
+                  render={({ field: f }) => (
+                    <FormControlLabel
+                      control={<Checkbox {...f} checked={!!f.value} />}
+                      label="Cesja / przeniesienie"
+                    />
+                  )}
+                />
+                {isTransferred && (
+                  <Controller
+                    name={STATIC_FIELD_KEYS.transferredNote}
+                    control={control}
+                    defaultValue=""
+                    render={({ field: f, fieldState }) => (
+                      <TextField
+                        {...f}
+                        label="Notatka do cesji"
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        sx={inputSx}
+                      />
+                    )}
+                  />
+                )}
+                <Controller
+                  name={STATIC_FIELD_KEYS.payoutAccountNo}
+                  control={control}
+                  defaultValue=""
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      label="Nr konta do wypłaty odszkodowania"
+                      fullWidth
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      sx={inputSx}
+                    />
                   )}
                 />
               </SectionCard>

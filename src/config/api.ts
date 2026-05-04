@@ -34,7 +34,8 @@ export const API_ENDPOINTS = {
   POLICY_FORM_OPTIONS: '/api/policy/form-options',
   // Claims
   POLICY_CLAIM_FORM: '/api/policy/form',
-  CLAIMS: '/api/claims'
+  CLAIM: '/api/claim',
+  CLAIMS_TABLE: '/api/resource/claims'
   // Tutaj dodawaj kolejne endpointy
 } as const;
 
