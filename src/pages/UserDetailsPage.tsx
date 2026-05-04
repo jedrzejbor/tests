@@ -705,7 +705,7 @@ const UserDetailsPage: React.FC = () => {
         }}
       >
         <CardContent sx={{ p: 2 }}>
-          {/* Header with title and edit button */}
+          {/* Header with title */}
           <Stack
             direction="row"
             justifyContent="space-between"
@@ -821,27 +821,6 @@ const UserDetailsPage: React.FC = () => {
             >
               Szczegółowe dane personalne :
             </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
-              onClick={handleEditUser}
-              sx={{
-                borderColor: '#494B54',
-                color: '#494B54',
-                borderRadius: '8px',
-                px: 2,
-                py: 1,
-                fontSize: '14px',
-                fontWeight: 500,
-                textTransform: 'none',
-                '&:hover': {
-                  borderColor: '#32343A',
-                  bgcolor: 'rgba(0, 0, 0, 0.04)'
-                }
-              }}
-            >
-              Edytuj
-            </Button>
           </Stack>
 
           <Box sx={{ px: 0 }}>
