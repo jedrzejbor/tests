@@ -256,6 +256,12 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
    * Key: filter key, value: transform function.
    */
   filterTransformers?: Record<string, (displayValue: string) => string>;
+  /**
+   * Override the type of a filter returned by the backend.
+   * E.g. force 'claim_date' to render as 'date_range' even if backend says 'text'.
+   * Key: filter key, value: FilterDef type string.
+   */
+  filterTypeOverrides?: Record<string, FilterDef['type']>;
 }
 
 // ================== CONTROLLER STATE ==================

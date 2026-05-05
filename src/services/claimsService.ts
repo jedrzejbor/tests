@@ -41,7 +41,11 @@ const CLAIM_SORT_FALLBACKS: Record<string, string> = {
   client_name: 'created_at'
 };
 
-const CLAIM_FILTER_BLOCKLIST = new Set(['policy_status']);
+// Wewnętrzne klucze dodawane przez createPolicyClaimsFetcher —
+// używane tylko do filtrowania po stronie klienta, nie wysyłamy ich do backendu.
+// Prawidłowe filtry backendu: policy_status, claim_date, reported_date,
+// insurance_company_id, policy_type_id, client_id
+const CLAIM_FILTER_BLOCKLIST = new Set(['policy', 'policy_id']);
 
 export type ClaimMeta = Record<string, ClaimMetaValue>;
 

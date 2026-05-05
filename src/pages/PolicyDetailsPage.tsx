@@ -777,11 +777,17 @@ const PolicyDetailsPage: React.FC = () => {
           mobileTitle="Szkody"
           mobilePrimaryActionLabel="Zgłoś"
           disabledGeneralActions={!hasPermission('claim create') ? ['create-claim'] : undefined}
-          disabledFilters={['policy_status']}
+          disabledFilters={['policy_status', 'client_id']}
           extraRowActions={extraRowActions}
+          filterTypeOverrides={{
+            claim_date: 'date_range',
+            reported_date: 'date_range'
+          }}
           filterLabelOverrides={{
             claim_date: 'Data szkody',
-            reported_date: 'Data zgłoszenia'
+            reported_date: 'Data zgłoszenia',
+            insurance_company_id: 'Zakład ubezpieczeń',
+            policy_type_id: 'Typ polisy'
           }}
         />
 

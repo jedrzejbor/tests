@@ -59,7 +59,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   stateKey,
   filterLabelOverrides,
   filterTooltips,
-  filterTransformers
+  filterTransformers,
+  filterTypeOverrides
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -639,9 +640,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               );
 
               // Date range filter — two date inputs
+              const effectiveType = filterTypeOverrides?.[filterDef.key] ?? filterDef.type;
               const isDateRange =
-                filterDef.type === 'date_range' ||
-                (filterDef.type === 'range' && /date/i.test(filterDef.key));
+                effectiveType === 'date_range' ||
+                (effectiveType === 'range' && /date/i.test(filterDef.key));
 
               if (isDateRange) {
                 const rangeStr = typeof currentValue === 'string' ? currentValue : '';
