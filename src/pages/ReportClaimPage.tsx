@@ -151,44 +151,69 @@ const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [options, setOptions] = useState<PolicyOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentSearchRef = useRef('');
 
-  const searchPolicies = useCallback(async (search: string) => {
-    setLoading(true);
+  const PER_PAGE = 20;
+
+  const fetchPage = useCallback(async (search: string, pageNum: number, replace: boolean) => {
+    if (replace) setLoading(true);
+    else setLoadingMore(true);
     try {
       const result = await fetchPoliciesTable({
-        page: 1,
-        perPage: 20,
+        page: pageNum,
+        perPage: PER_PAGE,
         search,
         sortProperty: '',
         sortOrder: 'asc',
         filters: {}
       });
       const rows = result.data as PolicyRecord[];
-      setOptions(
-        rows
-          .filter((r) => r.id !== undefined && r.id !== null)
-          .map((r) => ({
-            id: Number(r.id),
-            label: r.number ?? `Polisa #${r.id}`,
-            clientName: r.client ?? '',
-            policyNumber: r.number ?? ''
-          }))
-      );
+      const mapped = rows
+        .filter((r) => r.id !== undefined && r.id !== null)
+        .map((r) => ({
+          id: Number(r.id),
+          label: r.number ?? `Polisa #${r.id}`,
+          clientName: r.client ?? '',
+          policyNumber: r.number ?? ''
+        }));
+
+      setOptions((prev) => (replace ? mapped : [...prev, ...mapped]));
+      setHasMore(rows.length === PER_PAGE);
+      setPage(pageNum);
     } catch {
-      setOptions([]);
+      if (replace) setOptions([]);
     } finally {
-      setLoading(false);
+      if (replace) setLoading(false);
+      else setLoadingMore(false);
     }
   }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => searchPolicies(inputValue), 300);
+    debounceRef.current = setTimeout(() => {
+      currentSearchRef.current = inputValue;
+      fetchPage(inputValue, 1, true);
+    }, 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [inputValue, searchPolicies]);
+  }, [inputValue, fetchPage]);
+
+  const handleListboxScroll = useCallback(
+    (event: React.SyntheticEvent) => {
+      if (loading || loadingMore || !hasMore) return;
+      const el = event.currentTarget as HTMLUListElement;
+      const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 60;
+      if (nearBottom) {
+        fetchPage(currentSearchRef.current, page + 1, false);
+      }
+    },
+    [loading, loadingMore, hasMore, page, fetchPage]
+  );
 
   return (
     <Autocomplete
@@ -196,13 +221,20 @@ const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({
       options={options}
       loading={loading}
       disabled={disabled}
-      slotProps={autocompleteSlotProps}
+      slotProps={{
+        ...autocompleteSlotProps,
+        listbox: {
+          ...autocompleteSlotProps.listbox,
+          onScroll: handleListboxScroll
+        }
+      }}
+      filterOptions={(x) => x}
       value={value}
       onChange={(_e, newValue) => onChange(newValue)}
       onInputChange={(_e, newInput) => setInputValue(newInput)}
       getOptionLabel={(option) => option.label}
       isOptionEqualToValue={(option, val) => option.id === val.id}
-      noOptionsText={inputValue.length > 0 ? 'Brak wyników' : 'Wpisz numer polisy…'}
+      noOptionsText={inputValue.length > 0 ? 'Brak wyników' : 'Zacznij wpisywać numer polisy…'}
       sx={{
         '& .MuiOutlinedInput-root': {
           bgcolor: '#FFFFFF'
@@ -211,6 +243,20 @@ const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({
           bgcolor: '#F9FAFB'
         }
       }}
+      renderOption={(props, option) => (
+        <li {...props} key={option.id}>
+          <Stack spacing={0}>
+            <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#32343A' }}>
+              {option.policyNumber}
+            </Typography>
+            {option.clientName && (
+              <Typography sx={{ fontSize: '12px', color: '#74767F' }}>
+                {option.clientName}
+              </Typography>
+            )}
+          </Stack>
+        </li>
+      )}
       renderInput={(params) => (
         <TextField
           {...params}
@@ -222,7 +268,7 @@ const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({
             ...params.InputProps,
             endAdornment: (
               <>
-                {loading ? <CircularProgress color="inherit" size={16} /> : null}
+                {loading || loadingMore ? <CircularProgress color="inherit" size={16} /> : null}
                 {params.InputProps.endAdornment}
               </>
             )
