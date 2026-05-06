@@ -37,13 +37,13 @@ const ClaimsPage: React.FC = () => {
   const canRestoreClaim = hasPermission('claim restore');
   const canDeleteClaim = hasPermission('claim delete');
 
-  const handleViewClaim = useCallback(() => {
-    addToast({
-      id: crypto.randomUUID(),
-      message: 'Widok szczegółów szkody nie jest jeszcze dostępny',
-      severity: 'info'
-    });
-  }, [addToast]);
+  const handleViewClaim = useCallback(
+    (row: ClaimRecord) => {
+      if (!row.id) return;
+      navigate(`/app/damages/${row.id}`);
+    },
+    [navigate]
+  );
 
   const handleEditClaim = useCallback(
     (row: ClaimRecord) => {

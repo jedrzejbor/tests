@@ -15,6 +15,7 @@ import PoliciesPage from '@/pages/PoliciesPage';
 import PolicyDetailsPage from '@/pages/PolicyDetailsPage';
 import PaymentsPage from '@/pages/PaymentsPage';
 import ClaimsPage from '@/pages/ClaimsPage';
+import ClaimDetailsPage from '@/pages/ClaimDetailsPage';
 import ReportClaimPage from '@/pages/ReportClaimPage';
 import ResetPasswordTokenPage from '@/pages/ResetPasswordTokenPage';
 import SetPasswordTokenPage from '@/pages/SetPasswordTokenPage';
@@ -141,6 +142,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ReportClaimPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '/app/damages/:claimId',
+        element: (
+          <ProtectedRoute>
+            <ClaimDetailsPage />
           </ProtectedRoute>
         )
       },

@@ -223,6 +223,12 @@ const AppLayout = () => {
       breadcrumbs.push({ label: 'Zgłoś szkodę' });
     }
 
+    // Handle /app/damages/:claimId and /app/damages/:claimId/edit
+    if (path.startsWith('/app/damages/') && path !== '/app/damages/new') {
+      breadcrumbs.push({ label: 'Lista szkód', href: '/app/damages' });
+      breadcrumbs.push({ label: path.endsWith('/edit') ? 'Edytuj szkodę' : 'Karta szkody' });
+    }
+
     return breadcrumbs;
   };
 
