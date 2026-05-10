@@ -36,7 +36,8 @@ import type {
   GenericListViewProps,
   RowHandler,
   GeneralHandler,
-  FiltersState
+  FiltersState,
+  ActionDef
 } from '@/types/genericList';
 import { normalizeFilterOptions } from '@/types/genericList';
 
@@ -198,6 +199,44 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
       }
     },
     [handlers]
+  );
+
+  const getRowDetailsActionHandler = useCallback(
+    (row: T): string | undefined => {
+      const backendActions = Array.isArray(row.actions) ? (row.actions as ActionDef[]) : [];
+      const visibleExtraActions = extraRowActions.filter(
+        (action) => !action.show || action.show(row)
+      );
+      const allVisibleActions = [...backendActions, ...visibleExtraActions];
+
+      const detailsAction = allVisibleActions.find((action) => {
+        const handlerName = action.handler;
+        if (!handlers[handlerName]) return false;
+
+        const label = action.label.toLocaleLowerCase('pl-PL');
+        return (
+          label.includes('szczeg') || handlerName === 'view' || handlerName.startsWith('view-')
+        );
+      });
+
+      return detailsAction?.handler;
+    },
+    [extraRowActions, handlers]
+  );
+
+  const isRowClickable = useCallback(
+    (row: T) => Boolean(getRowDetailsActionHandler(row)),
+    [getRowDetailsActionHandler]
+  );
+
+  const handleRowClick = useCallback(
+    (row: T) => {
+      const detailsHandler = getRowDetailsActionHandler(row);
+      if (detailsHandler) {
+        handleRowAction(detailsHandler, row);
+      }
+    },
+    [getRowDetailsActionHandler, handleRowAction]
   );
 
   // Handle bulk actions
@@ -466,6 +505,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               onRowAction={handleRowAction}
               getRowId={getRowId}
               extraRowActions={extraRowActions}
+              onRowClick={handleRowClick}
+              isRowClickable={isRowClickable}
             />
           </Box>
 
@@ -912,6 +953,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               onRowAction={handleRowAction}
               getRowId={getRowId}
               extraRowActions={extraRowActions}
+              onRowClick={handleRowClick}
+              isRowClickable={isRowClickable}
               variant={mobileCardVariant}
             />
 

@@ -43,8 +43,20 @@ interface MobileCardListRendererProps<T extends GenericRecord = GenericRecord> {
   getRowId: (row: T) => string;
   /** Frontend-defined actions appended after backend actions in the kebab menu */
   extraRowActions?: ExtraRowAction<T>[];
+  /** Optional card click used for records that expose a details action */
+  onRowClick?: (row: T) => void;
+  isRowClickable?: (row: T) => boolean;
   variant?: 'default' | 'policy';
 }
+
+const isInteractiveElement = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest(
+      'button, a, input, textarea, select, [role="button"], [role="menuitem"], [data-row-click-ignore="true"]'
+    )
+  );
+};
 
 // Get status chip styles
 const getStatusChipStyles = (status: string) => {
@@ -110,12 +122,15 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
   onRowAction,
   getRowId,
   extraRowActions = [],
+  onRowClick,
+  isRowClickable,
   variant = 'default'
 }: MobileCardListRendererProps<T>) => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [menuRow, setMenuRow] = useState<T | null>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, row: T) => {
+    event.stopPropagation();
     setMenuAnchorEl(event.currentTarget);
     setMenuRow(row);
   };
@@ -224,6 +239,20 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
           const rowActions = (row.actions as ActionDef[]) || [];
           const visibleExtraActions = extraRowActions.filter((ea) => !ea.show || ea.show(row));
           const isLast = index === data.length - 1;
+          const rowClickable = Boolean(onRowClick && (!isRowClickable || isRowClickable(row)));
+
+          const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+            if (!rowClickable || isInteractiveElement(event.target)) return;
+            onRowClick?.(row);
+          };
+
+          const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+            if (!rowClickable || isInteractiveElement(event.target)) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onRowClick?.(row);
+            }
+          };
 
           if (variant === 'policy') {
             const client = getStringValue(row, 'client');
@@ -237,7 +266,13 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
 
             return (
               <Box key={rowId}>
-                <Box sx={{ px: 2, pt: 2, pb: 3 }}>
+                <Box
+                  onClick={handleCardClick}
+                  onKeyDown={handleCardKeyDown}
+                  tabIndex={rowClickable ? 0 : undefined}
+                  aria-label={rowClickable ? 'Otwórz szczegóły rekordu' : undefined}
+                  sx={{ px: 2, pt: 2, pb: 3, cursor: rowClickable ? 'pointer' : 'default' }}
+                >
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                     <Typography
                       sx={{
@@ -387,7 +422,13 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
 
           return (
             <Box key={rowId}>
-              <Box sx={{ p: 2 }}>
+              <Box
+                onClick={handleCardClick}
+                onKeyDown={handleCardKeyDown}
+                tabIndex={rowClickable ? 0 : undefined}
+                aria-label={rowClickable ? 'Otwórz szczegóły rekordu' : undefined}
+                sx={{ p: 2, cursor: rowClickable ? 'pointer' : 'default' }}
+              >
                 {/* Header row: Title + Menu */}
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                   <Typography

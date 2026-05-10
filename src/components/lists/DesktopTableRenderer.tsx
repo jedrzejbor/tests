@@ -64,7 +64,19 @@ interface DesktopTableRendererProps<T extends GenericRecord = GenericRecord> {
   getRowId: (row: T) => string;
   /** Frontend-defined actions appended after backend actions in the kebab menu */
   extraRowActions?: ExtraRowAction<T>[];
+  /** Optional row click used for records that expose a details action */
+  onRowClick?: (row: T) => void;
+  isRowClickable?: (row: T) => boolean;
 }
+
+const isInteractiveElement = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest(
+      'button, a, input, textarea, select, [role="button"], [role="menuitem"], [data-row-click-ignore="true"]'
+    )
+  );
+};
 
 // Map action types to icons
 const getActionIcon = (type: string) => {
@@ -446,7 +458,9 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
   onToggleAllSelection,
   onRowAction,
   getRowId,
-  extraRowActions = []
+  extraRowActions = [],
+  onRowClick,
+  isRowClickable
 }: DesktopTableRendererProps<T>) => {
   const showSelection = false;
 
@@ -622,12 +636,30 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
             {data.map((row, index) => {
               const rowId = getRowId(row);
               const isSelected = showSelection && selectedIds ? selectedIds.has(rowId) : false;
+              const rowClickable = Boolean(onRowClick && (!isRowClickable || isRowClickable(row)));
+
+              const handleRowClick = (event: React.MouseEvent<HTMLTableRowElement>) => {
+                if (!rowClickable || isInteractiveElement(event.target)) return;
+                onRowClick?.(row);
+              };
+
+              const handleRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
+                if (!rowClickable || isInteractiveElement(event.target)) return;
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onRowClick?.(row);
+                }
+              };
 
               return (
                 <TableRow
                   key={rowId}
                   hover
                   selected={isSelected}
+                  onClick={handleRowClick}
+                  onKeyDown={handleRowKeyDown}
+                  tabIndex={rowClickable ? 0 : undefined}
+                  aria-label={rowClickable ? 'Otwórz szczegóły rekordu' : undefined}
                   sx={{
                     height: 72,
                     bgcolor: index % 2 === 0 ? '#FBF9F9' : 'transparent',
@@ -640,7 +672,7 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                     '& td': {
                       borderBottom: '1px solid rgba(0, 0, 0, 0.12)'
                     },
-                    cursor: 'pointer'
+                    cursor: rowClickable ? 'pointer' : 'default'
                   }}
                 >
                   {showSelection && (
