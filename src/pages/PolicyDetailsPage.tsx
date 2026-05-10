@@ -774,7 +774,7 @@ const PolicyDetailsPage: React.FC = () => {
           mobileTitle="Szkody"
           mobilePrimaryActionLabel="Zgłoś"
           disabledGeneralActions={!hasPermission('claim create') ? ['create-claim'] : undefined}
-          disabledFilters={['policy_status', 'client_id']}
+          disabledFilters={['client_id']}
           extraRowActions={extraRowActions}
           filterTypeOverrides={{
             claim_date: 'date_range',

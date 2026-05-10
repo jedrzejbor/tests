@@ -2,9 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import {
   Box,
   Button,
+  Card,
+  CardContent,
+  Chip,
   CircularProgress,
   IconButton,
   Stack,
@@ -15,7 +19,13 @@ import {
   useTheme
 } from '@mui/material';
 import ClaimPasswordDialog from '@/components/dialogs/ClaimPasswordDialog';
-import { getClaimDetails, type ClaimRecord, type ClaimResource } from '@/services/claimsService';
+import {
+  fetchClaimFormDefinition,
+  getClaimDetails,
+  type ClaimFormField,
+  type ClaimRecord,
+  type ClaimResource
+} from '@/services/claimsService';
 import { usePermission } from '@/hooks/usePermission';
 
 const CLAIM_TABS = [
@@ -27,6 +37,8 @@ const CLAIM_TABS = [
   'Osoby kontaktowe'
 ];
 
+const STATIC_META_KEYS = new Set(['__event_date', '__circumstances', '__place_of_accident']);
+
 const UnavailableTabContent = () => (
   <Box sx={{ textAlign: 'center', py: 8, px: 3 }}>
     <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
@@ -37,6 +49,148 @@ const UnavailableTabContent = () => (
     </Typography>
   </Box>
 );
+
+const FieldItem = ({ label, value }: { label: string; value?: string }) => (
+  <Box sx={{ flex: 1, minWidth: 0, p: 1.5 }}>
+    <Typography
+      variant="body2"
+      sx={{
+        color: '#74767F',
+        mb: 1,
+        fontSize: '14px',
+        lineHeight: 1.43,
+        letterSpacing: '0.17px'
+      }}
+    >
+      {label}
+    </Typography>
+    <Typography
+      variant="body2"
+      sx={{
+        color: '#32343A',
+        fontWeight: 500,
+        fontSize: '14px',
+        lineHeight: 1.57,
+        letterSpacing: '0.1px',
+        overflowWrap: 'anywhere'
+      }}
+    >
+      {value || '-'}
+    </Typography>
+  </Box>
+);
+
+interface AdditionalInfoField {
+  key: string;
+  label: string;
+  value: string;
+}
+
+const AdditionalInfoRow = ({ item }: { item: AdditionalInfoField }) => (
+  <Box
+    sx={{
+      display: 'grid',
+      gridTemplateColumns: { xs: '1fr', md: 'minmax(220px, 32%) minmax(0, 1fr)' },
+      minWidth: 0,
+      borderTop: '1px solid rgba(143, 109, 95, 0.12)',
+      '&:first-of-type': {
+        borderTop: 0
+      }
+    }}
+  >
+    <Box
+      sx={{
+        minWidth: 0,
+        px: 1.5,
+        py: 1.25,
+        bgcolor: { xs: '#FAFAFA', md: 'transparent' },
+        borderRight: { xs: 0, md: '1px solid rgba(143, 109, 95, 0.12)' }
+      }}
+    >
+      <Typography
+        variant="body2"
+        sx={{
+          color: '#74767F',
+          fontSize: '13px',
+          lineHeight: 1.45,
+          letterSpacing: '0.17px',
+          overflowWrap: 'anywhere'
+        }}
+      >
+        {item.label}
+      </Typography>
+    </Box>
+    <Box
+      sx={{
+        minWidth: 0,
+        px: 1.5,
+        py: 1.25
+      }}
+    >
+      <Typography
+        variant="body2"
+        sx={{
+          color: '#32343A',
+          fontWeight: 500,
+          fontSize: '14px',
+          lineHeight: 1.6,
+          letterSpacing: '0.1px',
+          overflowWrap: 'anywhere',
+          whiteSpace: 'pre-wrap'
+        }}
+      >
+        {item.value || '-'}
+      </Typography>
+    </Box>
+  </Box>
+);
+
+const DetailCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <Card
+    sx={{
+      borderRadius: 1,
+      boxShadow: 'none',
+      border: '1px solid',
+      borderColor: 'rgba(143, 109, 95, 0.12)'
+    }}
+  >
+    <CardContent sx={{ p: 2 }}>
+      <Typography
+        sx={{
+          fontWeight: 600,
+          color: '#32343A',
+          fontSize: '15px',
+          borderBottom: '1px solid',
+          borderColor: 'rgba(143, 109, 95, 0.12)',
+          pb: 0.75,
+          px: 1.5,
+          mb: 2
+        }}
+      >
+        {title}
+      </Typography>
+      {children}
+    </CardContent>
+  </Card>
+);
+
+const ValueChip = ({ label }: { label?: string }) => {
+  if (!label) return <FieldItem label="" value="-" />;
+
+  return (
+    <Chip
+      label={label}
+      size="small"
+      sx={{
+        fontSize: '13px',
+        height: 24,
+        bgcolor: '#EEEEEF',
+        color: '#32343A',
+        fontWeight: 400
+      }}
+    />
+  );
+};
 
 const getPolicyNumber = (claim: ClaimResource | null) => {
   if (!claim) return '';
@@ -72,6 +226,152 @@ const getClientName = (claim: ClaimResource | null) => {
   );
 };
 
+const getPolicyData = (claim: ClaimResource | null) =>
+  claim?.policy as
+    | (ClaimResource['policy'] & {
+        type?: string | { name?: string };
+        policy_type?: string | { name?: string };
+        policyType?: string | { name?: string };
+        insurance_company?: string | { name?: string };
+        insuranceCompany?: string | { name?: string };
+        client?: {
+          name?: string;
+          nip?: string;
+          regon?: string;
+        };
+        client_data?: {
+          name?: string;
+          nip?: string;
+          regon?: string;
+        };
+        client_nip?: string;
+        clientNip?: string;
+        client_regon?: string;
+        clientRegon?: string;
+      })
+    | undefined;
+
+const getNameValue = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'name' in value) {
+    const name = (value as { name?: unknown }).name;
+    return typeof name === 'string' ? name : '';
+  }
+  return '';
+};
+
+const getPolicyTypeName = (claim: ClaimResource | null) => {
+  const policy = getPolicyData(claim);
+  return (
+    getNameValue(policy?.type) ||
+    getNameValue(policy?.policy_type) ||
+    getNameValue(policy?.policyType) ||
+    policy?.policy_type_name ||
+    ''
+  );
+};
+
+const getInsuranceCompanyName = (claim: ClaimResource | null) => {
+  const policy = getPolicyData(claim);
+  return (
+    getNameValue(policy?.insurance_company) ||
+    getNameValue(policy?.insuranceCompany) ||
+    policy?.insurance_company_name ||
+    ''
+  );
+};
+
+const getClientNip = (claim: ClaimResource | null) => {
+  const policy = getPolicyData(claim);
+  return (
+    policy?.client?.nip ?? policy?.client_data?.nip ?? policy?.client_nip ?? policy?.clientNip ?? ''
+  );
+};
+
+const getClientRegon = (claim: ClaimResource | null) => {
+  const policy = getPolicyData(claim);
+  return (
+    policy?.client?.regon ??
+    policy?.client_data?.regon ??
+    policy?.client_regon ??
+    policy?.clientRegon ??
+    ''
+  );
+};
+
+const formatDate = (date: string | null | undefined): string => {
+  if (!date) return '-';
+  const [year, month, day] = date.slice(0, 10).split('-');
+  if (!year || !month || !day) return date;
+  return `${day}.${month}.${year}`;
+};
+
+const deriveClaimType = (policyTypeName: string) => {
+  if (policyTypeName.includes('Pojazd')) return 'Komunikacyjna';
+  if (policyTypeName.includes('Osoba')) return 'Osobowa';
+  if (policyTypeName.includes('Majątek')) return 'Majątkowa';
+  return policyTypeName ? 'Inna' : '';
+};
+
+const getMetaValue = (claim: ClaimResource, keys: string[]) => {
+  const meta = claim.meta ?? {};
+  for (const key of keys) {
+    const value = meta[key];
+    if (typeof value === 'string' && value.trim()) return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  }
+  return '';
+};
+
+const formatMetaDisplayValue = (field: ClaimFormField, value: unknown): string => {
+  if (value === undefined || value === null || value === '') return '';
+
+  if (field.type === 'bool') {
+    return value === true || value === 1 || value === '1' ? 'Tak' : 'Nie';
+  }
+
+  if (field.type === 'date') {
+    return typeof value === 'string' ? formatDate(value) : String(value);
+  }
+
+  if (field.type === 'datetime') {
+    return typeof value === 'string' ? value.replace('T', ' ') : String(value);
+  }
+
+  if (field.type === 'select-single') {
+    const option = field.options?.find((opt) => String(opt.id) === String(value));
+    return option?.label ?? String(value);
+  }
+
+  if (field.type === 'select-multi') {
+    const values = Array.isArray(value) ? value : [value];
+    return values
+      .map((item) => {
+        const option = field.options?.find((opt) => String(opt.id) === String(item));
+        return option?.label ?? String(item);
+      })
+      .join(', ');
+  }
+
+  if (Array.isArray(value)) return value.join(', ');
+  return String(value);
+};
+
+const humanizeMetaKey = (key: string): string =>
+  key
+    .replace(/^__/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const formatClaimAddress = (claim: ClaimResource) => {
+  if (claim.claim_address) return claim.claim_address;
+  const address = claim.address;
+  if (!address) return '';
+  return [address.city, address.postal, address.street, address.street_no]
+    .filter(Boolean)
+    .join(' ');
+};
+
 const ClaimDetailsPage: React.FC = () => {
   const { claimId } = useParams<{ claimId: string }>();
   const navigate = useNavigate();
@@ -84,6 +384,7 @@ const ClaimDetailsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [claimFormFields, setClaimFormFields] = useState<ClaimFormField[]>([]);
 
   useEffect(() => {
     if (!claimId) return;
@@ -110,6 +411,27 @@ const ClaimDetailsPage: React.FC = () => {
     };
   }, [claimId]);
 
+  useEffect(() => {
+    if (!claim?.policy_id) {
+      setClaimFormFields([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    fetchClaimFormDefinition(claim.policy_id)
+      .then((res) => {
+        if (!cancelled) setClaimFormFields(res.fields);
+      })
+      .catch(() => {
+        if (!cancelled) setClaimFormFields([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [claim?.policy_id]);
+
   const claimRecord = useMemo<ClaimRecord | null>(() => {
     if (!claim) return null;
     return {
@@ -128,9 +450,202 @@ const ClaimDetailsPage: React.FC = () => {
   const claimNumber = claim?.number || (claim?.id ? String(claim.id) : 'XXXXXXXX');
   const clientName = getClientName(claim) || '-';
   const policyNumber = getPolicyNumber(claim);
+  const policyTypeName = getPolicyTypeName(claim);
+  const claimType = deriveClaimType(policyTypeName);
 
   const handleBack = () => {
     navigate('/app/damages');
+  };
+
+  const ClaimDataContent = () => {
+    if (!claim) return null;
+
+    const reportedBy = getMetaValue(claim, [
+      'reported_by',
+      'reporting_person',
+      'zgloszone_przez',
+      'zgłoszone_przez',
+      'reporter',
+      'claimant'
+    ]);
+    const injured = getMetaValue(claim, ['injured', 'injured_person', 'poszkodowany', 'victim']);
+    const perpetrator = getMetaValue(claim, ['perpetrator', 'sprawca', 'causer']);
+    const peselOrNip = getMetaValue(claim, [
+      'nip_pesel',
+      'nip/pesel',
+      'pesel',
+      'nip',
+      'claimant_identifier'
+    ]);
+    const claimTime = getMetaValue(claim, [
+      'claim_time',
+      'event_time',
+      'czas_szkody',
+      'time',
+      '__event_time'
+    ]);
+    const meta = claim.meta ?? {};
+    const dynamicFields = claimFormFields
+      .filter((field) => !STATIC_META_KEYS.has(field.key))
+      .map((field) => ({
+        key: field.key,
+        label: field.label,
+        value: formatMetaDisplayValue(field, meta[field.key])
+      }))
+      .filter((item) => item.value !== '');
+
+    const knownDynamicKeys = new Set(claimFormFields.map((field) => field.key));
+    const extraMetaFields = Object.entries(meta)
+      .filter(
+        ([key, value]) =>
+          !STATIC_META_KEYS.has(key) &&
+          !knownDynamicKeys.has(key) &&
+          value !== undefined &&
+          value !== null &&
+          value !== ''
+      )
+      .map(([key, value]) => ({
+        key,
+        label: humanizeMetaKey(key),
+        value: Array.isArray(value) ? value.join(', ') : String(value)
+      }));
+
+    const additionalInfoFields: AdditionalInfoField[] = [...dynamicFields, ...extraMetaFields];
+
+    return (
+      <Stack spacing={3}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography sx={{ fontSize: '20px', fontWeight: 500, color: '#32343A' }}>
+            Dane szczegółowe
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
+            onClick={() => navigate(`/app/damages/${claim.id}/edit`)}
+            sx={{
+              borderColor: '#1E1F21',
+              color: '#1E1F21',
+              borderRadius: '8px',
+              px: 2.25,
+              py: 1,
+              fontSize: '14px',
+              fontWeight: 500,
+              textTransform: 'none',
+              boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
+              '&:hover': {
+                borderColor: '#1E1F21',
+                bgcolor: 'rgba(0, 0, 0, 0.04)'
+              }
+            }}
+          >
+            Edytuj dane
+          </Button>
+        </Stack>
+
+        <DetailCard title="Dane firmy">
+          <Stack direction={{ xs: 'column', md: 'row' }}>
+            <FieldItem label="Klient" value={clientName} />
+            <Box sx={{ flex: 1, minWidth: 0, p: 1.5 }}>
+              <Typography
+                variant="body2"
+                sx={{ color: '#74767F', mb: 1, fontSize: '14px', lineHeight: 1.43 }}
+              >
+                Typ polisy
+              </Typography>
+              <ValueChip label={policyTypeName} />
+            </Box>
+            <FieldItem label="Ubezpieczyciel" value={getInsuranceCompanyName(claim)} />
+            <FieldItem label="Numer polisy" value={policyNumber} />
+            <FieldItem label="NIP" value={getClientNip(claim)} />
+            <FieldItem label="REGON" value={getClientRegon(claim)} />
+          </Stack>
+        </DetailCard>
+
+        <DetailCard title="Dane szkody">
+          <Stack direction={{ xs: 'column', md: 'row' }} sx={{ mb: { xs: 0, md: 1 } }}>
+            <Box sx={{ flex: 1, minWidth: 0, p: 1.5 }}>
+              <Typography
+                variant="body2"
+                sx={{ color: '#74767F', mb: 1, fontSize: '14px', lineHeight: 1.43 }}
+              >
+                Rodzaj szkody
+              </Typography>
+              <ValueChip label={claimType} />
+            </Box>
+            <FieldItem label="Numer szkody" value={claim.number ?? ''} />
+            <FieldItem label="Data szkody" value={formatDate(claim.claim_date)} />
+            <FieldItem label="Czas szkody" value={claimTime} />
+            <FieldItem label="Data zgłoszenia do ZU" value={formatDate(claim.reported_date)} />
+          </Stack>
+          <Stack direction={{ xs: 'column', md: 'row' }}>
+            <FieldItem label="Zgłoszone przez" value={reportedBy} />
+            <FieldItem label="NIP/Pesel" value={peselOrNip} />
+            <FieldItem label="Poszkodowany" value={injured} />
+            <FieldItem label="Sprawca" value={perpetrator} />
+            <FieldItem label="Miejsce wystąpienia szkody" value={formatClaimAddress(claim)} />
+          </Stack>
+        </DetailCard>
+
+        <DetailCard title="Dodatkowe informacje">
+          {additionalInfoFields.length > 0 ? (
+            <Box
+              sx={{
+                mx: 1.5,
+                border: '1px solid rgba(143, 109, 95, 0.12)',
+                borderRadius: 1,
+                overflow: 'hidden'
+              }}
+            >
+              <Box
+                sx={{
+                  display: { xs: 'none', md: 'grid' },
+                  gridTemplateColumns: 'minmax(220px, 32%) minmax(0, 1fr)',
+                  bgcolor: '#FAFAFA',
+                  borderBottom: '1px solid rgba(143, 109, 95, 0.12)'
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    px: 1.5,
+                    py: 1,
+                    color: '#74767F',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    borderRight: '1px solid rgba(143, 109, 95, 0.12)'
+                  }}
+                >
+                  Pole
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    px: 1.5,
+                    py: 1,
+                    color: '#74767F',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px'
+                  }}
+                >
+                  Wartość
+                </Typography>
+              </Box>
+              {additionalInfoFields.map((item) => (
+                <AdditionalInfoRow key={item.key} item={item} />
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" sx={{ color: '#74767F', px: 1.5, py: 1 }}>
+              Brak dodatkowych informacji
+            </Typography>
+          )}
+        </DetailCard>
+      </Stack>
+    );
   };
 
   if (loading) {
@@ -235,7 +750,7 @@ const ClaimDetailsPage: React.FC = () => {
           </Tabs>
         </Box>
 
-        <UnavailableTabContent />
+        {activeTab === 0 ? <ClaimDataContent /> : <UnavailableTabContent />}
 
         <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
           {hasPermission('claim archive') && !claim.deleted_at && (
@@ -393,7 +908,7 @@ const ClaimDetailsPage: React.FC = () => {
       </Box>
 
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        <UnavailableTabContent />
+        {activeTab === 0 ? <ClaimDataContent /> : <UnavailableTabContent />}
       </Box>
 
       <ClaimPasswordDialog

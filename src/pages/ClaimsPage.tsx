@@ -183,7 +183,6 @@ const ClaimsPage: React.FC = () => {
         mobileTitle="Szkody"
         mobilePrimaryActionLabel="Zgłoś"
         disabledGeneralActions={!hasPermission('claim create') ? ['create-claim'] : undefined}
-        disabledFilters={['policy_status']}
         extraRowActions={extraRowActions}
         filterTypeOverrides={{
           claim_date: 'date_range',
@@ -194,7 +193,7 @@ const ClaimsPage: React.FC = () => {
           reported_date: 'Data zgłoszenia',
           insurance_company_id: 'Zakład ubezpieczeń',
           policy_type_id: 'Typ polisy',
-          client_id: 'Klient'
+          client_id: 'Nazwa podmiotu'
         }}
       />
 
