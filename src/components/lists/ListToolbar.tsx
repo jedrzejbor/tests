@@ -186,15 +186,27 @@ export const ListToolbar = ({
       if (filterDef.type === 'select') {
         // Normalize options from any backend format
         const optionsArray = normalizeFilterOptions(filterDef.options);
+        const canClearSingleSelect =
+          !filterDef.is_multiple && typeof currentValue === 'string' && currentValue !== '';
 
         return (
-          <FormControl key={filterDef.key} fullWidth size="small" sx={{ mb: 2 }}>
+          <FormControl
+            key={filterDef.key}
+            fullWidth
+            size="small"
+            sx={{ mb: 2, position: 'relative' }}
+          >
             <InputLabel>{label}</InputLabel>
             <Select
               value={currentValue}
               label={label}
               multiple={filterDef.is_multiple}
               onChange={(e) => onFilterChange(filterDef.key, e.target.value as string | string[])}
+              sx={{
+                '& .MuiSelect-select': {
+                  pr: canClearSingleSelect ? '64px !important' : undefined
+                }
+              }}
             >
               {optionsArray.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
@@ -202,6 +214,32 @@ export const ListToolbar = ({
                 </MenuItem>
               ))}
             </Select>
+            {canClearSingleSelect && (
+              <IconButton
+                aria-label={`Wyczyść filtr ${label}`}
+                size="small"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onFilterChange(filterDef.key, '');
+                }}
+                sx={{
+                  position: 'absolute',
+                  right: 28,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#8E9098',
+                  p: 0.25,
+                  zIndex: 1
+                }}
+              >
+                <CloseIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            )}
           </FormControl>
         );
       }
