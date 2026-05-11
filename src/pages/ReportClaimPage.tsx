@@ -551,6 +551,7 @@ const ReportClaimPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const rawPolicyId = searchParams.get('policyId');
+  const initialPolicyIdRef = useRef(rawPolicyId);
   const isEditMode = Boolean(claimId);
 
   const [policyOption, setPolicyOption] = useState<PolicyOption | null>(null);
@@ -625,11 +626,12 @@ const ReportClaimPage: React.FC = () => {
     };
   };
 
-  // Pre-load policy if arriving with ?policyId in URL
+  // Pre-load and lock policy only if arriving with ?policyId in the initial URL.
   useEffect(() => {
-    if (!rawPolicyId || isEditMode) return;
+    const initialPolicyId = initialPolicyIdRef.current;
+    if (!initialPolicyId || isEditMode) return;
 
-    getPolicyDetails(rawPolicyId)
+    getPolicyDetails(initialPolicyId)
       .then((res) => {
         const policy = res.policy;
         setPolicyOption({
@@ -640,7 +642,7 @@ const ReportClaimPage: React.FC = () => {
         });
       })
       .catch(() => setPolicyError('Nie udało się pobrać wybranej polisy'));
-  }, [rawPolicyId, isEditMode]);
+  }, [isEditMode]);
 
   useEffect(() => {
     if (!claimId) return;
@@ -833,7 +835,7 @@ const ReportClaimPage: React.FC = () => {
                   value={policyOption}
                   onChange={handlePolicyChange}
                   error={policyError}
-                  disabled={!!rawPolicyId || isEditMode}
+                  disabled={!!initialPolicyIdRef.current || isEditMode}
                 />
               </SectionCard>
 
