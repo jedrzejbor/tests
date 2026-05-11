@@ -150,6 +150,7 @@ export const forceDeleteClaim = async (
 export interface ClaimRecord extends GenericRecord {
   id?: string | number;
   policy_id?: string | number;
+  client_id?: string | number;
   client_name?: string;
   insurance_company_name?: string;
   policy_number?: string;
@@ -249,6 +250,84 @@ export const createPolicyClaimsFetcher = (policyId: string | number, policyNumbe
         (normalizedPolicyNumber !== undefined && rowPolicyNumber === normalizedPolicyNumber);
 
       if (!belongsToPolicy) return false;
+      if (!userSearch) return true;
+
+      return Object.values(claim).some((value) =>
+        typeof value === 'string' ? value.toLowerCase().includes(userSearch) : false
+      );
+    });
+
+    const sortedData = [...filteredData].sort((a, b) => {
+      const property = params.sortProperty as keyof ClaimRecord;
+      if (!property) return 0;
+      const left = a[property];
+      const right = b[property];
+      const leftValue = left === undefined || left === null ? '' : String(left);
+      const rightValue = right === undefined || right === null ? '' : String(right);
+      return params.sortOrder === 'desc'
+        ? rightValue.localeCompare(leftValue, 'pl')
+        : leftValue.localeCompare(rightValue, 'pl');
+    });
+
+    const start = (params.page - 1) * params.perPage;
+    const paginatedData = sortedData.slice(start, start + params.perPage);
+    const count = sortedData.length;
+    const pages = Math.max(1, Math.ceil(count / params.perPage));
+
+    return {
+      ...response,
+      data: paginatedData,
+      meta: {
+        ...response.meta,
+        pagination: {
+          ...response.meta.pagination,
+          page: params.page,
+          perPage: params.perPage,
+          pages,
+          count
+        }
+      }
+    };
+  };
+};
+
+/**
+ * Tworzy fetcher ograniczony do konkretnego klienta.
+ */
+export const createClientClaimsFetcher = (clientId: string | number, clientName?: string) => {
+  return async (params: FetcherParams): Promise<GenericListResponse<ClaimRecord>> => {
+    const requestPerPage = Math.max(params.perPage, 1000);
+    const scopedParams: FetcherParams = {
+      ...params,
+      page: 1,
+      perPage: requestPerPage,
+      filters: {
+        ...params.filters,
+        client_id: String(clientId)
+      }
+    };
+    const response = await fetchClaimsTable(scopedParams);
+
+    const normalizedClientId = String(clientId);
+    const normalizedClientName = clientName?.trim().toLowerCase();
+    const userSearch = params.search.trim().toLowerCase();
+    const rowsExposeClientIdentity = response.data.some((claim) => {
+      const rowClientId =
+        claim.client_id ?? (claim.client as { id?: string | number } | undefined)?.id;
+      return rowClientId !== undefined || Boolean(claim.client_name);
+    });
+
+    const filteredData = response.data.filter((claim) => {
+      const rowClientId =
+        claim.client_id ?? (claim.client as { id?: string | number } | undefined)?.id;
+      const rowClientName = claim.client_name?.trim().toLowerCase();
+
+      const belongsToClient =
+        !rowsExposeClientIdentity ||
+        (rowClientId !== undefined && String(rowClientId) === normalizedClientId) ||
+        (normalizedClientName !== undefined && rowClientName === normalizedClientName);
+
+      if (!belongsToClient) return false;
       if (!userSearch) return true;
 
       return Object.values(claim).some((value) =>
