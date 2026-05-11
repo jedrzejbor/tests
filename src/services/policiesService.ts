@@ -2,6 +2,7 @@ import { API_ENDPOINTS, API_BASE_URL } from '@/config/api';
 import { apiClient } from '@/services/apiClient';
 import { useAuthStore } from '@/store/authStore';
 import type { GenericListResponse, FetcherParams, GenericRecord } from '@/types/genericList';
+import type { ClientDetailsApiClient } from '@/services/clientsService';
 
 // ================== RECORD TYPES ==================
 
@@ -30,9 +31,12 @@ export interface PolicyPaymentDetail {
   status: string;
 }
 
+export type PolicyClient = Omit<ClientDetailsApiClient, 'authority_scope' | 'type'>;
+
 export interface PolicyDetailsData {
   id: number;
   client_id: number;
+  client?: PolicyClient | null;
   insurance_company_id: number;
   insurance_company_name?: string;
   policy_type_id: number;

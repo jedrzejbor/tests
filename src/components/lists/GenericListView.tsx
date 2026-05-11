@@ -36,7 +36,8 @@ import type {
   GenericListViewProps,
   RowHandler,
   GeneralHandler,
-  FiltersState
+  FiltersState,
+  ActionDef
 } from '@/types/genericList';
 import { normalizeFilterOptions } from '@/types/genericList';
 
@@ -53,13 +54,18 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   disabledColumns,
   disabledFilters,
   disabledGeneralActions,
+  mobileCardVariant = 'default',
+  mobileTitle,
+  mobilePrimaryActionLabel,
   stateKey,
   filterLabelOverrides,
   filterTooltips,
-  filterTransformers
+  filterTransformers,
+  filterTypeOverrides
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isPolicyMobile = isMobile && mobileCardVariant === 'policy';
 
   // State for menus and drawers
   const [sortAnchorEl, setSortAnchorEl] = useState<null | HTMLElement>(null);
@@ -193,6 +199,44 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
       }
     },
     [handlers]
+  );
+
+  const getRowDetailsActionHandler = useCallback(
+    (row: T): string | undefined => {
+      const backendActions = Array.isArray(row.actions) ? (row.actions as ActionDef[]) : [];
+      const visibleExtraActions = extraRowActions.filter(
+        (action) => !action.show || action.show(row)
+      );
+      const allVisibleActions = [...backendActions, ...visibleExtraActions];
+
+      const detailsAction = allVisibleActions.find((action) => {
+        const handlerName = action.handler;
+        if (!handlers[handlerName]) return false;
+
+        const label = action.label.toLocaleLowerCase('pl-PL');
+        return (
+          label.includes('szczeg') || handlerName === 'view' || handlerName.startsWith('view-')
+        );
+      });
+
+      return detailsAction?.handler;
+    },
+    [extraRowActions, handlers]
+  );
+
+  const isRowClickable = useCallback(
+    (row: T) => Boolean(getRowDetailsActionHandler(row)),
+    [getRowDetailsActionHandler]
+  );
+
+  const handleRowClick = useCallback(
+    (row: T) => {
+      const detailsHandler = getRowDetailsActionHandler(row);
+      if (detailsHandler) {
+        handleRowAction(detailsHandler, row);
+      }
+    },
+    [getRowDetailsActionHandler, handleRowAction]
   );
 
   // Handle bulk actions
@@ -461,6 +505,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               onRowAction={handleRowAction}
               getRowId={getRowId}
               extraRowActions={extraRowActions}
+              onRowClick={handleRowClick}
+              isRowClickable={isRowClickable}
             />
           </Box>
 
@@ -635,9 +681,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               );
 
               // Date range filter — two date inputs
+              const effectiveType = filterTypeOverrides?.[filterDef.key] ?? filterDef.type;
               const isDateRange =
-                filterDef.type === 'date_range' ||
-                (filterDef.type === 'range' && /date/i.test(filterDef.key));
+                effectiveType === 'date_range' ||
+                (effectiveType === 'range' && /date/i.test(filterDef.key));
 
               if (isDateRange) {
                 const rangeStr = typeof currentValue === 'string' ? currentValue : '';
@@ -678,9 +725,16 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               if (filterDef.type === 'select') {
                 // Normalize options from any backend format
                 const optionsArray = normalizeFilterOptions(filterDef.options);
+                const canClearSingleSelect =
+                  !filterDef.is_multiple && typeof currentValue === 'string' && currentValue !== '';
 
                 return (
-                  <FormControl key={filterDef.key} fullWidth size="small" sx={{ mb: 2 }}>
+                  <FormControl
+                    key={filterDef.key}
+                    fullWidth
+                    size="small"
+                    sx={{ mb: 2, position: 'relative' }}
+                  >
                     <InputLabel>{label}</InputLabel>
                     <Select
                       value={currentValue}
@@ -701,6 +755,11 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                           }
                         }
                       }}
+                      sx={{
+                        '& .MuiSelect-select': {
+                          pr: canClearSingleSelect ? '64px !important' : undefined
+                        }
+                      }}
                     >
                       {optionsArray.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
@@ -708,6 +767,32 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         </MenuItem>
                       ))}
                     </Select>
+                    {canClearSingleSelect && (
+                      <IconButton
+                        aria-label={`Wyczyść filtr ${label}`}
+                        size="small"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setDraftFilters((prev) => ({ ...prev, [filterDef.key]: '' }));
+                        }}
+                        sx={{
+                          position: 'absolute',
+                          right: 28,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          color: '#8E9098',
+                          p: 0.25,
+                          zIndex: 1
+                        }}
+                      >
+                        <CloseIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    )}
                   </FormControl>
                 );
               }
@@ -801,12 +886,20 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
           </Drawer>
         </Box>
       ) : (
-        <>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           {/* Mobile layout - white wrapper */}
           <Box
             sx={{
               bgcolor: '#FFFFFF',
-              borderRadius: '12px',
+              borderRadius: isPolicyMobile ? '16px' : '12px',
               overflow: 'hidden',
               p: 2,
               mb: '76px' /* leave space for bottom navigation on mobile */
@@ -825,11 +918,12 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                   sx={{
                     fontSize: '20px',
                     fontWeight: 300,
-                    lineHeight: '28px',
-                    color: '#1E1F21'
+                    lineHeight: '32px',
+                    letterSpacing: '-0.4px',
+                    color: '#32343A'
                   }}
                 >
-                  {title}
+                  {mobileTitle ?? title}
                 </Typography>
 
                 {meta.generalActions
@@ -846,7 +940,12 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         borderRadius: '8px',
                         fontWeight: 500,
                         fontSize: '14px',
+                        lineHeight: '24px',
+                        letterSpacing: '0.4px',
                         px: 2,
+                        py: 1,
+                        minWidth: isPolicyMobile ? '101px' : undefined,
+                        height: isPolicyMobile ? '40px' : undefined,
                         bgcolor: '#1E1F21',
                         color: 'white',
                         '&:hover': {
@@ -854,7 +953,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                         }
                       }}
                     >
-                      {action.label}
+                      {mobilePrimaryActionLabel ?? action.label}
                     </Button>
                   ))}
               </Stack>
@@ -881,6 +980,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 filterLabelOverrides={filterLabelOverrides}
                 filterTooltips={filterTooltips}
                 filterTransformers={filterTransformers}
+                mobileVariant={mobileCardVariant}
               />
             )}
 
@@ -891,6 +991,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               onRowAction={handleRowAction}
               getRowId={getRowId}
               extraRowActions={extraRowActions}
+              onRowClick={handleRowClick}
+              isRowClickable={isRowClickable}
+              variant={mobileCardVariant}
             />
 
             {/* Mobile Pagination */}
@@ -906,7 +1009,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
               </Stack>
             )}
           </Box>
-        </>
+        </Box>
       )}
     </Box>
   );

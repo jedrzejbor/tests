@@ -13,6 +13,10 @@ import ClientsPage from '@/pages/ClientsPage';
 import ClientDetailsPage from '@/pages/ClientDetailsPage';
 import PoliciesPage from '@/pages/PoliciesPage';
 import PolicyDetailsPage from '@/pages/PolicyDetailsPage';
+import PaymentsPage from '@/pages/PaymentsPage';
+import ClaimsPage from '@/pages/ClaimsPage';
+import ClaimDetailsPage from '@/pages/ClaimDetailsPage';
+import ReportClaimPage from '@/pages/ReportClaimPage';
 import ResetPasswordTokenPage from '@/pages/ResetPasswordTokenPage';
 import SetPasswordTokenPage from '@/pages/SetPasswordTokenPage';
 import AppErrorBoundary from '@/routes/AppErrorBoundary';
@@ -126,10 +130,42 @@ export const router = createBrowserRouter([
         )
       },
       {
+        path: '/app/damages/new',
+        element: (
+          <ProtectedRoute>
+            <ReportClaimPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '/app/damages/:claimId/edit',
+        element: (
+          <ProtectedRoute>
+            <ReportClaimPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '/app/damages/:claimId',
+        element: (
+          <ProtectedRoute>
+            <ClaimDetailsPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '/app/damages',
+        element: (
+          <ProtectedRoute>
+            <ClaimsPage />
+          </ProtectedRoute>
+        )
+      },
+      {
         path: '/app/claims',
         element: (
           <ProtectedRoute>
-            <UnavailablePage />
+            <ClaimsPage />
           </ProtectedRoute>
         )
       },
@@ -137,7 +173,7 @@ export const router = createBrowserRouter([
         path: '/app/payments',
         element: (
           <ProtectedRoute>
-            <UnavailablePage />
+            <PaymentsPage />
           </ProtectedRoute>
         )
       },

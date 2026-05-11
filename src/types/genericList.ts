@@ -228,6 +228,12 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
   refreshKey?: string | number;
   /** Frontend-defined row actions appended after backend actions in the kebab menu */
   extraRowActions?: ExtraRowAction<T>[];
+  /** Optional mobile card layout tailored for a specific resource type. */
+  mobileCardVariant?: 'default' | 'policy';
+  /** Optional title override for the mobile header. */
+  mobileTitle?: string;
+  /** Optional mobile primary action label override. */
+  mobilePrimaryActionLabel?: string;
   /** Column properties to exclude from backend response */
   disabledColumns?: string[];
   /** Filter keys to exclude from backend response */
@@ -250,6 +256,12 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
    * Key: filter key, value: transform function.
    */
   filterTransformers?: Record<string, (displayValue: string) => string>;
+  /**
+   * Override the type of a filter returned by the backend.
+   * E.g. force 'claim_date' to render as 'date_range' even if backend says 'text'.
+   * Key: filter key, value: FilterDef type string.
+   */
+  filterTypeOverrides?: Record<string, FilterDef['type']>;
 }
 
 // ================== CONTROLLER STATE ==================
