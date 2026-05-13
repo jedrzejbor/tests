@@ -54,7 +54,13 @@ import {
   restoreClaim,
   type ClaimRecord
 } from '@/services/claimsService';
+import {
+  createPolicyPaymentsFetcher,
+  restorePayment,
+  type PaymentRecord
+} from '@/services/paymentsService';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 import { usePermission } from '@/hooks/usePermission';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
@@ -63,8 +69,13 @@ import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
 import ClaimPasswordDialog from '@/components/dialogs/ClaimPasswordDialog';
 import EditClientDialog from '@/components/dialogs/EditClientDialog';
 import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
+import ViewPaymentDialog from '@/components/dialogs/ViewPaymentDialog';
+import EditPaymentDialog from '@/components/dialogs/EditPaymentDialog';
+import ArchivePaymentDialog from '@/components/dialogs/ArchivePaymentDialog';
+import ForceDeletePaymentDialog from '@/components/dialogs/ForceDeletePaymentDialog';
 import { GenericListView } from '@/components/lists';
 import type { ExtraRowAction } from '@/types/genericList';
+import { isClientRole } from '@/utils/roles';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -208,10 +219,12 @@ const PolicyDetailsPage: React.FC = () => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { addToast } = useUiStore();
+  const currentUserRole = useAuthStore((state) => state.user?.role);
   const { hasPermission } = usePermission();
   const canViewClientList = hasPermission('client view-list');
   const canEditClient = hasPermission('client edit');
   const canEditPolicy = hasPermission('policy edit');
+  const hidePaymentCommissionFields = isClientRole(currentUserRole);
 
   const [policyData, setPolicyData] = useState<PolicyDetailsData | null>(null);
   const [clientData, setClientData] = useState<ClientData | null>(null);
@@ -230,6 +243,14 @@ const PolicyDetailsPage: React.FC = () => {
 
   // Edit policy dialog
   const [editPolicyDialogOpen, setEditPolicyDialogOpen] = useState(false);
+
+  // Payment dialogs
+  const [viewPaymentDialogOpen, setViewPaymentDialogOpen] = useState(false);
+  const [editPaymentDialogOpen, setEditPaymentDialogOpen] = useState(false);
+  const [archivePaymentDialogOpen, setArchivePaymentDialogOpen] = useState(false);
+  const [forceDeletePaymentDialogOpen, setForceDeletePaymentDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
+  const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
 
   // Form options for resolving IDs to labels
   const [formOptions, setFormOptions] = useState<{
@@ -628,6 +649,165 @@ const PolicyDetailsPage: React.FC = () => {
       </Typography>
     </Box>
   );
+
+  // ---------------------------------------------------------------------------
+  // Płatności składek tab content
+  // ---------------------------------------------------------------------------
+
+  const PaymentsTabContent = () => {
+    const paymentsFetcher = useMemo(
+      () => createPolicyPaymentsFetcher(policyId, policyData.number),
+      [policyId, policyData.number]
+    );
+
+    const disabledPaymentColumns = useMemo(
+      () =>
+        hidePaymentCommissionFields
+          ? ['policy_number', 'margin', 'margin_percent']
+          : ['policy_number'],
+      [hidePaymentCommissionFields]
+    );
+
+    const disabledPaymentFilters = useMemo(
+      () =>
+        hidePaymentCommissionFields
+          ? ['policy', 'policy_id', 'margin', 'margin_percent']
+          : ['policy', 'policy_id'],
+      [hidePaymentCommissionFields]
+    );
+
+    const handleViewPayment = useCallback((row: PaymentRecord) => {
+      setSelectedPayment(row);
+      setViewPaymentDialogOpen(true);
+    }, []);
+
+    const handleEditPayment = useCallback((row: PaymentRecord) => {
+      setSelectedPayment(row);
+      setEditPaymentDialogOpen(true);
+    }, []);
+
+    const handleArchivePayment = useCallback((row: PaymentRecord) => {
+      setSelectedPayment(row);
+      setArchivePaymentDialogOpen(true);
+    }, []);
+
+    const handleForceDeletePayment = useCallback((row: PaymentRecord) => {
+      setSelectedPayment(row);
+      setForceDeletePaymentDialogOpen(true);
+    }, []);
+
+    const handleRestorePayment = useCallback(
+      async (row: PaymentRecord) => {
+        if (!row.id) return;
+
+        try {
+          await restorePayment(row.id);
+          addToast({
+            id: crypto.randomUUID(),
+            message: 'Płatność została przywrócona',
+            severity: 'success'
+          });
+          setPaymentRefreshKey((key) => key + 1);
+        } catch (error) {
+          const apiError = error as ApiError;
+          addToast({
+            id: crypto.randomUUID(),
+            message: apiError?.message || 'Nie udało się przywrócić płatności',
+            severity: 'error'
+          });
+        }
+      },
+      [addToast]
+    );
+
+    const handlePaymentSuccess = useCallback(() => {
+      setPaymentRefreshKey((key) => key + 1);
+    }, []);
+
+    const handlers = useMemo(
+      () => ({
+        'view-payments': handleViewPayment,
+        'edit-payments': handleEditPayment,
+        'archive-payments': handleArchivePayment,
+        'delete-payments': handleForceDeletePayment,
+        'restore-payments': handleRestorePayment
+      }),
+      [
+        handleViewPayment,
+        handleEditPayment,
+        handleArchivePayment,
+        handleForceDeletePayment,
+        handleRestorePayment
+      ]
+    );
+
+    return (
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <GenericListView<PaymentRecord>
+          title="Zestawienie płatności składek"
+          fetcher={paymentsFetcher}
+          handlers={handlers}
+          rowKey={(row) => String(row.id || row.payment_date)}
+          initialPerPage={10}
+          refreshKey={paymentRefreshKey}
+          stateKey={`/app/policies/${policyId}/payments`}
+          mobileTitle="Płatności składek"
+          disabledColumns={disabledPaymentColumns}
+          disabledFilters={disabledPaymentFilters}
+          disabledGeneralActions={['payments-create']}
+          filterTooltips={{
+            payment_total: 'Filtruje płatności po wysokości raty - wpisz kwoty w PLN (np. 1000,59)'
+          }}
+          filterTransformers={{
+            payment_total: (val) =>
+              val
+                .split(',')
+                .map((part) => {
+                  const n = parseFloat(part.replace(',', '.'));
+                  return isNaN(n) ? '' : String(Math.round(n * 100));
+                })
+                .join(',')
+          }}
+        />
+
+        <ViewPaymentDialog
+          open={viewPaymentDialogOpen}
+          onClose={() => {
+            setViewPaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+        />
+        <EditPaymentDialog
+          open={editPaymentDialogOpen}
+          onClose={() => {
+            setEditPaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+        <ArchivePaymentDialog
+          open={archivePaymentDialogOpen}
+          onClose={() => {
+            setArchivePaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+        <ForceDeletePaymentDialog
+          open={forceDeletePaymentDialogOpen}
+          onClose={() => {
+            setForceDeletePaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+      </Box>
+    );
+  };
 
   // ---------------------------------------------------------------------------
   // Szkody tab content
@@ -1836,6 +2016,10 @@ const PolicyDetailsPage: React.FC = () => {
           <ClientDataMobile />
         ) : activeTab === 2 ? (
           <PolicyDataMobile />
+        ) : activeTab === 4 ? (
+          <Box sx={{ px: 2, py: 2 }}>
+            <PaymentsTabContent />
+          </Box>
         ) : activeTab === 7 ? (
           <Box sx={{ px: 2, py: 2 }}>
             <ClaimsTabContent />
@@ -2015,7 +2199,13 @@ const PolicyDetailsPage: React.FC = () => {
       </Box>
 
       {/* Tab content */}
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+      <Box
+        sx={
+          activeTab === 4 || activeTab === 7
+            ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }
+            : { flex: 1, minHeight: 0, overflow: 'auto' }
+        }
+      >
         {activeTab === 0 ? (
           <Stack spacing={3}>
             <ClientDataDesktop />
@@ -2024,6 +2214,8 @@ const PolicyDetailsPage: React.FC = () => {
           <Stack spacing={3}>
             <PolicyDataDesktop />
           </Stack>
+        ) : activeTab === 4 ? (
+          <PaymentsTabContent />
         ) : activeTab === 7 ? (
           <ClaimsTabContent />
         ) : (
