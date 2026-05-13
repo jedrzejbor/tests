@@ -294,7 +294,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
-            minHeight: 0
+            minHeight: 0,
+            overflow: 'hidden'
           }}
         >
           {/* Header section with title and toolbar */}
