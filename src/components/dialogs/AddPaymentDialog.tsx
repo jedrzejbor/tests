@@ -32,6 +32,8 @@ import {
 } from '@/services/paymentsService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
+import { isClientRole } from '@/utils/roles';
 
 export interface AddPaymentDialogProps {
   open: boolean;
@@ -50,6 +52,8 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { addToast } = useUiStore();
+  const currentUserRole = useAuthStore((state) => state.user?.role);
+  const hideCommissionFields = isClientRole(currentUserRole);
 
   const [loading, setLoading] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(false);
@@ -69,7 +73,7 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
       policy_id: '',
       payment_date: '',
       payment_total: '',
-      margin_percent: '',
+      margin_percent: hideCommissionFields ? '0' : '',
       status: ''
     }
   });
@@ -82,7 +86,7 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
       policy_id: '',
       payment_date: '',
       payment_total: '',
-      margin_percent: '',
+      margin_percent: hideCommissionFields ? '0' : '',
       status: ''
     });
     setOptionsLoading(true);
@@ -96,7 +100,7 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
         });
       })
       .finally(() => setOptionsLoading(false));
-  }, [open, reset, addToast]);
+  }, [open, reset, addToast, hideCommissionFields]);
 
   const handleFormSubmit = async (data: AddPaymentFormValues) => {
     setLoading(true);
@@ -107,7 +111,7 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
         policy_id: Number(data.policy_id),
         payment_date: data.payment_date,
         payment_total: Number(data.payment_total),
-        margin_percent: Number(data.margin_percent),
+        margin_percent: hideCommissionFields ? 0 : Number(data.margin_percent),
         status: data.status
       });
       addToast({
@@ -301,27 +305,35 @@ const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
             size="medium"
           />
 
-          {/* Wysokość prowizji — tylko procent */}
-          <Box>
-            <Typography
-              sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.6)', letterSpacing: '0.17px', mb: 1 }}
-            >
-              Wysokość prowizji
-            </Typography>
-            <TextField
-              label="Procent"
-              type="number"
-              inputProps={{ step: '0.01', min: '0', max: '100' }}
-              {...register('margin_percent')}
-              error={Boolean(errors.margin_percent)}
-              helperText={errors.margin_percent?.message}
-              fullWidth
-              size="medium"
-              InputProps={{
-                endAdornment: <Typography sx={{ color: 'rgba(0,0,0,0.4)', ml: 0.5 }}>%</Typography>
-              }}
-            />
-          </Box>
+          {!hideCommissionFields && (
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: '14px',
+                  color: 'rgba(0,0,0,0.6)',
+                  letterSpacing: '0.17px',
+                  mb: 1
+                }}
+              >
+                Wysokość prowizji
+              </Typography>
+              <TextField
+                label="Procent"
+                type="number"
+                inputProps={{ step: '0.01', min: '0', max: '100' }}
+                {...register('margin_percent')}
+                error={Boolean(errors.margin_percent)}
+                helperText={errors.margin_percent?.message}
+                fullWidth
+                size="medium"
+                InputProps={{
+                  endAdornment: (
+                    <Typography sx={{ color: 'rgba(0,0,0,0.4)', ml: 0.5 }}>%</Typography>
+                  )
+                }}
+              />
+            </Box>
+          )}
         </Stack>
 
         {/* ——— Przyciski ——— */}

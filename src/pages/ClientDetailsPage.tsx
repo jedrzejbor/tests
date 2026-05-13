@@ -76,10 +76,12 @@ import {
 } from '@/services/claimsService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 import { usePermission } from '@/hooks/usePermission';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
 import type { ExtraRowAction } from '@/types/genericList';
+import { isClientRole } from '@/utils/roles';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -218,9 +220,11 @@ const ClientDetailsPage: React.FC = () => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { addToast } = useUiStore();
+  const currentUserRole = useAuthStore((state) => state.user?.role);
   const { hasPermission } = usePermission();
   const canEditClient = hasPermission('client edit');
   const canArchiveClient = hasPermission('client archive');
+  const hidePaymentCommissionFields = isClientRole(currentUserRole);
 
   // Filter tabs based on user permissions
   const visibleTabs = useMemo(
@@ -618,8 +622,15 @@ const ClientDetailsPage: React.FC = () => {
     setPaymentRefreshKey((k) => k + 1);
   }, []);
 
-  const PAYMENTS_DISABLED_COLUMNS = React.useMemo(() => ['client_name'], []);
-  const PAYMENTS_DISABLED_FILTERS = React.useMemo(() => ['client'], []);
+  const PAYMENTS_DISABLED_COLUMNS = React.useMemo(
+    () =>
+      hidePaymentCommissionFields ? ['client_name', 'margin', 'margin_percent'] : ['client_name'],
+    [hidePaymentCommissionFields]
+  );
+  const PAYMENTS_DISABLED_FILTERS = React.useMemo(
+    () => (hidePaymentCommissionFields ? ['client', 'margin', 'margin_percent'] : ['client']),
+    [hidePaymentCommissionFields]
+  );
 
   const paymentHandlers: Record<string, (row: PaymentRecord) => void> = React.useMemo(
     () => ({
@@ -1667,8 +1678,8 @@ const ClientDetailsPage: React.FC = () => {
                 rowKey={(row) => String(row.id || row.policy_number)}
                 initialPerPage={10}
                 refreshKey={paymentRefreshKey}
-                disabledColumns={['client_name']}
-                disabledFilters={['client']}
+                disabledColumns={PAYMENTS_DISABLED_COLUMNS}
+                disabledFilters={PAYMENTS_DISABLED_FILTERS}
                 disabledGeneralActions={['payments-create']}
               />
               {/* <UnavailableTabContent /> */}
