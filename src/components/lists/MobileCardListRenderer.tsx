@@ -35,6 +35,32 @@ const getTooltipItems = (row: GenericRecord, property: string | null): string[] 
   return [];
 };
 
+const stringifyBelowContent = (content: unknown): string => {
+  if (content === undefined || content === null) return '';
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => stringifyBelowContent(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  if (typeof content === 'object') {
+    return Object.values(content as Record<string, unknown>)
+      .map((item) => stringifyBelowContent(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  return String(content).trim();
+};
+
+const getColumnBelowContent = (row: GenericRecord, property: string | null): string => {
+  if (!property) return '';
+  const meta = row.meta as
+    | { columns?: Record<string, { below?: { content?: unknown } }> }
+    | undefined;
+
+  return stringifyBelowContent(meta?.columns?.[property]?.below?.content);
+};
+
 interface MobileCardListRendererProps<T extends GenericRecord = GenericRecord> {
   columns: ColumnDef[];
   data: T[];
@@ -261,6 +287,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
             const insuranceCompany = getStringValue(row, 'insurance_company');
             const city = getStringValue(row, 'city');
             const number = getStringValue(row, 'number');
+            const numberBelowContent = getColumnBelowContent(row, 'number');
             const status = getStringValue(row, 'status');
             const hasActions = rowActions.length > 0 || visibleExtraActions.length > 0;
 
@@ -339,21 +366,37 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                   </Stack>
 
                   {number && (
-                    <Typography
-                      sx={{
-                        color: '#1E1F21',
-                        fontSize: '16px',
-                        fontWeight: 600,
-                        lineHeight: 1.5,
-                        letterSpacing: '0.15px',
-                        mt: 0.5,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      Nr. polisy {number}
-                    </Typography>
+                    <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                      <Typography
+                        sx={{
+                          color: '#1E1F21',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          lineHeight: 1.5,
+                          letterSpacing: '0.15px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Nr. polisy {number}
+                      </Typography>
+                      {numberBelowContent && (
+                        <Typography
+                          sx={{
+                            color: '#74767F',
+                            fontSize: '13px',
+                            lineHeight: 1.4,
+                            letterSpacing: '0.17px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {numberBelowContent}
+                        </Typography>
+                      )}
+                    </Stack>
                   )}
 
                   {status && (
@@ -411,6 +454,13 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
           const emailValue = emailColumn?.property ? String(row[emailColumn.property] || '') : '';
           const phoneValue = phoneColumn?.property ? String(row[phoneColumn.property] || '') : '';
           const cityValue = row.city ? String(row.city) : '';
+          const policyNumberValue = getStringValue(row, 'policy_number');
+          const isPolicyNumberTitle = titleColumn?.property === 'policy_number';
+          const policyNumberBelowContent = getColumnBelowContent(row, 'policy_number');
+          const titleBelowContent = isPolicyNumberTitle
+            ? getColumnBelowContent(row, titleColumn?.property ?? null)
+            : '';
+          const policyBelowContent = policyNumberBelowContent || titleBelowContent;
           const statusValue = statusColumn?.property
             ? String(row[statusColumn.property] || '')
             : '';
@@ -542,6 +592,49 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                     }}
                   >
                     Miasto: {cityValue}
+                  </Typography>
+                )}
+
+                {(policyNumberValue || policyBelowContent) && !isPolicyNumberTitle && (
+                  <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                    {policyNumberValue && (
+                      <Typography
+                        sx={{
+                          color: '#74767F',
+                          fontSize: '14px',
+                          lineHeight: '20px',
+                          fontWeight: 400
+                        }}
+                      >
+                        Polisa: {policyNumberValue}
+                      </Typography>
+                    )}
+                    {policyBelowContent && (
+                      <Typography
+                        sx={{
+                          color: '#74767F',
+                          fontSize: '13px',
+                          lineHeight: '18px',
+                          fontWeight: 400
+                        }}
+                      >
+                        {policyBelowContent}
+                      </Typography>
+                    )}
+                  </Stack>
+                )}
+
+                {policyBelowContent && isPolicyNumberTitle && (
+                  <Typography
+                    sx={{
+                      color: '#74767F',
+                      fontSize: '13px',
+                      lineHeight: '18px',
+                      fontWeight: 400,
+                      mt: 0.5
+                    }}
+                  >
+                    {policyBelowContent}
                   </Typography>
                 )}
 

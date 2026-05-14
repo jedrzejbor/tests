@@ -154,7 +154,10 @@ export interface GenericRecord {
       string,
       {
         tooltip?: {
-          content: string[];
+          content: unknown;
+        };
+        below?: {
+          content: unknown;
         };
       }
     >;

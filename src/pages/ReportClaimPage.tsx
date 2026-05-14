@@ -122,6 +122,16 @@ interface PolicyOption {
   policyNumber: string;
 }
 
+interface PolicyDateRange {
+  from: string;
+  to: string;
+}
+
+const toDateInputValue = (date: string | null | undefined): string => {
+  if (!date) return '';
+  return date.slice(0, 10);
+};
+
 // ================== DYNAMIC FIELD ==================
 
 interface DynamicFieldProps {
@@ -404,6 +414,7 @@ const ReportClaimPage: React.FC = () => {
   const [policyOptions, setPolicyOptions] = useState<PolicyOption[]>([]);
   const [loadingPolicyOptions, setLoadingPolicyOptions] = useState(false);
   const [policyOption, setPolicyOption] = useState<PolicyOption | null>(null);
+  const [lockedPolicyDateRange, setLockedPolicyDateRange] = useState<PolicyDateRange | null>(null);
   const [policyError, setPolicyError] = useState<string | undefined>(undefined);
 
   const [fields, setFields] = useState<ClaimFormField[]>([]);
@@ -519,6 +530,10 @@ const ReportClaimPage: React.FC = () => {
           label: policy.number ?? `Polisa #${policy.id}`,
           clientName: clientLabel,
           policyNumber: policy.number ?? ''
+        });
+        setLockedPolicyDateRange({
+          from: toDateInputValue(policy.date_from),
+          to: toDateInputValue(policy.date_to)
         });
         setSelectedClientId(String(policy.client_id));
         upsertClientOption({ value: policy.client_id, label: clientLabel });
@@ -676,6 +691,18 @@ const ReportClaimPage: React.FC = () => {
     clearSelectedPolicy();
   };
 
+  const validateEventDate = (value: unknown) => {
+    if (!value) return 'Data szkody jest wymagana';
+    if (!lockedPolicyDateRange?.from || !lockedPolicyDateRange?.to) return true;
+
+    const date = String(value);
+    if (date < lockedPolicyDateRange.from || date > lockedPolicyDateRange.to) {
+      return `Data szkody musi mieścić się w okresie polisy: ${lockedPolicyDateRange.from} - ${lockedPolicyDateRange.to}`;
+    }
+
+    return true;
+  };
+
   const handlePolicyChange = (opt: PolicyOption | null) => {
     if (isEditMode || lockedPolicyId) return;
     setPolicyOption(opt);
@@ -821,7 +848,7 @@ const ReportClaimPage: React.FC = () => {
                   name={STATIC_FIELD_KEYS.eventDate}
                   control={control}
                   defaultValue=""
-                  rules={{ required: 'Data szkody jest wymagana' }}
+                  rules={{ validate: validateEventDate }}
                   render={({ field: f, fieldState }) => (
                     <TextField
                       {...f}
@@ -829,8 +856,17 @@ const ReportClaimPage: React.FC = () => {
                       type="date"
                       fullWidth
                       InputLabelProps={{ shrink: true }}
+                      inputProps={{
+                        min: lockedPolicyDateRange?.from,
+                        max: lockedPolicyDateRange?.to
+                      }}
                       error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
+                      helperText={
+                        fieldState.error?.message ??
+                        (lockedPolicyDateRange?.from && lockedPolicyDateRange?.to
+                          ? `Zakres polisy: ${lockedPolicyDateRange.from} - ${lockedPolicyDateRange.to}`
+                          : undefined)
+                      }
                       sx={inputSx}
                       onChange={(event) => handleClaimDateChange(event.target.value, f.onChange)}
                     />

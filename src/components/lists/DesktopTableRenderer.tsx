@@ -51,6 +51,37 @@ const getTooltipItems = (row: GenericRecord, property: string | null): string[] 
   return [];
 };
 
+const stringifyBelowContent = (content: unknown): string => {
+  if (content === undefined || content === null) return '';
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => stringifyBelowContent(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  if (typeof content === 'object') {
+    return Object.values(content as Record<string, unknown>)
+      .map((item) => stringifyBelowContent(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  return String(content).trim();
+};
+
+const getColumnBelowContent = (row: GenericRecord, property: string | null): string => {
+  if (!property) return '';
+  const meta = row.meta as
+    | { columns?: Record<string, { below?: { content?: unknown } }> }
+    | undefined;
+
+  return stringifyBelowContent(meta?.columns?.[property]?.below?.content);
+};
+
+const isPolicyNumberCell = (property: string | null, row: GenericRecord): boolean => {
+  if (property === 'policy_number') return true;
+  return property === 'number' && row.policy_number === undefined;
+};
+
 interface DesktopTableRendererProps<T extends GenericRecord = GenericRecord> {
   columns: ColumnDef[];
   data: T[];
@@ -118,6 +149,20 @@ const renderCell = <T extends GenericRecord>(column: ColumnDef, row: T) => {
 
   const value = row[column.property];
   const stringValue = value !== null && value !== undefined ? String(value) : '—';
+  const belowContent = getColumnBelowContent(row, column.property);
+
+  if (isPolicyNumberCell(column.property, row) && belowContent) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        <Typography sx={{ fontSize: '14px', color: '#32343A', fontWeight: 500 }}>
+          {stringValue.length > 50 ? `${stringValue.slice(0, 47)}...` : stringValue}
+        </Typography>
+        <Typography sx={{ fontSize: '12px', color: '#74767F', fontWeight: 400 }}>
+          {belowContent}
+        </Typography>
+      </Box>
+    );
+  }
 
   // ===== CLIENT TABLE CUSTOM RENDERING =====
   // Nazwa Klienta, Podmioty zarządzające, NIP, Miasto → jak email (Link)
