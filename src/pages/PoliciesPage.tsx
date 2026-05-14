@@ -224,6 +224,7 @@ const PoliciesPage: React.FC = () => {
         mobileCardVariant="policy"
         mobileTitle="Polisy"
         mobilePrimaryActionLabel="Dodaj"
+        disabledColumns={['city']}
         disabledGeneralActions={!canCreatePolicy ? ['create-policy'] : undefined}
         extraRowActions={extraRowActions}
         filterLabelOverrides={{

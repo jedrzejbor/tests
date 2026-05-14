@@ -661,7 +661,7 @@ const ClientDetailsPage: React.FC = () => {
     [clientId]
   );
 
-  const POLICIES_DISABLED_COLUMNS = React.useMemo(() => ['client'], []);
+  const POLICIES_DISABLED_COLUMNS = React.useMemo(() => ['client', 'city'], []);
   const POLICIES_DISABLED_FILTERS = React.useMemo(() => ['client_id'], []);
 
   const handleCreatePolicy = useCallback(() => {
