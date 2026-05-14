@@ -3,7 +3,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import {
-  Autocomplete,
   Box,
   Button,
   Card,
@@ -13,6 +12,7 @@ import {
   FormControl,
   FormControlLabel,
   FormHelperText,
+  InputLabel,
   ListItemText,
   MenuItem,
   OutlinedInput,
@@ -23,14 +23,19 @@ import {
   Typography
 } from '@mui/material';
 import {
+  fetchClaimFormData,
   fetchClaimFormDefinition,
+  fetchClaimPolicyNumbers,
   getClaimDetails,
   submitClaim,
   updateClaim
 } from '@/services/claimsService';
-import type { ClaimFormField, ClaimUpdatePayload } from '@/services/claimsService';
-import { fetchPoliciesTable, getPolicyDetails } from '@/services/policiesService';
-import type { PolicyRecord } from '@/services/policiesService';
+import type {
+  ClaimFormField,
+  ClaimFormSelectOption,
+  ClaimUpdatePayload
+} from '@/services/claimsService';
+import { getPolicyDetails } from '@/services/policiesService';
 
 // ================== SHARED STYLES ==================
 
@@ -76,22 +81,6 @@ const selectMenuProps = {
   }
 } as const;
 
-const autocompleteSlotProps = {
-  paper: {
-    sx: {
-      bgcolor: '#FFFFFF',
-      backgroundImage: 'none',
-      border: '1px solid #E5E7EB',
-      boxShadow: '0 12px 32px rgba(16, 24, 40, 0.12)'
-    }
-  },
-  listbox: {
-    sx: {
-      bgcolor: '#FFFFFF'
-    }
-  }
-} as const;
-
 // ================== SECTION CARD ==================
 
 interface SectionCardProps {
@@ -126,158 +115,12 @@ const SectionCard: React.FC<SectionCardProps> = ({ title, children }) => (
   </Card>
 );
 
-// ================== POLICY AUTOCOMPLETE ==================
-
 interface PolicyOption {
   id: number;
   label: string;
   clientName: string;
   policyNumber: string;
 }
-
-interface PolicyAutocompleteProps {
-  value: PolicyOption | null;
-  onChange: (option: PolicyOption | null) => void;
-  error?: string;
-  disabled?: boolean;
-}
-
-const PolicyAutocomplete: React.FC<PolicyAutocompleteProps> = ({
-  value,
-  onChange,
-  error,
-  disabled
-}) => {
-  const [inputValue, setInputValue] = useState('');
-  const [options, setOptions] = useState<PolicyOption[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const currentSearchRef = useRef('');
-
-  const PER_PAGE = 20;
-
-  const fetchPage = useCallback(async (search: string, pageNum: number, replace: boolean) => {
-    if (replace) setLoading(true);
-    else setLoadingMore(true);
-    try {
-      const result = await fetchPoliciesTable({
-        page: pageNum,
-        perPage: PER_PAGE,
-        search,
-        sortProperty: '',
-        sortOrder: 'asc',
-        filters: {}
-      });
-      const rows = result.data as PolicyRecord[];
-      const mapped = rows
-        .filter((r) => r.id !== undefined && r.id !== null)
-        .map((r) => ({
-          id: Number(r.id),
-          label: r.number ?? `Polisa #${r.id}`,
-          clientName: r.client ?? '',
-          policyNumber: r.number ?? ''
-        }));
-
-      setOptions((prev) => (replace ? mapped : [...prev, ...mapped]));
-      setHasMore(rows.length === PER_PAGE);
-      setPage(pageNum);
-    } catch {
-      if (replace) setOptions([]);
-    } finally {
-      if (replace) setLoading(false);
-      else setLoadingMore(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      currentSearchRef.current = inputValue;
-      fetchPage(inputValue, 1, true);
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [inputValue, fetchPage]);
-
-  const handleListboxScroll = useCallback(
-    (event: React.SyntheticEvent) => {
-      if (loading || loadingMore || !hasMore) return;
-      const el = event.currentTarget as HTMLUListElement;
-      const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 60;
-      if (nearBottom) {
-        fetchPage(currentSearchRef.current, page + 1, false);
-      }
-    },
-    [loading, loadingMore, hasMore, page, fetchPage]
-  );
-
-  return (
-    <Autocomplete
-      fullWidth
-      options={options}
-      loading={loading}
-      disabled={disabled}
-      slotProps={{
-        ...autocompleteSlotProps,
-        listbox: {
-          ...autocompleteSlotProps.listbox,
-          onScroll: handleListboxScroll
-        }
-      }}
-      filterOptions={(x) => x}
-      value={value}
-      onChange={(_e, newValue) => onChange(newValue)}
-      onInputChange={(_e, newInput) => setInputValue(newInput)}
-      getOptionLabel={(option) => option.label}
-      isOptionEqualToValue={(option, val) => option.id === val.id}
-      noOptionsText={inputValue.length > 0 ? 'Brak wyników' : 'Zacznij wpisywać numer polisy…'}
-      sx={{
-        '& .MuiOutlinedInput-root': {
-          bgcolor: '#FFFFFF'
-        },
-        '&.Mui-disabled .MuiOutlinedInput-root': {
-          bgcolor: '#F9FAFB'
-        }
-      }}
-      renderOption={(props, option) => (
-        <li {...props} key={option.id}>
-          <Stack spacing={0}>
-            <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#32343A' }}>
-              {option.policyNumber}
-            </Typography>
-            {option.clientName && (
-              <Typography sx={{ fontSize: '12px', color: '#74767F' }}>
-                {option.clientName}
-              </Typography>
-            )}
-          </Stack>
-        </li>
-      )}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label="Wybierz polisę do zgłoszenia szkody"
-          error={!!error}
-          helperText={error}
-          sx={inputSx}
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {loading || loadingMore ? <CircularProgress color="inherit" size={16} /> : null}
-                {params.InputProps.endAdornment}
-              </>
-            )
-          }}
-        />
-      )}
-    />
-  );
-};
 
 // ================== DYNAMIC FIELD ==================
 
@@ -554,6 +397,12 @@ const ReportClaimPage: React.FC = () => {
   const initialPolicyIdRef = useRef(rawPolicyId);
   const isEditMode = Boolean(claimId);
 
+  const [clientOptions, setClientOptions] = useState<ClaimFormSelectOption[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [clientError, setClientError] = useState<string | undefined>(undefined);
+  const [loadingFormData, setLoadingFormData] = useState(false);
+  const [policyOptions, setPolicyOptions] = useState<PolicyOption[]>([]);
+  const [loadingPolicyOptions, setLoadingPolicyOptions] = useState(false);
   const [policyOption, setPolicyOption] = useState<PolicyOption | null>(null);
   const [policyError, setPolicyError] = useState<string | undefined>(undefined);
 
@@ -576,6 +425,8 @@ const ReportClaimPage: React.FC = () => {
 
   const isExclusiveClaim = Boolean(watch(STATIC_FIELD_KEYS.isExclusiveClaim));
   const isTransferred = Boolean(watch(STATIC_FIELD_KEYS.isTransferred));
+  const eventDateValue = String(watch(STATIC_FIELD_KEYS.eventDate) || '');
+  const lockedPolicyId = initialPolicyIdRef.current;
 
   const buildPayload = (data: Record<string, unknown>): ClaimUpdatePayload => {
     const meta: Record<string, string | number | boolean | number[]> = {};
@@ -626,6 +477,34 @@ const ReportClaimPage: React.FC = () => {
     };
   };
 
+  const upsertClientOption = useCallback((option: ClaimFormSelectOption) => {
+    setClientOptions((prev) =>
+      prev.some((existing) => existing.value === option.value) ? prev : [option, ...prev]
+    );
+  }, []);
+
+  useEffect(() => {
+    if (isEditMode) return;
+
+    let cancelled = false;
+    setLoadingFormData(true);
+
+    fetchClaimFormData()
+      .then((res) => {
+        if (!cancelled) setClientOptions(res.clients || []);
+      })
+      .catch(() => {
+        if (!cancelled) setClientError('Nie udało się pobrać listy klientów');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingFormData(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode]);
+
   // Pre-load and lock policy only if arriving with ?policyId in the initial URL.
   useEffect(() => {
     const initialPolicyId = initialPolicyIdRef.current;
@@ -634,15 +513,18 @@ const ReportClaimPage: React.FC = () => {
     getPolicyDetails(initialPolicyId)
       .then((res) => {
         const policy = res.policy;
+        const clientLabel = policy.client?.name ?? `Klient #${policy.client_id}`;
         setPolicyOption({
           id: policy.id,
           label: policy.number ?? `Polisa #${policy.id}`,
-          clientName: '',
+          clientName: clientLabel,
           policyNumber: policy.number ?? ''
         });
+        setSelectedClientId(String(policy.client_id));
+        upsertClientOption({ value: policy.client_id, label: clientLabel });
       })
       .catch(() => setPolicyError('Nie udało się pobrać wybranej polisy'));
-  }, [isEditMode]);
+  }, [isEditMode, upsertClientOption]);
 
   useEffect(() => {
     if (!claimId) return;
@@ -657,13 +539,18 @@ const ReportClaimPage: React.FC = () => {
         const claim = res.claim;
         const policy = claim.policy;
         const meta = claim.meta ?? {};
+        const clientLabel = policy?.client?.name ?? `Klient #${policy?.client_id ?? ''}`;
 
         setPolicyOption({
           id: claim.policy_id,
           label: policy?.number ?? `Polisa #${claim.policy_id}`,
-          clientName: '',
+          clientName: policy?.client_id ? clientLabel : '',
           policyNumber: policy?.number ?? ''
         });
+        if (policy?.client_id) {
+          setSelectedClientId(String(policy.client_id));
+          upsertClientOption({ value: policy.client_id, label: clientLabel });
+        }
 
         reset({
           ...meta,
@@ -696,7 +583,54 @@ const ReportClaimPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [claimId, reset]);
+  }, [claimId, reset, upsertClientOption]);
+
+  useEffect(() => {
+    if (isEditMode || lockedPolicyId) return;
+
+    if (!selectedClientId || !eventDateValue) {
+      setPolicyOptions([]);
+      setPolicyOption(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingPolicyOptions(true);
+    setPolicyError(undefined);
+
+    fetchClaimPolicyNumbers(selectedClientId, eventDateValue)
+      .then((res) => {
+        if (cancelled) return;
+        const selectedClient = clientOptions.find(
+          (client) => String(client.value) === selectedClientId
+        );
+        const mapped = (res.policy_numbers || []).map((policy) => ({
+          id: policy.id,
+          label: policy.number,
+          clientName: selectedClient?.label ?? '',
+          policyNumber: policy.number
+        }));
+
+        setPolicyOptions(mapped);
+        setPolicyOption((current) =>
+          current && mapped.some((option) => option.id === current.id) ? current : null
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPolicyOptions([]);
+          setPolicyOption(null);
+          setPolicyError('Nie udało się pobrać polis dla wybranego klienta i daty');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPolicyOptions(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientOptions, eventDateValue, isEditMode, lockedPolicyId, selectedClientId]);
 
   // Fetch dynamic form definition whenever policy changes
   useEffect(() => {
@@ -723,14 +657,38 @@ const ReportClaimPage: React.FC = () => {
     };
   }, [policyOption]);
 
+  const clearSelectedPolicy = () => {
+    if (isEditMode || lockedPolicyId) return;
+    setPolicyOption(null);
+    setPolicyError(undefined);
+    setSearchParams({}, { replace: true });
+  };
+
+  const handleClientChange = (clientId: string) => {
+    if (isEditMode || lockedPolicyId) return;
+    setSelectedClientId(clientId);
+    setClientError(undefined);
+    clearSelectedPolicy();
+  };
+
+  const handleClaimDateChange = (value: string, onChange: (value: string) => void) => {
+    onChange(value);
+    clearSelectedPolicy();
+  };
+
   const handlePolicyChange = (opt: PolicyOption | null) => {
-    if (isEditMode) return;
+    if (isEditMode || lockedPolicyId) return;
     setPolicyOption(opt);
     setPolicyError(undefined);
     setSearchParams(opt ? { policyId: String(opt.id) } : {}, { replace: true });
   };
 
   const onSubmit = async (data: Record<string, unknown>) => {
+    if (!isEditMode && !selectedClientId) {
+      setClientError('Wybierz klienta');
+      return;
+    }
+
     if (policyOption === null) {
       setPolicyError('Wybierz polisę');
       return;
@@ -757,6 +715,12 @@ const ReportClaimPage: React.FC = () => {
 
   const noPolicy = policyOption === null;
   const pageTitle = isEditMode ? 'Edytuj szkodę' : 'Zgłoś szkodę';
+  const availablePolicyOptions =
+    policyOption && !policyOptions.some((option) => option.id === policyOption.id)
+      ? [policyOption, ...policyOptions]
+      : policyOptions;
+  const policySelectDisabled =
+    isEditMode || Boolean(lockedPolicyId) || !selectedClientId || !eventDateValue;
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -831,12 +795,102 @@ const ReportClaimPage: React.FC = () => {
             <Stack spacing={3}>
               {/* ── Dane szczegółowe — zawsze statyczna ─── */}
               <SectionCard title="Dane szczegółowe">
-                <PolicyAutocomplete
-                  value={policyOption}
-                  onChange={handlePolicyChange}
-                  error={policyError}
-                  disabled={!!initialPolicyIdRef.current || isEditMode}
+                <FormControl fullWidth error={!!clientError} sx={inputSx}>
+                  <InputLabel>Wybierz klienta</InputLabel>
+                  <Select
+                    value={selectedClientId}
+                    label="Wybierz klienta"
+                    disabled={loadingFormData || Boolean(lockedPolicyId) || isEditMode}
+                    onChange={(event) => handleClientChange(String(event.target.value))}
+                    MenuProps={selectMenuProps}
+                    sx={{ bgcolor: '#FFFFFF' }}
+                  >
+                    <MenuItem value="">
+                      <em>Wybierz klienta</em>
+                    </MenuItem>
+                    {clientOptions.map((client) => (
+                      <MenuItem key={client.value} value={String(client.value)}>
+                        {client.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {clientError && <FormHelperText>{clientError}</FormHelperText>}
+                </FormControl>
+
+                <Controller
+                  name={STATIC_FIELD_KEYS.eventDate}
+                  control={control}
+                  defaultValue=""
+                  rules={{ required: 'Data szkody jest wymagana' }}
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      label="Data szkody"
+                      type="date"
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      sx={inputSx}
+                      onChange={(event) => handleClaimDateChange(event.target.value, f.onChange)}
+                    />
+                  )}
                 />
+
+                <FormControl fullWidth error={!!policyError} sx={inputSx}>
+                  <InputLabel>Wybierz polisę do zgłoszenia szkody</InputLabel>
+                  <Select
+                    value={policyOption ? String(policyOption.id) : ''}
+                    label="Wybierz polisę do zgłoszenia szkody"
+                    disabled={policySelectDisabled || loadingPolicyOptions}
+                    onChange={(event) => {
+                      const nextPolicy =
+                        availablePolicyOptions.find(
+                          (option) => String(option.id) === String(event.target.value)
+                        ) ?? null;
+                      handlePolicyChange(nextPolicy);
+                    }}
+                    MenuProps={selectMenuProps}
+                    sx={{ bgcolor: '#FFFFFF' }}
+                  >
+                    <MenuItem value="">
+                      <em>Wybierz polisę</em>
+                    </MenuItem>
+                    {availablePolicyOptions.map((policy) => (
+                      <MenuItem key={policy.id} value={String(policy.id)}>
+                        {policy.policyNumber}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {loadingPolicyOptions && (
+                    <FormHelperText>Ładowanie polis dla wybranej daty...</FormHelperText>
+                  )}
+                  {!loadingPolicyOptions && policyError && (
+                    <FormHelperText>{policyError}</FormHelperText>
+                  )}
+                </FormControl>
+                {!policySelectDisabled &&
+                  !loadingPolicyOptions &&
+                  availablePolicyOptions.length === 0 &&
+                  selectedClientId &&
+                  eventDateValue && (
+                    <Typography sx={{ fontSize: '13px', color: '#74767F' }}>
+                      Brak aktywnych polis dla wybranego klienta i daty szkody.
+                    </Typography>
+                  )}
+                {policySelectDisabled && !policyOption && (
+                  <Typography sx={{ fontSize: '13px', color: '#74767F' }}>
+                    Wybierz klienta i datę szkody, aby załadować dostępne polisy.
+                  </Typography>
+                )}
+                {loadingFormData && (
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <CircularProgress size={16} />
+                    <Typography sx={{ fontSize: '13px', color: '#74767F' }}>
+                      Ładowanie danych formularza...
+                    </Typography>
+                  </Stack>
+                )}
               </SectionCard>
 
               {/* ── Szczegóły zdarzenia — zawsze statyczna ─ */}
@@ -849,24 +903,6 @@ const ReportClaimPage: React.FC = () => {
                     <TextField
                       {...f}
                       label="Data zgłoszenia"
-                      type="date"
-                      fullWidth
-                      InputLabelProps={{ shrink: true }}
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={inputSx}
-                    />
-                  )}
-                />
-                <Controller
-                  name={STATIC_FIELD_KEYS.eventDate}
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: 'Data zdarzenia jest wymagana' }}
-                  render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      label="Data zdarzenia"
                       type="date"
                       fullWidth
                       InputLabelProps={{ shrink: true }}

@@ -22,6 +22,26 @@ export interface ClaimFormDefinitionResponse {
   fields: ClaimFormField[];
 }
 
+export interface ClaimFormSelectOption {
+  value: number;
+  label: string;
+}
+
+export interface ClaimFormDataResponse {
+  clients: ClaimFormSelectOption[];
+  insurance_companies: ClaimFormSelectOption[];
+  policy_types: ClaimFormSelectOption[];
+}
+
+export interface ClaimPolicyNumberOption {
+  id: number;
+  number: string;
+}
+
+export interface ClaimPolicyNumbersResponse {
+  policy_numbers: ClaimPolicyNumberOption[];
+}
+
 // ================== CLAIM SUBMIT TYPES ==================
 
 /**
@@ -110,6 +130,23 @@ export interface ClaimDetailsResponse {
  */
 export const fetchClaimFormDefinition = (policyId: number): Promise<ClaimFormDefinitionResponse> =>
   apiClient.get<ClaimFormDefinitionResponse>(`${API_ENDPOINTS.POLICY_CLAIM_FORM}/${policyId}`);
+
+export const fetchClaimFormData = (): Promise<ClaimFormDataResponse> =>
+  apiClient.get<ClaimFormDataResponse>(API_ENDPOINTS.CLAIM_FORM_DATA);
+
+export const fetchClaimPolicyNumbers = (
+  clientId: string | number,
+  date: string
+): Promise<ClaimPolicyNumbersResponse> => {
+  const query = new URLSearchParams({
+    client_id: String(clientId),
+    date
+  });
+
+  return apiClient.get<ClaimPolicyNumbersResponse>(
+    `${API_ENDPOINTS.CLAIM_POLICY_NUMBERS}?${query.toString()}`
+  );
+};
 
 /**
  * Tworzy zgłoszenie szkody.
