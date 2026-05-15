@@ -124,6 +124,18 @@ const getStringValue = (row: GenericRecord, property: string): string => {
   return value === undefined || value === null ? '' : String(value).trim();
 };
 
+const DATE_ONLY_PROPERTIES = new Set(['claim_date', 'reported_date']);
+
+const formatDateOnly = (value: string): string => {
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : value;
+};
+
+const getDisplayValue = (row: GenericRecord, property: string): string => {
+  const value = getStringValue(row, property);
+  return DATE_ONLY_PROPERTIES.has(property) ? formatDateOnly(value) : value;
+};
+
 const formatDateToken = (value: string): string => {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!match) return value;
@@ -447,12 +459,18 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
           }
 
           // Get values
-          const titleValue = titleColumn?.property ? String(row[titleColumn.property] || '') : '';
-          const subtitleValue = subtitleColumn?.property
-            ? String(row[subtitleColumn.property] || '')
+          const titleValue = titleColumn?.property
+            ? getDisplayValue(row, titleColumn.property)
             : '';
-          const emailValue = emailColumn?.property ? String(row[emailColumn.property] || '') : '';
-          const phoneValue = phoneColumn?.property ? String(row[phoneColumn.property] || '') : '';
+          const subtitleValue = subtitleColumn?.property
+            ? getDisplayValue(row, subtitleColumn.property)
+            : '';
+          const emailValue = emailColumn?.property
+            ? getDisplayValue(row, emailColumn.property)
+            : '';
+          const phoneValue = phoneColumn?.property
+            ? getDisplayValue(row, phoneColumn.property)
+            : '';
           const cityValue = row.city ? String(row.city) : '';
           const policyNumberValue = getStringValue(row, 'policy_number');
           const isPolicyNumberTitle = titleColumn?.property === 'policy_number';

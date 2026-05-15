@@ -37,6 +37,7 @@ export const API_ENDPOINTS = {
   CLAIM_POLICY_NUMBERS: '/api/claim/policy-numbers',
   POLICY_CLAIM_FORM: '/api/policy/form',
   CLAIM: '/api/claim',
+  CLAIM_FOREIGN: '/api/claim/foreign',
   CLAIMS_TABLE: '/api/resource/claims'
   // Tutaj dodawaj kolejne endpointy
 } as const;

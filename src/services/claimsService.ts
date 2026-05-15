@@ -91,6 +91,14 @@ export interface ClaimCreatePayload {
 
 export type ClaimUpdatePayload = Omit<ClaimCreatePayload, 'policy_id'>;
 
+export interface ForeignClaimCreatePayload extends ClaimUpdatePayload {
+  client_id: number;
+  policy_number: string;
+  policy_type_id: number;
+  insurance_company_id: number;
+  policy_id?: number;
+}
+
 export interface ClaimAddress {
   street: string;
   street_no: string;
@@ -154,6 +162,9 @@ export const fetchClaimPolicyNumbers = (
  */
 export const submitClaim = (payload: ClaimCreatePayload): Promise<ClaimResource> =>
   apiClient.post<ClaimResource>(API_ENDPOINTS.CLAIM, payload);
+
+export const submitForeignClaim = (payload: ForeignClaimCreatePayload): Promise<ClaimResource> =>
+  apiClient.post<ClaimResource>(API_ENDPOINTS.CLAIM_FOREIGN, payload);
 
 export const getClaimDetails = (claimId: string | number): Promise<ClaimDetailsResponse> =>
   apiClient.get<ClaimDetailsResponse>(`${API_ENDPOINTS.CLAIM}/${claimId}`);

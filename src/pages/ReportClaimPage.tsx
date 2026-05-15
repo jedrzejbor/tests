@@ -28,6 +28,7 @@ import {
   fetchClaimPolicyNumbers,
   getClaimDetails,
   submitClaim,
+  submitForeignClaim,
   updateClaim
 } from '@/services/claimsService';
 import type {
@@ -388,6 +389,10 @@ export const STATIC_FIELD_KEYS = {
   postal: '__postal',
   reportedDate: '__reported_date',
   claimNumber: '__claim_number',
+  isForeignPolicy: '__is_foreign_policy',
+  foreignPolicyNumber: '__foreign_policy_number',
+  foreignPolicyTypeId: '__foreign_policy_type_id',
+  foreignInsuranceCompanyId: '__foreign_insurance_company_id',
   isVatPayer: '__is_vat_payer',
   isExclusiveClaim: '__is_exclusive_claim',
   exclusiveClaimNote: '__exclusive_claim_note',
@@ -408,6 +413,10 @@ const ReportClaimPage: React.FC = () => {
   const isEditMode = Boolean(claimId);
 
   const [clientOptions, setClientOptions] = useState<ClaimFormSelectOption[]>([]);
+  const [insuranceCompanyOptions, setInsuranceCompanyOptions] = useState<ClaimFormSelectOption[]>(
+    []
+  );
+  const [policyTypeOptions, setPolicyTypeOptions] = useState<ClaimFormSelectOption[]>([]);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [clientError, setClientError] = useState<string | undefined>(undefined);
   const [loadingFormData, setLoadingFormData] = useState(false);
@@ -416,6 +425,7 @@ const ReportClaimPage: React.FC = () => {
   const [policyOption, setPolicyOption] = useState<PolicyOption | null>(null);
   const [lockedPolicyDateRange, setLockedPolicyDateRange] = useState<PolicyDateRange | null>(null);
   const [policyError, setPolicyError] = useState<string | undefined>(undefined);
+  const [isForeignPolicy, setIsForeignPolicy] = useState(false);
 
   const [fields, setFields] = useState<ClaimFormField[]>([]);
   const [loadingFields, setLoadingFields] = useState(false);
@@ -430,7 +440,8 @@ const ReportClaimPage: React.FC = () => {
     defaultValues: {
       [STATIC_FIELD_KEYS.isVatPayer]: false,
       [STATIC_FIELD_KEYS.isExclusiveClaim]: false,
-      [STATIC_FIELD_KEYS.isTransferred]: false
+      [STATIC_FIELD_KEYS.isTransferred]: false,
+      [STATIC_FIELD_KEYS.isForeignPolicy]: false
     }
   });
 
@@ -438,6 +449,7 @@ const ReportClaimPage: React.FC = () => {
   const isTransferred = Boolean(watch(STATIC_FIELD_KEYS.isTransferred));
   const eventDateValue = String(watch(STATIC_FIELD_KEYS.eventDate) || '');
   const lockedPolicyId = initialPolicyIdRef.current;
+  const canUseForeignPolicy = !isEditMode && !lockedPolicyId;
 
   const buildPayload = (data: Record<string, unknown>): ClaimUpdatePayload => {
     const meta: Record<string, string | number | boolean | number[]> = {};
@@ -502,7 +514,11 @@ const ReportClaimPage: React.FC = () => {
 
     fetchClaimFormData()
       .then((res) => {
-        if (!cancelled) setClientOptions(res.clients || []);
+        if (!cancelled) {
+          setClientOptions(res.clients || []);
+          setInsuranceCompanyOptions(res.insurance_companies || []);
+          setPolicyTypeOptions(res.policy_types || []);
+        }
       })
       .catch(() => {
         if (!cancelled) setClientError('Nie udało się pobrać listy klientów');
@@ -601,7 +617,7 @@ const ReportClaimPage: React.FC = () => {
   }, [claimId, reset, upsertClientOption]);
 
   useEffect(() => {
-    if (isEditMode || lockedPolicyId) return;
+    if (isEditMode || lockedPolicyId || isForeignPolicy) return;
 
     if (!selectedClientId || !eventDateValue) {
       setPolicyOptions([]);
@@ -645,11 +661,18 @@ const ReportClaimPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [clientOptions, eventDateValue, isEditMode, lockedPolicyId, selectedClientId]);
+  }, [
+    clientOptions,
+    eventDateValue,
+    isEditMode,
+    isForeignPolicy,
+    lockedPolicyId,
+    selectedClientId
+  ]);
 
   // Fetch dynamic form definition whenever policy changes
   useEffect(() => {
-    if (policyOption === null) {
+    if (policyOption === null || isForeignPolicy) {
       setFields([]);
       return;
     }
@@ -670,7 +693,7 @@ const ReportClaimPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [policyOption]);
+  }, [isForeignPolicy, policyOption]);
 
   const clearSelectedPolicy = () => {
     if (isEditMode || lockedPolicyId) return;
@@ -689,6 +712,16 @@ const ReportClaimPage: React.FC = () => {
   const handleClaimDateChange = (value: string, onChange: (value: string) => void) => {
     onChange(value);
     clearSelectedPolicy();
+  };
+
+  const handleForeignPolicyToggle = (checked: boolean, onChange: (value: boolean) => void) => {
+    if (!canUseForeignPolicy) return;
+    onChange(checked);
+    setIsForeignPolicy(checked);
+    setPolicyOptions([]);
+    setPolicyOption(null);
+    setPolicyError(undefined);
+    setSearchParams({}, { replace: true });
   };
 
   const validateEventDate = (value: unknown) => {
@@ -716,7 +749,7 @@ const ReportClaimPage: React.FC = () => {
       return;
     }
 
-    if (policyOption === null) {
+    if (!isForeignPolicy && policyOption === null) {
       setPolicyError('Wybierz polisę');
       return;
     }
@@ -728,6 +761,14 @@ const ReportClaimPage: React.FC = () => {
       const payload = buildPayload(data);
       if (isEditMode && claimId) {
         await updateClaim(claimId, payload);
+      } else if (isForeignPolicy) {
+        await submitForeignClaim({
+          ...payload,
+          client_id: Number(selectedClientId),
+          policy_number: String(data[STATIC_FIELD_KEYS.foreignPolicyNumber]),
+          policy_type_id: Number(data[STATIC_FIELD_KEYS.foreignPolicyTypeId]),
+          insurance_company_id: Number(data[STATIC_FIELD_KEYS.foreignInsuranceCompanyId])
+        });
       } else {
         await submitClaim({ policy_id: policyOption.id, ...payload });
       }
@@ -742,6 +783,7 @@ const ReportClaimPage: React.FC = () => {
 
   const noPolicy = policyOption === null;
   const pageTitle = isEditMode ? 'Edytuj szkodę' : 'Zgłoś szkodę';
+  const canSubmit = isForeignPolicy || !noPolicy;
   const availablePolicyOptions =
     policyOption && !policyOptions.some((option) => option.id === policyOption.id)
       ? [policyOption, ...policyOptions]
@@ -822,6 +864,26 @@ const ReportClaimPage: React.FC = () => {
             <Stack spacing={3}>
               {/* ── Dane szczegółowe — zawsze statyczna ─── */}
               <SectionCard title="Dane szczegółowe">
+                {canUseForeignPolicy && (
+                  <Controller
+                    name={STATIC_FIELD_KEYS.isForeignPolicy}
+                    control={control}
+                    render={({ field: f }) => (
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={isForeignPolicy}
+                            onChange={(event) =>
+                              handleForeignPolicyToggle(event.target.checked, f.onChange)
+                            }
+                          />
+                        }
+                        label="Polisa obca"
+                      />
+                    )}
+                  />
+                )}
+
                 <FormControl fullWidth error={!!clientError} sx={inputSx}>
                   <InputLabel>Wybierz klienta</InputLabel>
                   <Select
@@ -873,51 +935,136 @@ const ReportClaimPage: React.FC = () => {
                   )}
                 />
 
-                <FormControl fullWidth error={!!policyError} sx={inputSx}>
-                  <InputLabel>Wybierz polisę do zgłoszenia szkody</InputLabel>
-                  <Select
-                    value={policyOption ? String(policyOption.id) : ''}
-                    label="Wybierz polisę do zgłoszenia szkody"
-                    disabled={policySelectDisabled || loadingPolicyOptions}
-                    onChange={(event) => {
-                      const nextPolicy =
-                        availablePolicyOptions.find(
-                          (option) => String(option.id) === String(event.target.value)
-                        ) ?? null;
-                      handlePolicyChange(nextPolicy);
-                    }}
-                    MenuProps={selectMenuProps}
-                    sx={{ bgcolor: '#FFFFFF' }}
-                  >
-                    <MenuItem value="">
-                      <em>Wybierz polisę</em>
-                    </MenuItem>
-                    {availablePolicyOptions.map((policy) => (
-                      <MenuItem key={policy.id} value={String(policy.id)}>
-                        {policy.policyNumber}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {loadingPolicyOptions && (
-                    <FormHelperText>Ładowanie polis dla wybranej daty...</FormHelperText>
-                  )}
-                  {!loadingPolicyOptions && policyError && (
-                    <FormHelperText>{policyError}</FormHelperText>
-                  )}
-                </FormControl>
-                {!policySelectDisabled &&
-                  !loadingPolicyOptions &&
-                  availablePolicyOptions.length === 0 &&
-                  selectedClientId &&
-                  eventDateValue && (
-                    <Typography sx={{ fontSize: '13px', color: '#74767F' }}>
-                      Brak aktywnych polis dla wybranego klienta i daty szkody.
-                    </Typography>
-                  )}
-                {policySelectDisabled && !policyOption && (
-                  <Typography sx={{ fontSize: '13px', color: '#74767F' }}>
-                    Wybierz klienta i datę szkody, aby załadować dostępne polisy.
-                  </Typography>
+                {isForeignPolicy ? (
+                  <>
+                    <Controller
+                      name={STATIC_FIELD_KEYS.foreignPolicyNumber}
+                      control={control}
+                      defaultValue=""
+                      rules={{ required: 'Numer obcej polisy jest wymagany' }}
+                      render={({ field: f, fieldState }) => (
+                        <TextField
+                          {...f}
+                          label="Numer obcej polisy"
+                          fullWidth
+                          error={!!fieldState.error}
+                          helperText={fieldState.error?.message}
+                          sx={inputSx}
+                        />
+                      )}
+                    />
+
+                    <Controller
+                      name={STATIC_FIELD_KEYS.foreignPolicyTypeId}
+                      control={control}
+                      defaultValue=""
+                      rules={{ required: 'Typ polisy jest wymagany' }}
+                      render={({ field: f, fieldState }) => (
+                        <FormControl fullWidth error={!!fieldState.error} sx={inputSx}>
+                          <InputLabel>Typ polisy</InputLabel>
+                          <Select
+                            {...f}
+                            value={String(f.value || '')}
+                            label="Typ polisy"
+                            MenuProps={selectMenuProps}
+                            sx={{ bgcolor: '#FFFFFF' }}
+                          >
+                            <MenuItem value="">
+                              <em>Wybierz typ polisy</em>
+                            </MenuItem>
+                            {policyTypeOptions.map((option) => (
+                              <MenuItem key={option.value} value={String(option.value)}>
+                                {option.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                          {fieldState.error && (
+                            <FormHelperText>{fieldState.error.message}</FormHelperText>
+                          )}
+                        </FormControl>
+                      )}
+                    />
+
+                    <Controller
+                      name={STATIC_FIELD_KEYS.foreignInsuranceCompanyId}
+                      control={control}
+                      defaultValue=""
+                      rules={{ required: 'Zakład ubezpieczeń jest wymagany' }}
+                      render={({ field: f, fieldState }) => (
+                        <FormControl fullWidth error={!!fieldState.error} sx={inputSx}>
+                          <InputLabel>Zakład ubezpieczeń</InputLabel>
+                          <Select
+                            {...f}
+                            value={String(f.value || '')}
+                            label="Zakład ubezpieczeń"
+                            MenuProps={selectMenuProps}
+                            sx={{ bgcolor: '#FFFFFF' }}
+                          >
+                            <MenuItem value="">
+                              <em>Wybierz zakład ubezpieczeń</em>
+                            </MenuItem>
+                            {insuranceCompanyOptions.map((option) => (
+                              <MenuItem key={option.value} value={String(option.value)}>
+                                {option.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                          {fieldState.error && (
+                            <FormHelperText>{fieldState.error.message}</FormHelperText>
+                          )}
+                        </FormControl>
+                      )}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <FormControl fullWidth error={!!policyError} sx={inputSx}>
+                      <InputLabel>Wybierz polisę do zgłoszenia szkody</InputLabel>
+                      <Select
+                        value={policyOption ? String(policyOption.id) : ''}
+                        label="Wybierz polisę do zgłoszenia szkody"
+                        disabled={policySelectDisabled || loadingPolicyOptions}
+                        onChange={(event) => {
+                          const nextPolicy =
+                            availablePolicyOptions.find(
+                              (option) => String(option.id) === String(event.target.value)
+                            ) ?? null;
+                          handlePolicyChange(nextPolicy);
+                        }}
+                        MenuProps={selectMenuProps}
+                        sx={{ bgcolor: '#FFFFFF' }}
+                      >
+                        <MenuItem value="">
+                          <em>Wybierz polisę</em>
+                        </MenuItem>
+                        {availablePolicyOptions.map((policy) => (
+                          <MenuItem key={policy.id} value={String(policy.id)}>
+                            {policy.policyNumber}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {loadingPolicyOptions && (
+                        <FormHelperText>Ładowanie polis dla wybranej daty...</FormHelperText>
+                      )}
+                      {!loadingPolicyOptions && policyError && (
+                        <FormHelperText>{policyError}</FormHelperText>
+                      )}
+                    </FormControl>
+                    {!policySelectDisabled &&
+                      !loadingPolicyOptions &&
+                      availablePolicyOptions.length === 0 &&
+                      selectedClientId &&
+                      eventDateValue && (
+                        <Typography sx={{ fontSize: '13px', color: '#74767F' }}>
+                          Brak aktywnych polis dla wybranego klienta i daty szkody.
+                        </Typography>
+                      )}
+                    {policySelectDisabled && !policyOption && (
+                      <Typography sx={{ fontSize: '13px', color: '#74767F' }}>
+                        Wybierz klienta i datę szkody, aby załadować dostępne polisy.
+                      </Typography>
+                    )}
+                  </>
                 )}
                 {loadingFormData && (
                   <Stack direction="row" alignItems="center" spacing={1}>
@@ -1202,7 +1349,7 @@ const ReportClaimPage: React.FC = () => {
               <Button
                 type="submit"
                 variant="contained"
-                disabled={submitting || noPolicy || loadingClaim}
+                disabled={submitting || !canSubmit || loadingClaim}
                 startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
                 sx={{
                   borderRadius: '8px',

@@ -82,6 +82,13 @@ const isPolicyNumberCell = (property: string | null, row: GenericRecord): boolea
   return property === 'number' && row.policy_number === undefined;
 };
 
+const DATE_ONLY_PROPERTIES = new Set(['claim_date', 'reported_date']);
+
+const formatDateOnly = (value: string): string => {
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : value;
+};
+
 interface DesktopTableRendererProps<T extends GenericRecord = GenericRecord> {
   columns: ColumnDef[];
   data: T[];
@@ -150,6 +157,14 @@ const renderCell = <T extends GenericRecord>(column: ColumnDef, row: T) => {
   const value = row[column.property];
   const stringValue = value !== null && value !== undefined ? String(value) : '—';
   const belowContent = getColumnBelowContent(row, column.property);
+
+  if (DATE_ONLY_PROPERTIES.has(column.property)) {
+    return (
+      <Typography sx={{ fontSize: '14px', color: '#32343A', fontWeight: 400 }}>
+        {formatDateOnly(stringValue)}
+      </Typography>
+    );
+  }
 
   if (isPolicyNumberCell(column.property, row) && belowContent) {
     return (
