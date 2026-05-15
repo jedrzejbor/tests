@@ -800,8 +800,9 @@ const ClientDetailsPage: React.FC = () => {
   );
 
   const handleCreateClaim = useCallback(() => {
-    navigate('/app/damages/new');
-  }, [navigate]);
+    if (!clientId) return;
+    navigate(`/app/damages/new?clientId=${clientId}`);
+  }, [clientId, navigate]);
 
   const handleClaimChanged = useCallback(() => {
     setClaimsRefreshKey((key) => key + 1);

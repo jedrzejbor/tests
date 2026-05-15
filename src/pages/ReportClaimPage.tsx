@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import {
   fetchClaimFormData,
+  fetchClaimFormDefinitionByPolicyType,
   fetchClaimFormDefinition,
   fetchClaimPolicyNumbers,
   getClaimDetails,
@@ -409,7 +410,9 @@ const ReportClaimPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const rawPolicyId = searchParams.get('policyId');
+  const rawClientId = searchParams.get('clientId');
   const initialPolicyIdRef = useRef(rawPolicyId);
+  const initialClientIdRef = useRef(rawClientId);
   const isEditMode = Boolean(claimId);
 
   const [clientOptions, setClientOptions] = useState<ClaimFormSelectOption[]>([]);
@@ -448,7 +451,9 @@ const ReportClaimPage: React.FC = () => {
   const isExclusiveClaim = Boolean(watch(STATIC_FIELD_KEYS.isExclusiveClaim));
   const isTransferred = Boolean(watch(STATIC_FIELD_KEYS.isTransferred));
   const eventDateValue = String(watch(STATIC_FIELD_KEYS.eventDate) || '');
+  const foreignPolicyTypeIdValue = String(watch(STATIC_FIELD_KEYS.foreignPolicyTypeId) || '');
   const lockedPolicyId = initialPolicyIdRef.current;
+  const lockedClientId = initialClientIdRef.current;
   const canUseForeignPolicy = !isEditMode && !lockedPolicyId;
 
   const buildPayload = (data: Record<string, unknown>): ClaimUpdatePayload => {
@@ -518,6 +523,10 @@ const ReportClaimPage: React.FC = () => {
           setClientOptions(res.clients || []);
           setInsuranceCompanyOptions(res.insurance_companies || []);
           setPolicyTypeOptions(res.policy_types || []);
+          if (lockedClientId) {
+            setSelectedClientId(lockedClientId);
+            setClientError(undefined);
+          }
         }
       })
       .catch(() => {
@@ -530,7 +539,7 @@ const ReportClaimPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [isEditMode]);
+  }, [isEditMode, lockedClientId]);
 
   // Pre-load and lock policy only if arriving with ?policyId in the initial URL.
   useEffect(() => {
@@ -672,8 +681,9 @@ const ReportClaimPage: React.FC = () => {
 
   // Fetch dynamic form definition whenever policy changes
   useEffect(() => {
-    if (policyOption === null || isForeignPolicy) {
+    if (isForeignPolicy || policyOption === null) {
       setFields([]);
+      setLoadingFields(false);
       return;
     }
 
@@ -695,6 +705,36 @@ const ReportClaimPage: React.FC = () => {
     };
   }, [isForeignPolicy, policyOption]);
 
+  // Fetch dynamic form definition for foreign policy based on selected policy type.
+  useEffect(() => {
+    if (!isForeignPolicy) return;
+
+    if (!foreignPolicyTypeIdValue) {
+      setFields([]);
+      setLoadingFields(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingFields(true);
+    setFields([]);
+
+    fetchClaimFormDefinitionByPolicyType(Number(foreignPolicyTypeIdValue))
+      .then((res) => {
+        if (!cancelled) setFields(res.fields);
+      })
+      .catch(() => {
+        if (!cancelled) setFields([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingFields(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [foreignPolicyTypeIdValue, isForeignPolicy]);
+
   const clearSelectedPolicy = () => {
     if (isEditMode || lockedPolicyId) return;
     setPolicyOption(null);
@@ -703,7 +743,7 @@ const ReportClaimPage: React.FC = () => {
   };
 
   const handleClientChange = (clientId: string) => {
-    if (isEditMode || lockedPolicyId) return;
+    if (isEditMode || lockedPolicyId || lockedClientId) return;
     setSelectedClientId(clientId);
     setClientError(undefined);
     clearSelectedPolicy();
@@ -784,6 +824,7 @@ const ReportClaimPage: React.FC = () => {
   const noPolicy = policyOption === null;
   const pageTitle = isEditMode ? 'Edytuj szkodę' : 'Zgłoś szkodę';
   const canSubmit = isForeignPolicy || !noPolicy;
+  const hasDynamicFormContext = isForeignPolicy ? Boolean(foreignPolicyTypeIdValue) : !noPolicy;
   const availablePolicyOptions =
     policyOption && !policyOptions.some((option) => option.id === policyOption.id)
       ? [policyOption, ...policyOptions]
@@ -889,7 +930,12 @@ const ReportClaimPage: React.FC = () => {
                   <Select
                     value={selectedClientId}
                     label="Wybierz klienta"
-                    disabled={loadingFormData || Boolean(lockedPolicyId) || isEditMode}
+                    disabled={
+                      loadingFormData ||
+                      Boolean(lockedPolicyId) ||
+                      Boolean(lockedClientId) ||
+                      isEditMode
+                    }
                     onChange={(event) => handleClientChange(String(event.target.value))}
                     MenuProps={selectMenuProps}
                     sx={{ bgcolor: '#FFFFFF' }}
@@ -1306,7 +1352,7 @@ const ReportClaimPage: React.FC = () => {
               </SectionCard>
 
               {/* ── Dodatkowe informacje — dynamiczne z API ─ */}
-              {(loadingFields || (!noPolicy && fields.length > 0)) && (
+              {(loadingFields || (hasDynamicFormContext && fields.length > 0)) && (
                 <SectionCard title="Dodatkowe informacje">
                   {loadingFields && (
                     <Stack spacing={2.5}>

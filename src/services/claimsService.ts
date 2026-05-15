@@ -12,6 +12,7 @@ export interface ClaimFormFieldOption {
 
 export interface ClaimFormField {
   key: string;
+  name?: string;
   type: 'text' | 'number' | 'bool' | 'date' | 'datetime' | 'select-single' | 'select-multi';
   label: string;
   required: boolean;
@@ -20,6 +21,15 @@ export interface ClaimFormField {
 
 export interface ClaimFormDefinitionResponse {
   fields: ClaimFormField[];
+}
+
+type ClaimFormFieldApi = Omit<ClaimFormField, 'key'> & {
+  key?: string;
+  name?: string;
+};
+
+interface ClaimFormDefinitionApiResponse {
+  fields: ClaimFormFieldApi[];
 }
 
 export interface ClaimFormSelectOption {
@@ -136,8 +146,36 @@ export interface ClaimDetailsResponse {
  * Pobiera definicję formularza zgłoszenia szkody dla danej polisy.
  * GET /api/policy/form/{policyId}
  */
-export const fetchClaimFormDefinition = (policyId: number): Promise<ClaimFormDefinitionResponse> =>
-  apiClient.get<ClaimFormDefinitionResponse>(`${API_ENDPOINTS.POLICY_CLAIM_FORM}/${policyId}`);
+const normalizeClaimFormDefinition = (
+  response: ClaimFormDefinitionApiResponse
+): ClaimFormDefinitionResponse => ({
+  fields: (response.fields || []).map((field) => ({
+    ...field,
+    key: field.key || field.name || ''
+  }))
+});
+
+export const fetchClaimFormDefinition = async (
+  policyId: number
+): Promise<ClaimFormDefinitionResponse> => {
+  const response = await apiClient.get<ClaimFormDefinitionApiResponse>(
+    `${API_ENDPOINTS.POLICY_CLAIM_FORM}/${policyId}`
+  );
+  return normalizeClaimFormDefinition(response);
+};
+
+/**
+ * Pobiera definicję formularza zgłoszenia szkody dla typu polisy.
+ * GET /api/form/fields/{policyTypeId}
+ */
+export const fetchClaimFormDefinitionByPolicyType = async (
+  policyTypeId: number
+): Promise<ClaimFormDefinitionResponse> => {
+  const response = await apiClient.get<ClaimFormDefinitionApiResponse>(
+    `${API_ENDPOINTS.POLICY_TYPE_CLAIM_FORM}/${policyTypeId}`
+  );
+  return normalizeClaimFormDefinition(response);
+};
 
 export const fetchClaimFormData = (): Promise<ClaimFormDataResponse> =>
   apiClient.get<ClaimFormDataResponse>(API_ENDPOINTS.CLAIM_FORM_DATA);
