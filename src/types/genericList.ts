@@ -270,7 +270,7 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
    * Move the archive filter to the bottom of the list.
    * Provide a filter key associated with the archive filter.
    */
-  moveArchiveToBottom?: string
+  moveArchiveToBottom?: string;
 }
 
 // ================== CONTROLLER STATE ==================

@@ -941,20 +941,19 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 <Divider sx={{ mb: 2 }} />
                 {(() => {
                   const filterDef = meta.filtersDefs[archiveFilterIndex];
-                  const currentValue = draftFilters[filterDef.key] || (filterDef.is_multiple ? [] : '');
+                  const currentValue =
+                    draftFilters[filterDef.key] || (filterDef.is_multiple ? [] : '');
                   const label = filterLabelOverrides?.[filterDef.key] ?? filterDef.label;
 
                   if (filterDef.type === 'select') {
                     const optionsArray = normalizeFilterOptions(filterDef.options);
                     const canClearSingleSelect =
-                      !filterDef.is_multiple && typeof currentValue === 'string' && currentValue !== '';
+                      !filterDef.is_multiple &&
+                      typeof currentValue === 'string' &&
+                      currentValue !== '';
 
                     return (
-                      <FormControl
-                        fullWidth
-                        size="small"
-                        sx={{ position: 'relative' }}
-                      >
+                      <FormControl fullWidth size="small" sx={{ position: 'relative' }}>
                         <InputLabel>{label}</InputLabel>
                         <Select
                           value={currentValue}

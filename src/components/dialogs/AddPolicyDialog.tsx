@@ -122,8 +122,9 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
   // Determine if selected policy type is a car type (name contains "Pojazd" or "komunikacyj")
   // const selectedTypeLabel =
   //   policyTypeOptions.find((o) => o.value === Number(watchedPolicyTypeId))?.label || '';
-  const isCarType =
-    policyTypeOptions.find((o) => o.value === Number(watchedPolicyTypeId))?.is_car_type;
+  const isCarType = policyTypeOptions.find(
+    (o) => o.value === Number(watchedPolicyTypeId)
+  )?.is_car_type;
 
   // Clear / re-show sum-check errors on all payment_details amount fields
   // whenever any amount or payment_total changes.

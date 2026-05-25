@@ -153,8 +153,9 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
   );
   const remainingAmount = Math.round((paymentTotalNum - paymentDetailsSum) * 100) / 100;
 
-  const isCarType =
-    policyTypeOptions.find((o) => o.value === Number(watchedPolicyTypeId))?.is_car_type;
+  const isCarType = policyTypeOptions.find(
+    (o) => o.value === Number(watchedPolicyTypeId)
+  )?.is_car_type;
 
   // Clear / re-show sum-check errors on all payment_details amount fields
   useEffect(() => {
@@ -273,7 +274,7 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
     'number',
     'date_signed_at',
     'date_from',
-    'date_to',
+    'date_to'
   ];
 
   const handleNext = async () => {
@@ -365,7 +366,7 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
           'number',
           'date_signed_at',
           'date_from',
-          'date_to',
+          'date_to'
         ];
         const errorKeys = Object.keys(apiError.errors);
         if (errorKeys.some((k) => step1Keys.includes(k))) {
@@ -1045,7 +1046,7 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
       'number',
       'date_signed_at',
       'date_from',
-      'date_to',
+      'date_to'
     ];
     const errorKeys = Object.keys(fieldErrors);
     if (errorKeys.some((k) => step1Keys.includes(k))) {
