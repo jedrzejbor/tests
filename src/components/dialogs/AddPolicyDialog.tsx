@@ -120,9 +120,10 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
   const remainingAmount = Math.round((paymentTotalNum - paymentDetailsSum) * 100) / 100;
 
   // Determine if selected policy type is a car type (name contains "Pojazd" or "komunikacyj")
-  const selectedTypeLabel =
-    policyTypeOptions.find((o) => o.value === Number(watchedPolicyTypeId))?.label || '';
-  const isCarType = /pojazd|komunikacyj|oc|ac|autocasco/i.test(selectedTypeLabel);
+  // const selectedTypeLabel =
+  //   policyTypeOptions.find((o) => o.value === Number(watchedPolicyTypeId))?.label || '';
+  const isCarType =
+    policyTypeOptions.find((o) => o.value === Number(watchedPolicyTypeId))?.is_car_type;
 
   // Clear / re-show sum-check errors on all payment_details amount fields
   // whenever any amount or payment_total changes.
@@ -519,7 +520,7 @@ const AddPolicyDialog: React.FC<AddPolicyDialogProps> = ({
 
         {isCarType && (
           <TextField
-            label="Nr. rejestracyjny"
+            label="Nr rejestracyjny"
             {...register('car_plates')}
             error={Boolean(errors.car_plates)}
             helperText={errors.car_plates?.message}

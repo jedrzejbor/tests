@@ -251,6 +251,7 @@ const PoliciesPage: React.FC = () => {
               .join(',');
           }
         }}
+        moveArchiveToBottom="archived"
       />
 
       <ArchivePolicyDialog

@@ -100,7 +100,7 @@ const ForceDeletePolicyDialog: React.FC<ForceDeletePolicyDialogProps> = ({
       >
         <Stack spacing={1.5}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Nr. polisy</Typography>
+            <Typography sx={{ fontSize: '14px', color: '#74767F' }}>Nr polisy</Typography>
             <Typography sx={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.87)' }}>
               {policy.number || '-'}
             </Typography>

@@ -85,10 +85,6 @@ export interface ClaimCreatePayload {
   is_vat_payer: boolean;
   is_exclusive_claim: boolean;
   is_transferred: boolean;
-  street: string;
-  street_no: string;
-  city: string;
-  postal: string;
   reported_date?: string;
   number?: string;
   claim_description?: string;
@@ -109,13 +105,6 @@ export interface ForeignClaimCreatePayload extends ClaimUpdatePayload {
   policy_id?: number;
 }
 
-export interface ClaimAddress {
-  street: string;
-  street_no: string;
-  city: string;
-  postal: string;
-}
-
 export interface ClaimResource {
   id: number;
   policy_id: number;
@@ -132,7 +121,6 @@ export interface ClaimResource {
   transferred_note: string | null;
   payout_account_no: string | null;
   meta: ClaimMeta | null;
-  address?: ClaimAddress | null;
   deleted_at?: string | null;
 }
 

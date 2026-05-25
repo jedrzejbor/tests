@@ -102,6 +102,7 @@ const PaymentsPage: React.FC = () => {
         disabledGeneralActions={['payments-create']}
         disabledColumns={disabledPaymentColumns}
         disabledFilters={disabledPaymentColumns}
+        moveArchiveToBottom="archived"
       />
 
       <ViewPaymentDialog

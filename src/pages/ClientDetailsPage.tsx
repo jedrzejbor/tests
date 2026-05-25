@@ -106,6 +106,7 @@ interface ClientDetailsData {
   parent_client: string;
   child_client: string;
   child_client_names: string[];
+  details: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -300,7 +301,8 @@ const ClientDetailsPage: React.FC = () => {
       status: stateClient.status || '',
       parent_client: stateClient.parent_client || '',
       child_client: stateClient.child_client || '',
-      child_client_names: []
+      child_client_names: [],
+      details: ''
     }),
     [clientId]
   );
@@ -346,7 +348,8 @@ const ClientDetailsPage: React.FC = () => {
         parent_client:
           api.parent_client || api.parent_client_name || stateClient?.parent_client || '',
         child_client: api.child_client || api.child_client_name || stateClient?.child_client || '',
-        child_client_names: childClientNames
+        child_client_names: childClientNames,
+        details: api.details || ''
       };
     },
     [clientId]
@@ -1193,6 +1196,57 @@ const ClientDetailsPage: React.FC = () => {
               </Box>
             );
           }
+          if (originalIdx === 5) {
+            return (
+              <Box sx={{ px: 1 }}>
+                {canEditClient && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
+                    onClick={handleEditClient}
+                    sx={{
+                      borderColor: '#494B54',
+                      color: '#494B54',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      textTransform: 'none',
+                      mb: 2
+                    }}
+                  >
+                    Edytuj dane klienta
+                  </Button>
+                )}
+                <Card
+                  sx={{
+                    borderRadius: '8px',
+                    boxShadow: 'none',
+                    border: '1px solid rgba(143, 109, 95, 0.12)',
+                    p: 2
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      color: '#74767F',
+                      fontSize: '14px',
+                      mb: 1
+                    }}
+                  >
+                    Dodatkowe informacje
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: '#1E1F21',
+                      fontSize: '14px',
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
+                    {clientData.details || '-'}
+                  </Typography>
+                </Card>
+              </Box>
+            );
+          }
           if (originalIdx !== 0) {
             return (
               <Box sx={{ px: 1 }}>
@@ -1719,6 +1773,72 @@ const ClientDetailsPage: React.FC = () => {
                 }}
               />
             </Box>
+          );
+        }
+        if (originalIdx === 5) {
+          return (
+            <>
+              {canEditClient && (
+                <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
+                    onClick={handleEditClient}
+                    sx={{
+                      borderColor: '#494B54',
+                      color: '#494B54',
+                      borderRadius: '8px',
+                      px: 2,
+                      py: 1,
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      textTransform: 'none',
+                      '&:hover': {
+                        borderColor: '#32343A',
+                        bgcolor: 'rgba(0, 0, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    Edytuj dane klienta
+                  </Button>
+                </Stack>
+              )}
+              <Card
+                sx={{
+                  borderRadius: 1,
+                  boxShadow: 'none',
+                  border: '1px solid',
+                  borderColor: 'rgba(143, 109, 95, 0.12)',
+                  mt: canEditClient ? 0 : 2
+                }}
+              >
+                <CardContent sx={{ p: 2 }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 400,
+                      color: '#1E1F21',
+                      fontSize: '16px',
+                      mb: 2,
+                      borderBottom: '1px solid',
+                      borderColor: 'rgba(143, 109, 95, 0.12)',
+                      pb: 0.75
+                    }}
+                  >
+                    Dodatkowe informacje:
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: '#1E1F21',
+                      fontSize: '14px',
+                      whiteSpace: 'pre-wrap',
+                      px: 1.5
+                    }}
+                  >
+                    {clientData.details || '-'}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </>
           );
         }
         if (originalIdx !== 0) {

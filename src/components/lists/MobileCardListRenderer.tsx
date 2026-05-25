@@ -391,7 +391,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                           whiteSpace: 'nowrap'
                         }}
                       >
-                        Nr. polisy {number}
+                        Nr polisy {number}
                       </Typography>
                       {numberBelowContent && (
                         <Typography

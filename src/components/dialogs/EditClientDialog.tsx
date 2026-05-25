@@ -143,6 +143,7 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
           krs: c.krs || '',
           website: c.website || '',
           bank_account: c.bank_account || '',
+          details: c.details || '',
           street: c.street || '',
           street_no: c.street_no || '',
           city: c.city || '',
@@ -193,6 +194,7 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         // Backend accepts `sometimes|nullable|string` for these fields.
         website: data.website || null,
         bank_account: data.bank_account || null,
+        details: data.details || null,
         street: data.street || undefined,
         street_no: data.street_no || undefined,
         city: data.city || undefined,
@@ -440,6 +442,16 @@ const EditClientDialog: React.FC<EditClientDialogProps> = ({
         {...register('bank_account')}
         fullWidth
         size="medium"
+        InputLabelProps={{ shrink: true }}
+        sx={{ mb: 2.5 }}
+      />
+      <TextField
+        label="Szczegóły"
+        {...register('details')}
+        fullWidth
+        size="medium"
+        multiline
+        rows={3}
         InputLabelProps={{ shrink: true }}
         sx={{ mb: 2.5 }}
       />

@@ -68,6 +68,7 @@ interface ListToolbarProps {
   /** Transform display value to backend value before sending (e.g. PLN → grosze) */
   filterTransformers?: Record<string, (displayValue: string) => string>;
   mobileVariant?: 'default' | 'policy';
+  moveArchiveToBottom?: string;
 }
 
 export const ListToolbar = ({
@@ -90,7 +91,8 @@ export const ListToolbar = ({
   filterLabelOverrides,
   filterTooltips,
   filterTransformers,
-  mobileVariant = 'default'
+  mobileVariant = 'default',
+  moveArchiveToBottom
 }: ListToolbarProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -141,9 +143,11 @@ export const ListToolbar = ({
     filterDef.type === 'date_range' || (filterDef.type === 'range' && /date/i.test(filterDef.key));
 
   // Render filter inputs based on filtersDefs
-  const renderFilterInputs = () => {
-    return filtersDefs.map((filterDef) => {
-      const currentValue = filters[filterDef.key] || (filterDef.is_multiple ? [] : '');
+  const renderFilterInputs = (excludeKey?: string) => {
+    return filtersDefs
+      .filter((fd) => fd.key !== excludeKey)
+      .map((filterDef) => {
+        const currentValue = filters[filterDef.key] || (filterDef.is_multiple ? [] : '');
       const label = filterLabelOverrides?.[filterDef.key] ?? filterDef.label;
 
       // Date range filter — two date inputs
@@ -555,7 +559,7 @@ export const ListToolbar = ({
             </IconButton>
           </Stack>
 
-          {renderFilterInputs()}
+          {renderFilterInputs(moveArchiveToBottom)}
 
           <Divider sx={{ my: 2 }} />
 
@@ -567,6 +571,15 @@ export const ListToolbar = ({
               Zastosuj
             </Button>
           </Stack>
+
+          {moveArchiveToBottom && filtersDefs.find((f) => f.key === moveArchiveToBottom) && (
+            <Box sx={{ mt: 3 }}>
+              <Divider sx={{ mb: 2 }} />
+              {renderFilterInputs().find(
+                (el) => (el as React.ReactElement).key === moveArchiveToBottom
+              )}
+            </Box>
+          )}
         </Drawer>
       </Box>
     );
@@ -857,7 +870,7 @@ export const ListToolbar = ({
           </IconButton>
         </Stack>
 
-        {renderFilterInputs()}
+        {renderFilterInputs(moveArchiveToBottom)}
 
         <Divider sx={{ my: 2 }} />
 
@@ -869,6 +882,15 @@ export const ListToolbar = ({
             Zastosuj
           </Button>
         </Stack>
+
+        {moveArchiveToBottom && filtersDefs.find((f) => f.key === moveArchiveToBottom) && (
+          <Box sx={{ mt: 3 }}>
+            <Divider sx={{ mb: 2 }} />
+            {renderFilterInputs().find(
+              (el) => (el as React.ReactElement).key === moveArchiveToBottom
+            )}
+          </Box>
+        )}
       </Drawer>
     </Box>
   );

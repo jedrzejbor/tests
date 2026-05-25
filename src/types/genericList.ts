@@ -50,7 +50,7 @@ export interface FilterOption {
 export type RawFilterOptions = FilterOption[] | Record<string, any> | string[];
 
 export interface FilterDef {
-  type: 'select' | 'text' | 'date' | 'date_range' | 'range';
+  type: 'select' | 'text' | 'date' | 'date_range' | 'range' | 'searchable_multiselect';
   key: string;
   label: string;
   options?: RawFilterOptions;
@@ -265,6 +265,12 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
    * Key: filter key, value: FilterDef type string.
    */
   filterTypeOverrides?: Record<string, FilterDef['type']>;
+  /**
+   * Override the default order of a filter.
+   * Move the archive filter to the bottom of the list.
+   * Provide a filter key associated with the archive filter.
+   */
+  moveArchiveToBottom?: string
 }
 
 // ================== CONTROLLER STATE ==================

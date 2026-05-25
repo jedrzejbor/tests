@@ -74,6 +74,7 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
       krs: '',
       website: '',
       bank_account: '',
+      details: '',
       street: '',
       street_no: '',
       city: '',
@@ -129,6 +130,7 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
         krs: data.krs || undefined,
         website: data.website || undefined,
         bank_account: data.bank_account || undefined,
+        details: data.details || undefined,
         street: data.street || undefined,
         street_no: data.street_no || undefined,
         city: data.city || undefined,
@@ -357,6 +359,16 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({ open, onClose, onSucc
         {...register('bank_account')}
         fullWidth
         size="medium"
+        sx={{ mb: 2.5 }}
+      />
+
+      <TextField
+        label="Szczegóły"
+        {...register('details')}
+        fullWidth
+        size="medium"
+        multiline
+        rows={3}
         sx={{ mb: 2.5 }}
       />
 

@@ -233,7 +233,7 @@ const PolicyDetailsPage: React.FC = () => {
   const [insurerName, setInsurerName] = useState<string>('');
   const [policyNumber, setPolicyNumber] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(2);
 
   // Archive dialog
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);

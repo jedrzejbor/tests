@@ -17,6 +17,7 @@ export interface ClientRecord extends GenericRecord {
   authority_scope: string;
   nip: string;
   city: string;
+  details?: string;
   deleted_at?: string | null;
   /** Row-level meta (e.g. tooltip content) */
   meta?: Record<string, unknown>;
@@ -40,6 +41,7 @@ export interface ClientDetailsApiClient {
   krs?: string;
   bank_account?: string;
   website?: string;
+  details?: string;
   client_parent_id?: number | null;
   client_children_ids?: number[];
   parent_client?: string | null;
@@ -94,6 +96,7 @@ export interface CreateClientPayload {
   krs?: string;
   website?: string;
   bank_account?: string;
+  details?: string;
   street?: string;
   street_no?: string;
   city?: string;
@@ -113,6 +116,7 @@ export interface UpdateClientPayload {
   krs?: string | null;
   website?: string | null;
   bank_account?: string | null;
+  details?: string | null;
   street?: string | null;
   street_no?: string | null;
   city?: string | null;

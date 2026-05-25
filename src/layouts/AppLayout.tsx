@@ -139,6 +139,7 @@ const allMenuSections: PermissionedMenuSection[] = [
 
 const AppLayout = () => {
   const resetAuth = useAuthStore((state) => state.resetAuth);
+  const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
   const location = useLocation();
   const { clearListState } = useListStateStore();
@@ -237,23 +238,31 @@ const AppLayout = () => {
     navigate('/login', { replace: true });
   };
 
-  const userMenuOptions: UserMenuOption[] = [
-    {
-      label: 'Ustawienia konta',
-      icon: <SettingsOutlinedIcon sx={{ fontSize: 24 }} />,
-      onClick: () => navigate('/app/settings')
-    },
-    {
-      label: 'Dane firmy',
-      icon: <BusinessOutlinedIcon sx={{ fontSize: 24 }} />,
-      onClick: () => navigate('/app/company')
-    },
-    {
-      label: 'Dane kontaktowe zespołu',
-      icon: <PeopleAltOutlinedIcon sx={{ fontSize: 24 }} />,
-      onClick: () => navigate('/app/team-contacts')
-    }
-  ];
+  const userMenuOptions: UserMenuOption[] = useMemo(() => {
+    const hasClientView = user.clientId && user.permissions.includes('client-details view');
+
+    return [
+      {
+        label: 'Ustawienia konta',
+        icon: <SettingsOutlinedIcon sx={{ fontSize: 24 }} />,
+        onClick: () => navigate('/app/settings')
+      },
+      ...(hasClientView
+        ? [
+            {
+              label: 'Dane firmy',
+              icon: <BusinessOutlinedIcon sx={{ fontSize: 24 }} />,
+              onClick: () => navigate(`/app/clients/${user.clientId}`) // Template literal zamiast "+"
+            }
+          ]
+        : []),
+      {
+        label: 'Dane kontaktowe zespołu',
+        icon: <PeopleAltOutlinedIcon sx={{ fontSize: 24 }} />,
+        onClick: () => navigate('/app/team-contacts')
+      }
+    ];
+  }, [user, navigate]);
 
   return (
     <AppShell

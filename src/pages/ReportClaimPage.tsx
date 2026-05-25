@@ -490,10 +490,6 @@ const ReportClaimPage: React.FC = () => {
       is_vat_payer: Boolean(data[STATIC_FIELD_KEYS.isVatPayer]),
       is_exclusive_claim: Boolean(data[STATIC_FIELD_KEYS.isExclusiveClaim]),
       is_transferred: Boolean(data[STATIC_FIELD_KEYS.isTransferred]),
-      street: String(data[STATIC_FIELD_KEYS.street]),
-      street_no: String(data[STATIC_FIELD_KEYS.streetNo]),
-      city: String(data[STATIC_FIELD_KEYS.city]),
-      postal: String(data[STATIC_FIELD_KEYS.postal]),
       reported_date: optionalString(data[STATIC_FIELD_KEYS.reportedDate]),
       number: optionalString(data[STATIC_FIELD_KEYS.claimNumber]),
       claim_description: optionalString(circumstances),
@@ -599,10 +595,6 @@ const ReportClaimPage: React.FC = () => {
           [STATIC_FIELD_KEYS.claimNumber]: claim.number ?? '',
           [STATIC_FIELD_KEYS.placeOfAccident]: claim.claim_address ?? '',
           [STATIC_FIELD_KEYS.circumstances]: claim.claim_description ?? '',
-          [STATIC_FIELD_KEYS.street]: claim.address?.street ?? '',
-          [STATIC_FIELD_KEYS.streetNo]: claim.address?.street_no ?? '',
-          [STATIC_FIELD_KEYS.city]: claim.address?.city ?? '',
-          [STATIC_FIELD_KEYS.postal]: claim.address?.postal ?? '',
           [STATIC_FIELD_KEYS.isVatPayer]: claim.is_vat_payer,
           [STATIC_FIELD_KEYS.isExclusiveClaim]: claim.is_exclusive_claim,
           [STATIC_FIELD_KEYS.exclusiveClaimNote]: claim.exclusive_claim_note ?? '',
@@ -1138,24 +1130,29 @@ const ReportClaimPage: React.FC = () => {
                       error={!!fieldState.error}
                       helperText={fieldState.error?.message}
                       sx={inputSx}
+                      inputProps={{
+                        max: new Date().toISOString().split('T')[0]
+                      }}
                     />
                   )}
                 />
-                <Controller
-                  name={STATIC_FIELD_KEYS.claimNumber}
-                  control={control}
-                  defaultValue=""
-                  render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      label="Nr szkody"
-                      fullWidth
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={inputSx}
-                    />
-                  )}
-                />
+                {isEditMode && (
+                  <Controller
+                    name={STATIC_FIELD_KEYS.claimNumber}
+                    control={control}
+                    defaultValue=""
+                    render={({ field: f, fieldState }) => (
+                      <TextField
+                        {...f}
+                        label="Nr szkody"
+                        fullWidth
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        sx={inputSx}
+                      />
+                    )}
+                  />
+                )}
                 <Controller
                   name={STATIC_FIELD_KEYS.placeOfAccident}
                   control={control}
@@ -1194,73 +1191,6 @@ const ReportClaimPage: React.FC = () => {
                         sx={inputSx}
                       />
                     </ExternalLabelField>
-                  )}
-                />
-              </SectionCard>
-
-              <SectionCard title="Adres zdarzenia">
-                <Controller
-                  name={STATIC_FIELD_KEYS.street}
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: 'Ulica jest wymagana' }}
-                  render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      label="Ulica"
-                      fullWidth
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={inputSx}
-                    />
-                  )}
-                />
-                <Controller
-                  name={STATIC_FIELD_KEYS.streetNo}
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: 'Numer jest wymagany' }}
-                  render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      label="Numer"
-                      fullWidth
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={inputSx}
-                    />
-                  )}
-                />
-                <Controller
-                  name={STATIC_FIELD_KEYS.city}
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: 'Miasto jest wymagane' }}
-                  render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      label="Miasto"
-                      fullWidth
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={inputSx}
-                    />
-                  )}
-                />
-                <Controller
-                  name={STATIC_FIELD_KEYS.postal}
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: 'Kod pocztowy jest wymagany' }}
-                  render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      label="Kod pocztowy"
-                      fullWidth
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={inputSx}
-                    />
                   )}
                 />
               </SectionCard>

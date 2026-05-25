@@ -206,6 +206,7 @@ export const addClientSchema = z.object({
   krs: krsOptional,
   website: z.string().optional(),
   bank_account: z.string().optional(),
+  details: z.string().optional(),
   street: z.string().optional(),
   street_no: z.string().optional(),
   city: z.string().optional(),
@@ -229,6 +230,7 @@ export const editClientSchema = z.object({
   krs: krsOptional,
   website: z.string().optional(),
   bank_account: z.string().optional(),
+  details: z.string().optional(),
   street: z.string().optional(),
   street_no: z.string().optional(),
   city: z.string().optional(),
@@ -540,7 +542,7 @@ export const editPolicySchema = z
     date_signed_at: z.string().min(1, 'Data zawarcia jest wymagana'),
     date_from: z.string().min(1, 'Początek obowiązywania jest wymagany'),
     date_to: z.string().min(1, 'Koniec obowiązywania jest wymagany'),
-    city: z.string().min(1, 'Miasto jest wymagane'),
+    city: z.string().optional(),
 
     payment_total: z.preprocess(
       numberPreprocess,

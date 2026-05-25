@@ -69,6 +69,7 @@ export interface PolicyDetailsResponse {
 // ================== FORM OPTIONS ==================
 
 export interface SelectOption {
+  is_car_type: boolean;
   value: number;
   label: string;
 }
