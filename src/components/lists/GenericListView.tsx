@@ -38,10 +38,9 @@ import type {
   GenericListViewProps,
   RowHandler,
   GeneralHandler,
-  FiltersState,
-  ActionDef
+  FiltersState
 } from '@/types/genericList';
-import { normalizeFilterOptions } from '@/types/genericList';
+import { normalizeActions, normalizeFilterOptions } from '@/types/genericList';
 
 export const GenericListView = <T extends GenericRecord = GenericRecord>({
   title,
@@ -206,7 +205,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
 
   const getRowDetailsActionHandler = useCallback(
     (row: T): string | undefined => {
-      const backendActions = Array.isArray(row.actions) ? (row.actions as ActionDef[]) : [];
+      const backendActions = normalizeActions(row.actions);
       const visibleExtraActions = extraRowActions.filter(
         (action) => !action.show || action.show(row)
       );

@@ -16,7 +16,7 @@ import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
 import ForceDeletePolicyDialog from '@/components/dialogs/ForceDeletePolicyDialog';
 import AddPolicyDialog from '@/components/dialogs/AddPolicyDialog';
 import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
-import type { ExtraRowAction } from '@/types/genericList';
+import { normalizeActions, type ExtraRowAction } from '@/types/genericList';
 
 const PoliciesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -150,7 +150,7 @@ const PoliciesPage: React.FC = () => {
    * we don't duplicate it in the extra actions.
    */
   const hasBackendAction = (row: PolicyRecord, handler: string) =>
-    row.actions?.some((a) => a.handler === handler) ?? false;
+    normalizeActions(row.actions).some((a) => a.handler === handler);
 
   // A policy is archived when the backend includes "restore-policy" in its actions
   // (backend does not send deleted_at in the table response)

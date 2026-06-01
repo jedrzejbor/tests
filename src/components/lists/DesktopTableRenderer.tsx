@@ -28,7 +28,13 @@ import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
 import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import type { ColumnDef, GenericRecord, ActionDef, ExtraRowAction } from '@/types/genericList';
+import {
+  normalizeActions,
+  type ColumnDef,
+  type GenericRecord,
+  type ActionDef,
+  type ExtraRowAction
+} from '@/types/genericList';
 
 /**
  * Extract tooltip items from row meta for a given column property.
@@ -804,7 +810,7 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
           }
         }}
       >
-        {menuRow?.actions?.map((action: ActionDef, index: number) => (
+        {normalizeActions(menuRow?.actions).map((action: ActionDef, index: number) => (
           <React.Fragment key={action.handler}>
             <MenuItem
               onClick={() => handleActionClick(action.handler)}
@@ -865,7 +871,7 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                 sx={{ m: 0 }}
               />
             </MenuItem>
-            {index < (menuRow.actions?.length || 0) - 1 && (
+            {index < normalizeActions(menuRow?.actions).length - 1 && (
               <Divider
                 sx={{
                   borderColor: 'rgba(0, 0, 0, 0.12)',
@@ -884,7 +890,7 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
             .map((ea, index) => (
               <React.Fragment key={ea.handler}>
                 {/* Divider before first extra action when backend actions exist */}
-                {index === 0 && (menuRow.actions?.length ?? 0) > 0 && (
+                {index === 0 && normalizeActions(menuRow.actions).length > 0 && (
                   <Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.12)', my: '0 !important', mx: 0 }} />
                 )}
                 <MenuItem

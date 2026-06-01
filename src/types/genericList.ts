@@ -120,6 +120,15 @@ export interface ActionDef {
   icon?: string;
 }
 
+export type RawActions = ActionDef[] | Record<string, ActionDef> | null | undefined;
+
+export function normalizeActions(actions: RawActions): ActionDef[] {
+  if (!actions) return [];
+  if (Array.isArray(actions)) return actions;
+  if (typeof actions === 'object') return Object.values(actions);
+  return [];
+}
+
 export interface GeneralActionDef {
   type: ActionType;
   label: string;
@@ -149,7 +158,7 @@ export interface ListMeta {
 
 export interface GenericRecord {
   [key: string]: unknown;
-  actions?: ActionDef[];
+  actions?: RawActions;
   meta?: {
     columns?: Record<
       string,

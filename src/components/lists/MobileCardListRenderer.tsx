@@ -13,7 +13,13 @@ import {
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import type { ColumnDef, GenericRecord, ActionDef, ExtraRowAction } from '@/types/genericList';
+import {
+  normalizeActions,
+  type ColumnDef,
+  type GenericRecord,
+  type ActionDef,
+  type ExtraRowAction
+} from '@/types/genericList';
 
 /**
  * Extract tooltip items from row meta for a given column property.
@@ -274,7 +280,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
       >
         {data.map((row, index) => {
           const rowId = getRowId(row);
-          const rowActions = (row.actions as ActionDef[]) || [];
+          const rowActions = normalizeActions(row.actions);
           const visibleExtraActions = extraRowActions.filter((ea) => !ea.show || ea.show(row));
           const isLast = index === data.length - 1;
           const rowClickable = Boolean(onRowClick && (!isRowClickable || isRowClickable(row)));
@@ -743,7 +749,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
           }
         }}
       >
-        {menuRow?.actions?.map((action: ActionDef) => (
+        {normalizeActions(menuRow?.actions).map((action: ActionDef) => (
           <MenuItem
             key={action.handler}
             onClick={() => handleMenuAction(action.handler)}

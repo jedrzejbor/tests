@@ -80,7 +80,7 @@ import { useAuthStore } from '@/store/authStore';
 import { usePermission } from '@/hooks/usePermission';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
-import type { ExtraRowAction } from '@/types/genericList';
+import { normalizeActions, type ExtraRowAction } from '@/types/genericList';
 import { isClientRole } from '@/utils/roles';
 
 // ---------------------------------------------------------------------------
@@ -832,7 +832,7 @@ const ClientDetailsPage: React.FC = () => {
   );
 
   const hasClaimBackendAction = (row: ClaimRecord, handler: string) =>
-    row.actions?.some((action) => action.handler === handler) ?? false;
+    normalizeActions(row.actions).some((action) => action.handler === handler);
 
   const isClaimArchived = (row: ClaimRecord) =>
     Boolean(row.deleted_at) || hasClaimBackendAction(row, 'restore-claim');
