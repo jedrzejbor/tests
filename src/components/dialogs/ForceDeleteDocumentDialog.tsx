@@ -22,6 +22,7 @@ interface ForceDeleteDocumentDialogProps {
   open: boolean;
   onClose: () => void;
   document: DocumentRecord | null;
+  collection: string;
   onSuccess?: () => void;
 }
 
@@ -29,6 +30,7 @@ const ForceDeleteDocumentDialog: React.FC<ForceDeleteDocumentDialogProps> = ({
   open,
   onClose,
   document: doc,
+  collection,
   onSuccess
 }) => {
   const { addToast } = useUiStore();
@@ -44,7 +46,7 @@ const ForceDeleteDocumentDialog: React.FC<ForceDeleteDocumentDialogProps> = ({
     try {
       if (!doc?.id) throw new Error('Brak identyfikatora dokumentu');
 
-      await forceDeleteDocument(doc.id, password);
+      await forceDeleteDocument(doc.id, password, collection);
       addToast({
         id: crypto.randomUUID(),
         message: 'Dokument został trwale usunięty',

@@ -22,6 +22,7 @@ interface ArchiveDocumentDialogProps {
   open: boolean;
   onClose: () => void;
   document: DocumentRecord | null;
+  collection: string;
   onSuccess?: () => void;
 }
 
@@ -29,6 +30,7 @@ const ArchiveDocumentDialog: React.FC<ArchiveDocumentDialogProps> = ({
   open,
   onClose,
   document: doc,
+  collection,
   onSuccess
 }) => {
   const { addToast } = useUiStore();
@@ -44,7 +46,7 @@ const ArchiveDocumentDialog: React.FC<ArchiveDocumentDialogProps> = ({
     try {
       if (!doc?.id) throw new Error('Brak identyfikatora dokumentu');
 
-      await archiveDocument(doc.id, password);
+      await archiveDocument(doc.id, password, collection);
       addToast({
         id: crypto.randomUUID(),
         message: 'Dokument został zarchiwizowany',

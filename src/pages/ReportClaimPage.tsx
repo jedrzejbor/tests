@@ -758,9 +758,16 @@ const ReportClaimPage: React.FC = () => {
 
   const validateEventDate = (value: unknown) => {
     if (!value) return 'Data szkody jest wymagana';
-    if (!lockedPolicyDateRange?.from || !lockedPolicyDateRange?.to) return true;
 
     const date = String(value);
+    const today = new Date().toISOString().split('T')[0];
+
+    if (date > today) {
+      return 'Data szkody nie może być z przyszłości';
+    }
+
+    if (!lockedPolicyDateRange?.from || !lockedPolicyDateRange?.to) return true;
+
     if (date < lockedPolicyDateRange.from || date > lockedPolicyDateRange.to) {
       return `Data szkody musi mieścić się w okresie polisy: ${lockedPolicyDateRange.from} - ${lockedPolicyDateRange.to}`;
     }
@@ -958,7 +965,7 @@ const ReportClaimPage: React.FC = () => {
                       InputLabelProps={{ shrink: true }}
                       inputProps={{
                         min: lockedPolicyDateRange?.from,
-                        max: lockedPolicyDateRange?.to
+                        max: lockedPolicyDateRange?.to ?? new Date().toISOString().split('T')[0]
                       }}
                       error={!!fieldState.error}
                       helperText={

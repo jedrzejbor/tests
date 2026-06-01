@@ -142,6 +142,18 @@ export const ListToolbar = ({
   const isDateRangeFilter = (filterDef: FilterDef) =>
     filterDef.type === 'date_range' || (filterDef.type === 'range' && /date/i.test(filterDef.key));
 
+  const filterSelectMenuProps = {
+    sx: {
+      zIndex: (theme) => theme.zIndex.modal + 300
+    },
+    PaperProps: {
+      sx: {
+        bgcolor: '#FFFFFF',
+        boxShadow: '0px 4px 6px -2px rgba(0, 0, 0, 0.05), 0px 10px 15px -3px rgba(0, 0, 0, 0.10)'
+      }
+    }
+  };
+
   // Render filter inputs based on filtersDefs
   const renderFilterInputs = (excludeKey?: string) => {
     return filtersDefs
@@ -187,7 +199,7 @@ export const ListToolbar = ({
           );
         }
 
-        if (filterDef.type === 'select') {
+        if (filterDef.type === 'select' || filterDef.type === 'searchable_multiselect') {
           // Normalize options from any backend format
           const optionsArray = normalizeFilterOptions(filterDef.options);
           const canClearSingleSelect =
@@ -206,6 +218,7 @@ export const ListToolbar = ({
                 label={label}
                 multiple={filterDef.is_multiple}
                 onChange={(e) => onFilterChange(filterDef.key, e.target.value as string | string[])}
+                MenuProps={filterSelectMenuProps}
                 sx={{
                   '& .MuiSelect-select': {
                     pr: canClearSingleSelect ? '64px !important' : undefined
@@ -548,7 +561,9 @@ export const ListToolbar = ({
               bgcolor: '#FFFFFF',
               borderRadius: '20px 20px 0 0',
               p: 3,
-              maxHeight: '80vh'
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              overflowX: 'hidden'
             }
           }}
         >

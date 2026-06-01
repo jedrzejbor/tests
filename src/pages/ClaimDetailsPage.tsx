@@ -365,11 +365,7 @@ const humanizeMetaKey = (key: string): string =>
 
 const formatClaimAddress = (claim: ClaimResource) => {
   if (claim.claim_address) return claim.claim_address;
-  const address = claim.address;
-  if (!address) return '';
-  return [address.city, address.postal, address.street, address.street_no]
-    .filter(Boolean)
-    .join(' ');
+  return '';
 };
 
 const ClaimDetailsPage: React.FC = () => {

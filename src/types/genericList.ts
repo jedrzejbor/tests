@@ -107,6 +107,7 @@ export type FiltersState = Record<string, string | string[]>;
 export type ActionType =
   | 'button_primary'
   | 'button_secondary'
+  | 'button_download'
   | 'button_delete'
   | 'button_archive'
   | 'button_restore'
@@ -207,6 +208,7 @@ export interface FetcherParams {
   sortProperty: string;
   sortOrder: 'asc' | 'desc';
   filters: FiltersState;
+  collection?: string;
   /** Column properties to exclude from backend response */
   disabledColumns?: string[];
   /** Filter keys to exclude from backend response */

@@ -55,6 +55,12 @@ import {
   type ClaimRecord
 } from '@/services/claimsService';
 import {
+  createPolicyDocumentsFetcher,
+  downloadAttachment,
+  type DocumentRecord,
+  restoreDocument
+} from '@/services/documentsService';
+import {
   createPolicyPaymentsFetcher,
   restorePayment,
   type PaymentRecord
@@ -66,6 +72,10 @@ import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
+import AddDocumentDialog from '@/components/dialogs/AddDocumentDialog';
+import EditDocumentDialog from '@/components/dialogs/EditDocumentDialog';
+import ArchiveDocumentDialog from '@/components/dialogs/ArchiveDocumentDialog';
+import ForceDeleteDocumentDialog from '@/components/dialogs/ForceDeleteDocumentDialog';
 import ClaimPasswordDialog from '@/components/dialogs/ClaimPasswordDialog';
 import EditClientDialog from '@/components/dialogs/EditClientDialog';
 import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
@@ -251,6 +261,17 @@ const PolicyDetailsPage: React.FC = () => {
   const [forceDeletePaymentDialogOpen, setForceDeletePaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
   const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
+
+  // Document dialogs
+  const [addDocDialogOpen, setAddDocDialogOpen] = useState(false);
+  const [editDocDialogOpen, setEditDocDialogOpen] = useState(false);
+  const [archiveDocDialogOpen, setArchiveDocDialogOpen] = useState(false);
+  const [forceDeleteDocDialogOpen, setForceDeleteDocDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentRecord | null>(null);
+  const [docRefreshKey, setDocRefreshKey] = useState(0);
+  const [docCategory, setDocCategory] = useState<'policy_documents' | 'insurance_subject'>(
+    'policy_documents'
+  );
 
   // Form options for resolving IDs to labels
   const [formOptions, setFormOptions] = useState<{
@@ -528,6 +549,10 @@ const PolicyDetailsPage: React.FC = () => {
         });
     }
   }, [addToast, policyId, policyNumber]);
+
+  const handleDocumentSuccess = useCallback(() => {
+    setDocRefreshKey((k) => k + 1);
+  }, []);
 
   const handleDownloadAttachment = useCallback(async () => {
     if (!policyData?.attachment) return;
@@ -1265,6 +1290,232 @@ const PolicyDetailsPage: React.FC = () => {
           </CardContent>
         </Card>
       </>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Przedmiot ubezpieczenia
+  // ---------------------------------------------------------------------------
+
+  const InsuranceSubjectContent = () => {
+    const handleCreateDocument = useCallback(() => {
+      setDocCategory('insurance_subject');
+      setAddDocDialogOpen(true);
+    }, []);
+
+    const handleEditDocument = useCallback((row: DocumentRecord) => {
+      setDocCategory('insurance_subject');
+      setSelectedDocument(row);
+      setEditDocDialogOpen(true);
+    }, []);
+
+    const handleArchiveDocument = useCallback((row: DocumentRecord) => {
+      setDocCategory('insurance_subject');
+      setSelectedDocument(row);
+      setArchiveDocDialogOpen(true);
+    }, []);
+
+    const handleForceDeleteDocument = useCallback((row: DocumentRecord) => {
+      setDocCategory('insurance_subject');
+      setSelectedDocument(row);
+      setForceDeleteDocDialogOpen(true);
+    }, []);
+
+    const handleRestoreDocument = useCallback(
+      async (row: DocumentRecord) => {
+        if (!row.id) return;
+        try {
+          await restoreDocument(row.id, docCategory);
+          addToast({
+            id: crypto.randomUUID(),
+            message: 'Dokument został przywrócony',
+            severity: 'success'
+          });
+          setDocRefreshKey((k) => k + 1);
+        } catch (error) {
+          const apiError = error as ApiError;
+          addToast({
+            id: crypto.randomUUID(),
+            message: apiError?.message || 'Nie udało się przywrócić dokumentu',
+            severity: 'error'
+          });
+        }
+      },
+      [addToast]
+    );
+
+    const handleDownloadDocument = useCallback(
+      async (row: DocumentRecord) => {
+        if (!row.attachments || row.attachments.length === 0) {
+          addToast({
+            id: crypto.randomUUID(),
+            message: 'Brak załączników do pobrania',
+            severity: 'error'
+          });
+          return;
+        }
+        try {
+          await downloadAttachment(row.attachments[0].id, row.attachments[0].name);
+        } catch (error) {
+          const apiError = error as ApiError;
+          addToast({
+            id: crypto.randomUUID(),
+            message: apiError?.message || 'Nie udało się pobrać załącznika',
+            severity: 'error'
+          });
+        }
+      },
+      [addToast]
+    );
+
+    const documentHandlers: Record<string, (row: DocumentRecord) => void> = React.useMemo(
+      () => ({
+        'create-document': handleCreateDocument as unknown as (row: DocumentRecord) => void,
+        'edit-document': handleEditDocument,
+        'archive-document': handleArchiveDocument,
+        'delete-document': handleForceDeleteDocument,
+        'restore-document': handleRestoreDocument,
+        'download-document': handleDownloadDocument
+      }),
+      [
+        handleCreateDocument,
+        handleEditDocument,
+        handleArchiveDocument,
+        handleForceDeleteDocument,
+        handleRestoreDocument,
+        handleDownloadDocument
+      ]
+    );
+    const insuranceSubjectFetcher = React.useMemo(
+      () => (policyId ? createPolicyDocumentsFetcher(policyId, 'insurance_subject') : undefined),
+      [policyId]
+    );
+
+    return (
+      <GenericListView<DocumentRecord>
+        key="policy-insurance-subject"
+        title="Przedmioty ubezpieczenia"
+        fetcher={insuranceSubjectFetcher}
+        handlers={documentHandlers}
+        rowKey={(row) => String(row.id || row.name)}
+        initialPerPage={10}
+        refreshKey={docRefreshKey}
+        disabledColumns={['client_name']}
+        disabledFilters={['client', 'policy']}
+      />
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Dokumenty polisy
+  // ---------------------------------------------------------------------------
+
+  const PolicyDocumentsContent = () => {
+    const handleCreateDocument = useCallback(() => {
+      setDocCategory('policy_documents');
+      setAddDocDialogOpen(true);
+    }, []);
+
+    const handleEditDocument = useCallback((row: DocumentRecord) => {
+      setDocCategory('policy_documents');
+      setSelectedDocument(row);
+      setEditDocDialogOpen(true);
+    }, []);
+
+    const handleArchiveDocument = useCallback((row: DocumentRecord) => {
+      setDocCategory('policy_documents');
+      setSelectedDocument(row);
+      setArchiveDocDialogOpen(true);
+    }, []);
+
+    const handleForceDeleteDocument = useCallback((row: DocumentRecord) => {
+      setDocCategory('policy_documents');
+      setSelectedDocument(row);
+      setForceDeleteDocDialogOpen(true);
+    }, []);
+
+    const handleRestoreDocument = useCallback(
+      async (row: DocumentRecord) => {
+        if (!row.id) return;
+        try {
+          await restoreDocument(row.id, docCategory);
+          addToast({
+            id: crypto.randomUUID(),
+            message: 'Dokument został przywrócony',
+            severity: 'success'
+          });
+          setDocRefreshKey((k) => k + 1);
+        } catch (error) {
+          const apiError = error as ApiError;
+          addToast({
+            id: crypto.randomUUID(),
+            message: apiError?.message || 'Nie udało się przywrócić dokumentu',
+            severity: 'error'
+          });
+        }
+      },
+      [addToast]
+    );
+
+    const handleDownloadDocument = useCallback(
+      async (row: DocumentRecord) => {
+        if (!row.attachments || row.attachments.length === 0) {
+          addToast({
+            id: crypto.randomUUID(),
+            message: 'Brak załączników do pobrania',
+            severity: 'error'
+          });
+          return;
+        }
+        try {
+          await downloadAttachment(row.attachments[0].id, row.attachments[0].name);
+        } catch (error) {
+          const apiError = error as ApiError;
+          addToast({
+            id: crypto.randomUUID(),
+            message: apiError?.message || 'Nie udało się pobrać załącznika',
+            severity: 'error'
+          });
+        }
+      },
+      [addToast]
+    );
+
+    const documentHandlers: Record<string, (row: DocumentRecord) => void> = React.useMemo(
+      () => ({
+        'create-document': handleCreateDocument as unknown as (row: DocumentRecord) => void,
+        'edit-document': handleEditDocument,
+        'archive-document': handleArchiveDocument,
+        'delete-document': handleForceDeleteDocument,
+        'restore-document': handleRestoreDocument,
+        'download-document': handleDownloadDocument
+      }),
+      [
+        handleCreateDocument,
+        handleEditDocument,
+        handleArchiveDocument,
+        handleForceDeleteDocument,
+        handleRestoreDocument,
+        handleDownloadDocument
+      ]
+    );
+    const policyDocumentsFetcher = React.useMemo(
+      () => (policyId ? createPolicyDocumentsFetcher(policyId, 'policy_documents') : undefined),
+      [policyId]
+    );
+
+    return (
+      <GenericListView<DocumentRecord>
+        key="policy-documents"
+        title="Dokumenty polisy"
+        fetcher={policyDocumentsFetcher}
+        handlers={documentHandlers}
+        rowKey={(row) => String(row.id || row.name)}
+        initialPerPage={10}
+        refreshKey={docRefreshKey}
+        disabledColumns={['client_name']}
+        disabledFilters={['client', 'policy']}
+      />
     );
   };
 
@@ -2016,6 +2267,10 @@ const PolicyDetailsPage: React.FC = () => {
           <ClientDataMobile />
         ) : activeTab === 2 ? (
           <PolicyDataMobile />
+        ) : activeTab === 3 ? (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <InsuranceSubjectContent />
+          </Box>
         ) : activeTab === 4 ? (
           <Box sx={{ px: 2, py: 2 }}>
             <PaymentsTabContent />
@@ -2023,6 +2278,10 @@ const PolicyDetailsPage: React.FC = () => {
         ) : activeTab === 7 ? (
           <Box sx={{ px: 2, py: 2 }}>
             <ClaimsTabContent />
+          </Box>
+        ) : activeTab === 8 ? (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <PolicyDocumentsContent />
           </Box>
         ) : (
           <UnavailableTabContent />
@@ -2201,7 +2460,7 @@ const PolicyDetailsPage: React.FC = () => {
       {/* Tab content */}
       <Box
         sx={
-          activeTab === 4 || activeTab === 7
+          activeTab === 3 || activeTab === 4 || activeTab === 7 || activeTab === 8
             ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }
             : { flex: 1, minHeight: 0, overflow: 'auto' }
         }
@@ -2214,10 +2473,14 @@ const PolicyDetailsPage: React.FC = () => {
           <Stack spacing={3}>
             <PolicyDataDesktop />
           </Stack>
+        ) : activeTab === 3 ? (
+          <InsuranceSubjectContent />
         ) : activeTab === 4 ? (
           <PaymentsTabContent />
         ) : activeTab === 7 ? (
           <ClaimsTabContent />
+        ) : activeTab === 8 ? (
+          <PolicyDocumentsContent />
         ) : (
           <UnavailableTabContent />
         )}
@@ -2246,6 +2509,47 @@ const PolicyDetailsPage: React.FC = () => {
           onSuccess={handlePolicyUpdated}
         />
       )}
+
+      {policyId && (
+        <AddDocumentDialog
+          open={addDocDialogOpen}
+          onClose={() => setAddDocDialogOpen(false)}
+          clientId={policyData?.client_id ? Number(policyData.client_id) : undefined}
+          policyId={Number(policyId)}
+          collection={docCategory}
+          onSuccess={handleDocumentSuccess}
+        />
+      )}
+      <EditDocumentDialog
+        open={editDocDialogOpen}
+        onClose={() => {
+          setEditDocDialogOpen(false);
+          setSelectedDocument(null);
+        }}
+        document={selectedDocument}
+        collection={docCategory}
+        onSuccess={handleDocumentSuccess}
+      />
+      <ArchiveDocumentDialog
+        open={archiveDocDialogOpen}
+        onClose={() => {
+          setArchiveDocDialogOpen(false);
+          setSelectedDocument(null);
+        }}
+        document={selectedDocument}
+        collection={docCategory}
+        onSuccess={handleDocumentSuccess}
+      />
+      <ForceDeleteDocumentDialog
+        open={forceDeleteDocDialogOpen}
+        onClose={() => {
+          setForceDeleteDocDialogOpen(false);
+          setSelectedDocument(null);
+        }}
+        document={selectedDocument}
+        collection={docCategory}
+        onSuccess={handleDocumentSuccess}
+      />
     </Stack>
   );
 };

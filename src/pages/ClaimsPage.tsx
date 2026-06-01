@@ -195,6 +195,7 @@ const ClaimsPage: React.FC = () => {
           policy_type_id: 'Typ polisy',
           client_id: 'Nazwa podmiotu'
         }}
+        moveArchiveToBottom="archived"
       />
 
       <ClaimPasswordDialog

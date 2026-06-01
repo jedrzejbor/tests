@@ -53,6 +53,8 @@ export interface DocumentDetailsResponse {
 
 export interface CreateDocumentFields {
   client_id: number;
+  policy_id?: number;
+  collection: string;
   name: string;
   description?: string;
   date: string; // YYYY-MM-DD
@@ -60,6 +62,7 @@ export interface CreateDocumentFields {
 }
 
 export interface UpdateDocumentFields {
+  collection: string;
   name: string;
   description?: string;
   date: string; // YYYY-MM-DD
@@ -100,6 +103,9 @@ const buildQueryString = (params: FetcherParams): string => {
   // disabled-columns[] and disabled-filters[]
   params.disabledColumns?.forEach((col) => query.append('disabled-columns[]', col));
   params.disabledFilters?.forEach((f) => query.append('disabled-filters[]', f));
+  if (params.collection) {
+    query.set('collection', params.collection);
+  }
 
   return query.toString();
 };
@@ -165,12 +171,33 @@ export const fetchDocumentsTable = async (
  */
 export const createClientDocumentsFetcher = (clientId: string | number) => {
   return async (params: FetcherParams): Promise<GenericListResponse<DocumentRecord>> => {
-    // Inject client filter
+    // Inject client filter and default collection
     const scopedParams: FetcherParams = {
       ...params,
       filters: {
+        collection: 'attachments',
         ...params.filters,
         client: String(clientId)
+      }
+    };
+    return fetchDocumentsTable(scopedParams);
+  };
+};
+
+/**
+ * Create a fetcher scoped to a specific policy (pre-filters by policy_id).
+ */
+export const createPolicyDocumentsFetcher = (
+  policyId: string | number,
+  collection: 'insurance_subject' | 'policy_documents'
+) => {
+  return async (params: FetcherParams): Promise<GenericListResponse<DocumentRecord>> => {
+    const scopedParams: FetcherParams = {
+      ...params,
+      filters: {
+        collection: String(collection),
+        ...params.filters,
+        policy: String(policyId)
       }
     };
     return fetchDocumentsTable(scopedParams);
@@ -181,9 +208,12 @@ export const createClientDocumentsFetcher = (clientId: string | number) => {
  * Get single document details
  */
 export const getDocumentDetails = async (
-  documentId: string | number
+  documentId: string | number,
+  collection: string
 ): Promise<DocumentDetailsResponse> => {
-  return apiClient.get<DocumentDetailsResponse>(`/api/documents/${documentId}`);
+  return apiClient.get<DocumentDetailsResponse>(
+    `/api/documents/${documentId}?collection=${collection}`
+  );
 };
 
 /**
@@ -193,7 +223,9 @@ export const createDocument = async (
   fields: CreateDocumentFields
 ): Promise<{ document: DocumentDetailsApiDocument }> => {
   const formData = new FormData();
-  formData.append('client_id', String(fields.client_id));
+  if (fields.client_id) formData.append('client_id', String(fields.client_id));
+  if (fields.policy_id) formData.append('policy_id', String(fields.policy_id));
+  if (fields.collection) formData.append('collection', fields.collection);
   formData.append('name', fields.name);
   formData.append('date', fields.date);
   formData.append('description', fields.description ?? '');
@@ -216,6 +248,9 @@ export const updateDocument = async (
   fields: UpdateDocumentFields
 ): Promise<{ document: DocumentDetailsApiDocument }> => {
   const formData = new FormData();
+  if (fields.collection) {
+    formData.append('collection', fields.collection);
+  }
   formData.append('name', fields.name);
   formData.append('date', fields.date);
   if (fields.description !== undefined) {
@@ -250,9 +285,10 @@ export const updateDocument = async (
  */
 export const archiveDocument = async (
   documentId: string | number,
-  password: string
+  password: string,
+  collection: string
 ): Promise<void> => {
-  await apiClient.delete(`/api/documents/${documentId}/archive`, { password });
+  await apiClient.delete(`/api/documents/${documentId}/archive`, { password, collection });
 };
 
 /**
@@ -260,16 +296,20 @@ export const archiveDocument = async (
  */
 export const forceDeleteDocument = async (
   documentId: string | number,
-  password: string
+  password: string,
+  collection: string
 ): Promise<void> => {
-  await apiClient.delete(`/api/documents/${documentId}/force`, { password });
+  await apiClient.delete(`/api/documents/${documentId}/force`, { password, collection });
 };
 
 /**
  * Restore archived document
  */
-export const restoreDocument = async (documentId: string | number): Promise<void> => {
-  await apiClient.post(`/api/documents/${documentId}/restore`);
+export const restoreDocument = async (
+  documentId: string | number,
+  collection: string
+): Promise<void> => {
+  await apiClient.post(`/api/documents/${documentId}/restore`, { collection });
 };
 
 /**

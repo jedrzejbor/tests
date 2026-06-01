@@ -213,6 +213,7 @@ const CLIENT_TABS = [
 
 const DOCS_DISABLED_COLUMNS = ['client_name'];
 const DOCS_DISABLED_FILTERS = ['client'];
+const DOCS_COLLECTION = 'attachments';
 
 const ClientDetailsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
@@ -498,7 +499,7 @@ const ClientDetailsPage: React.FC = () => {
     async (row: DocumentRecord) => {
       if (!row.id) return;
       try {
-        await restoreDocument(row.id);
+        await restoreDocument(row.id, DOCS_COLLECTION);
         addToast({
           id: crypto.randomUUID(),
           message: 'Dokument został przywrócony',
@@ -1098,7 +1099,6 @@ const ClientDetailsPage: React.FC = () => {
                   disabledColumns={DOCS_DISABLED_COLUMNS}
                   disabledFilters={DOCS_DISABLED_FILTERS}
                 />
-                {/* <UnavailableTabContent /> */}
               </Box>
             );
           }
@@ -1456,6 +1456,7 @@ const ClientDetailsPage: React.FC = () => {
             onClose={() => setAddDocDialogOpen(false)}
             clientId={Number(clientData.id)}
             onSuccess={handleDocumentSuccess}
+            collection={DOCS_COLLECTION}
           />
         )}
         <EditDocumentDialog
@@ -1466,6 +1467,7 @@ const ClientDetailsPage: React.FC = () => {
           }}
           document={selectedDocument}
           onSuccess={handleDocumentSuccess}
+          collection={DOCS_COLLECTION}
         />
         <ArchiveDocumentDialog
           open={archiveDocDialogOpen}
@@ -1475,6 +1477,7 @@ const ClientDetailsPage: React.FC = () => {
           }}
           document={selectedDocument}
           onSuccess={handleDocumentSuccess}
+          collection={DOCS_COLLECTION}
         />
         <ForceDeleteDocumentDialog
           open={forceDeleteDocDialogOpen}
@@ -1484,6 +1487,7 @@ const ClientDetailsPage: React.FC = () => {
           }}
           document={selectedDocument}
           onSuccess={handleDocumentSuccess}
+          collection={DOCS_COLLECTION}
         />
 
         {clientData?.id && (
@@ -2108,6 +2112,7 @@ const ClientDetailsPage: React.FC = () => {
           onClose={() => setAddDocDialogOpen(false)}
           clientId={Number(clientData.id)}
           onSuccess={handleDocumentSuccess}
+          collection={DOCS_COLLECTION}
         />
       )}
       <EditDocumentDialog
@@ -2118,6 +2123,7 @@ const ClientDetailsPage: React.FC = () => {
         }}
         document={selectedDocument}
         onSuccess={handleDocumentSuccess}
+        collection={DOCS_COLLECTION}
       />
       <ArchiveDocumentDialog
         open={archiveDocDialogOpen}
@@ -2127,6 +2133,7 @@ const ClientDetailsPage: React.FC = () => {
         }}
         document={selectedDocument}
         onSuccess={handleDocumentSuccess}
+        collection={DOCS_COLLECTION}
       />
       <ForceDeleteDocumentDialog
         open={forceDeleteDocDialogOpen}
@@ -2136,6 +2143,7 @@ const ClientDetailsPage: React.FC = () => {
         }}
         document={selectedDocument}
         onSuccess={handleDocumentSuccess}
+        collection={DOCS_COLLECTION}
       />
 
       {clientData?.id && (
