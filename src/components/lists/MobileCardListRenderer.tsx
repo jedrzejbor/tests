@@ -675,8 +675,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                             width: 6,
                             height: 6,
                             borderRadius: '50%',
-                            bgcolor: statusStyles.dotColor,
-                            ml: 1
+                            bgcolor: statusStyles.dotColor
                           }}
                         />
                       }
@@ -688,8 +687,8 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                         height: '24px',
                         borderRadius: '16px',
                         '& .MuiChip-icon': {
-                          mr: '4px',
-                          ml: 0
+                          ml: '8px',
+                          mr: '4px'
                         },
                         '& .MuiChip-label': {
                           px: 1,
