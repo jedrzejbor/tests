@@ -383,6 +383,7 @@ const ClaimDetailsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [claimFormFields, setClaimFormFields] = useState<ClaimFormField[]>([]);
+  const canEditClaim = hasPermission('claim edit') && !claim?.deleted_at;
 
   useEffect(() => {
     if (!claimId) return;
@@ -581,25 +582,27 @@ const ClaimDetailsPage: React.FC = () => {
           <Typography sx={{ fontSize: '20px', fontWeight: 500, color: '#32343A' }}>
             Dane szczegółowe
           </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
-            onClick={() => navigate(`/app/damages/${claim.id}/edit`)}
-            sx={{
-              borderColor: '#1E1F21',
-              color: '#1E1F21',
-              borderRadius: '8px',
-              px: 2.25,
-              py: 1,
-              fontSize: '14px',
-              fontWeight: 500,
-              textTransform: 'none',
-              boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
-              '&:hover': { borderColor: '#1E1F21', bgcolor: 'rgba(0, 0, 0, 0.04)' }
-            }}
-          >
-            Edytuj dane
-          </Button>
+          {canEditClaim && (
+            <Button
+              variant="outlined"
+              startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
+              onClick={() => navigate(`/app/damages/${claim.id}/edit`)}
+              sx={{
+                borderColor: '#1E1F21',
+                color: '#1E1F21',
+                borderRadius: '8px',
+                px: 2.25,
+                py: 1,
+                fontSize: '14px',
+                fontWeight: 500,
+                textTransform: 'none',
+                boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
+                '&:hover': { borderColor: '#1E1F21', bgcolor: 'rgba(0, 0, 0, 0.04)' }
+              }}
+            >
+              Edytuj dane
+            </Button>
+          )}
         </Stack>
 
         <DetailCard title="Dane firmy">
@@ -725,22 +728,24 @@ const ClaimDetailsPage: React.FC = () => {
             <Typography sx={{ fontWeight: 500, color: '#32343A', fontSize: '15px' }}>
               Dane szczegółowe
             </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
-              onClick={() => navigate(`/app/damages/${claim.id}/edit`)}
-              sx={{
-                borderColor: '#494B54',
-                color: '#494B54',
-                borderRadius: '8px',
-                textTransform: 'none',
-                fontSize: '12px',
-                py: 0.5
-              }}
-            >
-              Edytuj
-            </Button>
+            {canEditClaim && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
+                onClick={() => navigate(`/app/damages/${claim.id}/edit`)}
+                sx={{
+                  borderColor: '#494B54',
+                  color: '#494B54',
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontSize: '12px',
+                  py: 0.5
+                }}
+              >
+                Edytuj
+              </Button>
+            )}
           </Stack>
         </Box>
 
