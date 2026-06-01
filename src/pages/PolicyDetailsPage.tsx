@@ -1532,20 +1532,42 @@ const PolicyDetailsPage: React.FC = () => {
               py: 1,
               display: 'flex',
               alignItems: 'center',
-              gap: 0.75
+              justifyContent: 'space-between',
+              gap: 1
             }}
           >
-            <PersonOutlineIcon sx={{ fontSize: 20, color: '#7A5D51' }} />
-            <Typography
-              sx={{
-                color: '#7A5D51',
-                fontSize: '16px',
-                lineHeight: 1.75,
-                letterSpacing: '0.15px'
-              }}
-            >
-              Dane klienta
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
+              <PersonOutlineIcon sx={{ fontSize: 20, color: '#7A5D51', flexShrink: 0 }} />
+              <Typography
+                sx={{
+                  color: '#7A5D51',
+                  fontSize: '16px',
+                  lineHeight: 1.75,
+                  letterSpacing: '0.15px'
+                }}
+              >
+                Dane klienta
+              </Typography>
+            </Stack>
+            {canEditClient && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setEditClientDialogOpen(true)}
+                sx={{
+                  borderColor: '#494B54',
+                  color: '#494B54',
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontSize: '12px',
+                  py: 0.5,
+                  flexShrink: 0
+                }}
+              >
+                Edytuj
+              </Button>
+            )}
           </Box>
         </Box>
 
