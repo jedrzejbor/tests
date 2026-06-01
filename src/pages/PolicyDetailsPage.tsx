@@ -1630,6 +1630,24 @@ const PolicyDetailsPage: React.FC = () => {
             </Stack>
           </Card>
         </Box>
+
+        <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
+            onClick={handleArchive}
+            sx={{
+              borderColor: '#D0D5DD',
+              color: '#1E1F21',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 500,
+              textTransform: 'none'
+            }}
+          >
+            Usuń polisę
+          </Button>
+        </Stack>
       </>
     );
   };
@@ -2265,27 +2283,6 @@ const PolicyDetailsPage: React.FC = () => {
           </Box>
         ) : (
           <UnavailableTabContent />
-        )}
-
-        {/* Mobile action buttons */}
-        {activeTab === 0 && (
-          <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
-              onClick={handleArchive}
-              sx={{
-                borderColor: '#D0D5DD',
-                color: '#1E1F21',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 500,
-                textTransform: 'none'
-              }}
-            >
-              Usuń polisę
-            </Button>
-          </Stack>
         )}
 
         {/* Dialogs */}

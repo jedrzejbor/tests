@@ -840,6 +840,31 @@ const ClaimDetailsPage: React.FC = () => {
             </Collapse>
           </CardContent>
         </Card>
+
+        <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+          {hasPermission('claim archive') && !claim.deleted_at && (
+            <Button
+              variant="outlined"
+              startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
+              onClick={() => setArchiveDialogOpen(true)}
+              sx={{
+                borderColor: '#D0D5DD',
+                color: '#1E1F21',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 500,
+                textTransform: 'none'
+              }}
+            >
+              Usuń szkodę
+            </Button>
+          )}
+          {/* TODO: Restore notification action when the backend flow is ready.
+          <Button variant="contained" startIcon={<NotificationsIcon sx={{ fontSize: 18 }} />}>
+            Wyślij powiadomienie
+          </Button>
+          */}
+        </Stack>
       </Box>
     );
   };
@@ -947,31 +972,6 @@ const ClaimDetailsPage: React.FC = () => {
         </Box>
 
         {activeTab === 0 ? <ClaimDataMobile /> : <UnavailableTabContent />}
-
-        <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
-          {hasPermission('claim archive') && !claim.deleted_at && (
-            <Button
-              variant="outlined"
-              startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
-              onClick={() => setArchiveDialogOpen(true)}
-              sx={{
-                borderColor: '#D0D5DD',
-                color: '#1E1F21',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 500,
-                textTransform: 'none'
-              }}
-            >
-              Usuń szkodę
-            </Button>
-          )}
-          {/* TODO: Restore notification action when the backend flow is ready.
-          <Button variant="contained" startIcon={<NotificationsIcon sx={{ fontSize: 18 }} />}>
-            Wyślij powiadomienie
-          </Button>
-          */}
-        </Stack>
 
         <ClaimPasswordDialog
           open={archiveDialogOpen}
