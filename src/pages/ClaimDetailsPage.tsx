@@ -486,21 +486,79 @@ const ClaimDetailsPage: React.FC = () => {
   );
 
   const MobileFieldRow = ({ label, value }: { label: string; value?: string }) => (
-    <Stack
-      direction="row"
-      justifyContent="space-between"
-      alignItems="center"
-      sx={{ height: 40, px: 1.5, py: 0.75 }}
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) minmax(96px, 42%)',
+        gap: 2,
+        alignItems: 'start',
+        minHeight: 40,
+        px: 1.5,
+        py: 1
+      }}
     >
       <Typography
-        sx={{ color: '#74767F', fontSize: '14px', lineHeight: 1.43, letterSpacing: '0.17px' }}
+        sx={{
+          color: '#74767F',
+          fontSize: '14px',
+          lineHeight: 1.43,
+          letterSpacing: '0.17px',
+          overflowWrap: 'anywhere'
+        }}
       >
         {label}
       </Typography>
-      <Typography sx={{ color: '#32343A', fontSize: '12px', lineHeight: '16px' }}>
+      <Typography
+        sx={{
+          color: '#32343A',
+          fontSize: '12px',
+          lineHeight: '16px',
+          textAlign: 'right',
+          overflowWrap: 'anywhere',
+          whiteSpace: 'pre-wrap'
+        }}
+      >
         {value || '-'}
       </Typography>
-    </Stack>
+    </Box>
+  );
+
+  const MobileAdditionalInfoRow = ({ label, value }: { label: string; value?: string }) => (
+    <Box
+      sx={{
+        px: 1.5,
+        py: 1.25,
+        borderTop: '1px solid rgba(143, 109, 95, 0.12)',
+        '&:first-of-type': {
+          borderTop: 0
+        }
+      }}
+    >
+      <Typography
+        sx={{
+          color: '#74767F',
+          fontSize: '13px',
+          lineHeight: 1.45,
+          letterSpacing: '0.17px',
+          overflowWrap: 'anywhere'
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography
+        sx={{
+          color: '#32343A',
+          fontSize: '14px',
+          fontWeight: 500,
+          lineHeight: 1.55,
+          mt: 0.5,
+          overflowWrap: 'anywhere',
+          whiteSpace: 'pre-wrap'
+        }}
+      >
+        {value || '-'}
+      </Typography>
+    </Box>
   );
 
   const getClaimContentFields = () => {
@@ -831,17 +889,17 @@ const ClaimDetailsPage: React.FC = () => {
               onToggle={() => setExtraOpen((v) => !v)}
             />
             <Collapse in={extraOpen}>
-              <Stack sx={{ pb: 1 }}>
+              <Box sx={{ pb: 1 }}>
                 {additionalInfoFields.length > 0 ? (
                   additionalInfoFields.map((item) => (
-                    <MobileFieldRow key={item.key} label={item.label} value={item.value} />
+                    <MobileAdditionalInfoRow key={item.key} label={item.label} value={item.value} />
                   ))
                 ) : (
                   <Typography variant="body2" sx={{ color: '#74767F', px: 1.5, py: 1 }}>
                     Brak dodatkowych informacji
                   </Typography>
                 )}
-              </Stack>
+              </Box>
             </Collapse>
           </CardContent>
         </Card>
