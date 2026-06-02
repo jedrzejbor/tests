@@ -2161,7 +2161,8 @@ const PolicyDetailsPage: React.FC = () => {
         spacing={2}
         sx={{
           bgcolor: 'white',
-          borderRadius: 4,
+          border: '1px solid #E5E7EB',
+          borderRadius: '12px',
           pb: 2,
           height: '100%',
           overflow: 'auto'

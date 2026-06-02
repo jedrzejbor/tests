@@ -1081,6 +1081,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
           sx={{
             flex: 1,
             minHeight: 0,
+            bgcolor: '#FFFFFF',
+            border: '1px solid #E5E7EB',
+            borderRadius: '12px',
             overflowY: 'auto',
             overflowX: 'hidden',
             WebkitOverflowScrolling: 'touch'
@@ -1090,8 +1093,6 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
           <Box
             sx={{
               bgcolor: '#FFFFFF',
-              borderRadius: isPolicyMobile ? '16px' : '12px',
-              overflow: 'hidden',
               p: 2,
               mb: '76px' /* leave space for bottom navigation on mobile */
             }}
