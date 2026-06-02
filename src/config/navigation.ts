@@ -24,8 +24,8 @@ export interface NavItem {
   icon: React.ComponentType<SvgIconProps>;
   /** If true, shows in mobile bottom navbar; otherwise in "Więcej" drawer */
   showInMobileMenu?: boolean;
-  /** Future: specify roles that can access this item */
-  requiredRoles?: string[];
+  /** If set, item is shown only when the user has this permission */
+  requiredPermission?: string;
 }
 
 export const navigationItems: NavItem[] = [
@@ -41,14 +41,16 @@ export const navigationItems: NavItem[] = [
     label: 'Polisy',
     path: '/app/policies',
     icon: ShieldIcon,
-    showInMobileMenu: true
+    showInMobileMenu: true,
+    requiredPermission: 'policy view-list'
   },
   {
     id: 'damages',
     label: 'Szkody',
     path: '/app/damages',
     icon: DamageIcon,
-    showInMobileMenu: true
+    showInMobileMenu: true,
+    requiredPermission: 'claim view-list'
   },
   {
     id: 'payments',
@@ -62,14 +64,16 @@ export const navigationItems: NavItem[] = [
     label: 'Klienci',
     path: '/app/clients',
     icon: ClientIcon,
-    showInMobileMenu: false
+    showInMobileMenu: false,
+    requiredPermission: 'client view-list'
   },
   {
     id: 'users',
     label: 'Użytkownicy',
     path: '/app/users',
     icon: UsersIcon,
-    showInMobileMenu: false
+    showInMobileMenu: false,
+    requiredPermission: 'user view-list'
   },
   {
     id: 'insurers',
@@ -129,20 +133,9 @@ export const getMoreMenuItems = (): NavItem[] => {
   return navigationItems.filter((item) => item.showInMobileMenu !== true);
 };
 
-/**
- * Future: Get items based on user role
- * @param roles User's roles
- */
-export const getAccessibleItems = (roles?: string[]): NavItem[] => {
-  if (!roles || roles.length === 0) {
-    return navigationItems;
-  }
-  return navigationItems.filter((item) => {
-    // If no requiredRoles specified, item is accessible to everyone
-    if (!item.requiredRoles || item.requiredRoles.length === 0) {
-      return true;
-    }
-    // Item is accessible if user has at least one of the required roles
-    return item.requiredRoles.some((role) => roles.includes(role));
-  });
+export const filterAccessibleItems = (
+  items: NavItem[],
+  hasPermission: (permission: string) => boolean
+): NavItem[] => {
+  return items.filter((item) => !item.requiredPermission || hasPermission(item.requiredPermission));
 };
