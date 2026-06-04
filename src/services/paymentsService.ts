@@ -9,6 +9,7 @@ import type { GenericListResponse, FetcherParams, GenericRecord } from '@/types/
  */
 export interface PaymentRecord extends GenericRecord {
   id?: string | number;
+  policy_id?: string | number;
   insurance_company_name: string;
   policy_number: string;
   payment_date: string;
@@ -139,6 +140,85 @@ export const createClientPaymentsFetcher = (clientId: string | number) => {
       }
     };
     return fetchPaymentsTable(scopedParams);
+  };
+};
+
+/**
+ * Create a fetcher scoped to a specific policy.
+ */
+export const createPolicyPaymentsFetcher = (policyId: string | number, policyNumber?: string) => {
+  return async (params: FetcherParams): Promise<GenericListResponse<PaymentRecord>> => {
+    const requestPerPage = Math.max(params.perPage, 1000);
+    const scopedParams: FetcherParams = {
+      ...params,
+      page: 1,
+      perPage: requestPerPage,
+      search: policyNumber || params.search,
+      filters: {
+        ...params.filters,
+        policy: String(policyId)
+      }
+    };
+    const response = await fetchPaymentsTable(scopedParams);
+
+    const normalizedPolicyId = String(policyId);
+    const normalizedPolicyNumber = policyNumber?.trim().toLowerCase();
+    const userSearch = params.search.trim().toLowerCase();
+    const rowsExposePolicyIdentity = response.data.some((payment) => {
+      const rowPolicyId =
+        payment.policy_id ?? (payment.policy as { id?: string | number } | undefined)?.id;
+      return rowPolicyId !== undefined || Boolean(payment.policy_number);
+    });
+
+    const filteredData = response.data.filter((payment) => {
+      const rowPolicyId =
+        payment.policy_id ?? (payment.policy as { id?: string | number } | undefined)?.id;
+      const rowPolicyNumber = payment.policy_number?.trim().toLowerCase();
+
+      const belongsToPolicy =
+        !rowsExposePolicyIdentity ||
+        (rowPolicyId !== undefined && String(rowPolicyId) === normalizedPolicyId) ||
+        (normalizedPolicyNumber !== undefined && rowPolicyNumber === normalizedPolicyNumber);
+
+      if (!belongsToPolicy) return false;
+      if (!userSearch) return true;
+
+      return Object.values(payment).some((value) =>
+        typeof value === 'string' ? value.toLowerCase().includes(userSearch) : false
+      );
+    });
+
+    const sortedData = [...filteredData].sort((a, b) => {
+      const property = params.sortProperty as keyof PaymentRecord;
+      if (!property) return 0;
+      const left = a[property];
+      const right = b[property];
+      const leftValue = left === undefined || left === null ? '' : String(left);
+      const rightValue = right === undefined || right === null ? '' : String(right);
+      return params.sortOrder === 'desc'
+        ? rightValue.localeCompare(leftValue, 'pl')
+        : leftValue.localeCompare(rightValue, 'pl');
+    });
+
+    const start = (params.page - 1) * params.perPage;
+    const paginatedData = sortedData.slice(start, start + params.perPage);
+    const count = sortedData.length;
+    const pages = Math.max(1, Math.ceil(count / params.perPage));
+
+    return {
+      ...response,
+      data: paginatedData,
+      meta: {
+        ...response.meta,
+        pagination: {
+          ...response.meta.pagination,
+          page: params.page,
+          perPage: params.perPage,
+          pages,
+          count
+        }
+      }
+    };
   };
 };
 

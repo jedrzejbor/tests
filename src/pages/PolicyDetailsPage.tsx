@@ -54,17 +54,38 @@ import {
   restoreClaim,
   type ClaimRecord
 } from '@/services/claimsService';
+import {
+  createPolicyDocumentsFetcher,
+  downloadAttachment,
+  type DocumentRecord,
+  restoreDocument
+} from '@/services/documentsService';
+import {
+  createPolicyPaymentsFetcher,
+  restorePayment,
+  type PaymentRecord
+} from '@/services/paymentsService';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 import { usePermission } from '@/hooks/usePermission';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ArchivePolicyDialog from '@/components/dialogs/ArchivePolicyDialog';
+import AddDocumentDialog from '@/components/dialogs/AddDocumentDialog';
+import EditDocumentDialog from '@/components/dialogs/EditDocumentDialog';
+import ArchiveDocumentDialog from '@/components/dialogs/ArchiveDocumentDialog';
+import ForceDeleteDocumentDialog from '@/components/dialogs/ForceDeleteDocumentDialog';
 import ClaimPasswordDialog from '@/components/dialogs/ClaimPasswordDialog';
 import EditClientDialog from '@/components/dialogs/EditClientDialog';
 import EditPolicyDialog from '@/components/dialogs/EditPolicyDialog';
+import ViewPaymentDialog from '@/components/dialogs/ViewPaymentDialog';
+import EditPaymentDialog from '@/components/dialogs/EditPaymentDialog';
+import ArchivePaymentDialog from '@/components/dialogs/ArchivePaymentDialog';
+import ForceDeletePaymentDialog from '@/components/dialogs/ForceDeletePaymentDialog';
 import { GenericListView } from '@/components/lists';
-import type { ExtraRowAction } from '@/types/genericList';
+import { normalizeActions, type ExtraRowAction } from '@/types/genericList';
+import { isClientRole } from '@/utils/roles';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -91,6 +112,8 @@ interface ClientData {
   child_client: string;
   child_client_names: string[];
 }
+
+type DocumentCategory = 'policy_documents' | 'insurance_subject';
 
 // ---------------------------------------------------------------------------
 // Reusable sub-components
@@ -154,6 +177,142 @@ const MobileFieldRow = ({ label, value }: { label: string; value?: string }) => 
   </Stack>
 );
 
+interface PolicyDocumentListContentProps {
+  category: DocumentCategory;
+  title: string;
+  policyId: string | undefined;
+  refreshKey: number;
+  onCreate: (category: DocumentCategory) => void;
+  onEdit: (category: DocumentCategory, row: DocumentRecord) => void;
+  onArchive: (category: DocumentCategory, row: DocumentRecord) => void;
+  onForceDelete: (category: DocumentCategory, row: DocumentRecord) => void;
+  onRefresh: () => void;
+}
+
+const PolicyDocumentListContent: React.FC<PolicyDocumentListContentProps> = ({
+  category,
+  title,
+  policyId,
+  refreshKey,
+  onCreate,
+  onEdit,
+  onArchive,
+  onForceDelete,
+  onRefresh
+}) => {
+  const { addToast } = useUiStore();
+
+  const handleCreateDocument = useCallback(() => {
+    onCreate(category);
+  }, [category, onCreate]);
+
+  const handleEditDocument = useCallback(
+    (row: DocumentRecord) => {
+      onEdit(category, row);
+    },
+    [category, onEdit]
+  );
+
+  const handleArchiveDocument = useCallback(
+    (row: DocumentRecord) => {
+      onArchive(category, row);
+    },
+    [category, onArchive]
+  );
+
+  const handleForceDeleteDocument = useCallback(
+    (row: DocumentRecord) => {
+      onForceDelete(category, row);
+    },
+    [category, onForceDelete]
+  );
+
+  const handleRestoreDocument = useCallback(
+    async (row: DocumentRecord) => {
+      if (!row.id) return;
+      try {
+        await restoreDocument(row.id, category);
+        addToast({
+          id: crypto.randomUUID(),
+          message: 'Dokument został przywrócony',
+          severity: 'success'
+        });
+        onRefresh();
+      } catch (error) {
+        const apiError = error as ApiError;
+        addToast({
+          id: crypto.randomUUID(),
+          message: apiError?.message || 'Nie udało się przywrócić dokumentu',
+          severity: 'error'
+        });
+      }
+    },
+    [addToast, category, onRefresh]
+  );
+
+  const handleDownloadDocument = useCallback(
+    async (row: DocumentRecord) => {
+      if (!row.attachments || row.attachments.length === 0) {
+        addToast({
+          id: crypto.randomUUID(),
+          message: 'Brak załączników do pobrania',
+          severity: 'error'
+        });
+        return;
+      }
+      try {
+        await downloadAttachment(row.attachments[0].id, row.attachments[0].name);
+      } catch (error) {
+        const apiError = error as ApiError;
+        addToast({
+          id: crypto.randomUUID(),
+          message: apiError?.message || 'Nie udało się pobrać załącznika',
+          severity: 'error'
+        });
+      }
+    },
+    [addToast]
+  );
+
+  const documentHandlers: Record<string, (row: DocumentRecord) => void> = useMemo(
+    () => ({
+      'create-document': handleCreateDocument as unknown as (row: DocumentRecord) => void,
+      'edit-document': handleEditDocument,
+      'archive-document': handleArchiveDocument,
+      'delete-document': handleForceDeleteDocument,
+      'restore-document': handleRestoreDocument,
+      'download-document': handleDownloadDocument
+    }),
+    [
+      handleCreateDocument,
+      handleEditDocument,
+      handleArchiveDocument,
+      handleForceDeleteDocument,
+      handleRestoreDocument,
+      handleDownloadDocument
+    ]
+  );
+
+  const documentsFetcher = useMemo(
+    () => (policyId ? createPolicyDocumentsFetcher(policyId, category) : undefined),
+    [category, policyId]
+  );
+
+  return (
+    <GenericListView<DocumentRecord>
+      key={`policy-documents-${category}`}
+      title={title}
+      fetcher={documentsFetcher}
+      handlers={documentHandlers}
+      rowKey={(row) => String(row.id || row.name)}
+      initialPerPage={10}
+      refreshKey={refreshKey}
+      disabledColumns={['client_name']}
+      disabledFilters={['client', 'policy']}
+    />
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Tab definitions
 // ---------------------------------------------------------------------------
@@ -208,10 +367,12 @@ const PolicyDetailsPage: React.FC = () => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { addToast } = useUiStore();
+  const currentUserRole = useAuthStore((state) => state.user?.role);
   const { hasPermission } = usePermission();
   const canViewClientList = hasPermission('client view-list');
   const canEditClient = hasPermission('client edit');
   const canEditPolicy = hasPermission('policy edit');
+  const hidePaymentCommissionFields = isClientRole(currentUserRole);
 
   const [policyData, setPolicyData] = useState<PolicyDetailsData | null>(null);
   const [clientData, setClientData] = useState<ClientData | null>(null);
@@ -220,7 +381,7 @@ const PolicyDetailsPage: React.FC = () => {
   const [insurerName, setInsurerName] = useState<string>('');
   const [policyNumber, setPolicyNumber] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(2);
 
   // Archive dialog
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
@@ -230,6 +391,25 @@ const PolicyDetailsPage: React.FC = () => {
 
   // Edit policy dialog
   const [editPolicyDialogOpen, setEditPolicyDialogOpen] = useState(false);
+
+  // Payment dialogs
+  const [viewPaymentDialogOpen, setViewPaymentDialogOpen] = useState(false);
+  const [editPaymentDialogOpen, setEditPaymentDialogOpen] = useState(false);
+  const [archivePaymentDialogOpen, setArchivePaymentDialogOpen] = useState(false);
+  const [forceDeletePaymentDialogOpen, setForceDeletePaymentDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
+  const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
+
+  // Document dialogs
+  const [addDocDialogOpen, setAddDocDialogOpen] = useState(false);
+  const [editDocDialogOpen, setEditDocDialogOpen] = useState(false);
+  const [archiveDocDialogOpen, setArchiveDocDialogOpen] = useState(false);
+  const [forceDeleteDocDialogOpen, setForceDeleteDocDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentRecord | null>(null);
+  const [docRefreshKey, setDocRefreshKey] = useState(0);
+  const [docCategory, setDocCategory] = useState<'policy_documents' | 'insurance_subject'>(
+    'policy_documents'
+  );
 
   // Form options for resolving IDs to labels
   const [formOptions, setFormOptions] = useState<{
@@ -508,6 +688,36 @@ const PolicyDetailsPage: React.FC = () => {
     }
   }, [addToast, policyId, policyNumber]);
 
+  const handleDocumentSuccess = useCallback(() => {
+    setDocRefreshKey((k) => k + 1);
+  }, []);
+
+  const handleCreateDocument = useCallback((category: DocumentCategory) => {
+    setDocCategory(category);
+    setAddDocDialogOpen(true);
+  }, []);
+
+  const handleEditDocument = useCallback((category: DocumentCategory, row: DocumentRecord) => {
+    setDocCategory(category);
+    setSelectedDocument(row);
+    setEditDocDialogOpen(true);
+  }, []);
+
+  const handleArchiveDocument = useCallback((category: DocumentCategory, row: DocumentRecord) => {
+    setDocCategory(category);
+    setSelectedDocument(row);
+    setArchiveDocDialogOpen(true);
+  }, []);
+
+  const handleForceDeleteDocument = useCallback(
+    (category: DocumentCategory, row: DocumentRecord) => {
+      setDocCategory(category);
+      setSelectedDocument(row);
+      setForceDeleteDocDialogOpen(true);
+    },
+    []
+  );
+
   const handleDownloadAttachment = useCallback(async () => {
     if (!policyData?.attachment) return;
     try {
@@ -630,6 +840,165 @@ const PolicyDetailsPage: React.FC = () => {
   );
 
   // ---------------------------------------------------------------------------
+  // Płatności składek tab content
+  // ---------------------------------------------------------------------------
+
+  const PaymentsTabContent = () => {
+    const paymentsFetcher = useMemo(
+      () => createPolicyPaymentsFetcher(policyId, policyData.number),
+      [policyId, policyData.number]
+    );
+
+    const disabledPaymentColumns = useMemo(
+      () =>
+        hidePaymentCommissionFields
+          ? ['policy_number', 'margin', 'margin_percent']
+          : ['policy_number'],
+      [hidePaymentCommissionFields]
+    );
+
+    const disabledPaymentFilters = useMemo(
+      () =>
+        hidePaymentCommissionFields
+          ? ['policy', 'policy_id', 'margin', 'margin_percent']
+          : ['policy', 'policy_id'],
+      [hidePaymentCommissionFields]
+    );
+
+    const handleViewPayment = useCallback((row: PaymentRecord) => {
+      setSelectedPayment(row);
+      setViewPaymentDialogOpen(true);
+    }, []);
+
+    const handleEditPayment = useCallback((row: PaymentRecord) => {
+      setSelectedPayment(row);
+      setEditPaymentDialogOpen(true);
+    }, []);
+
+    const handleArchivePayment = useCallback((row: PaymentRecord) => {
+      setSelectedPayment(row);
+      setArchivePaymentDialogOpen(true);
+    }, []);
+
+    const handleForceDeletePayment = useCallback((row: PaymentRecord) => {
+      setSelectedPayment(row);
+      setForceDeletePaymentDialogOpen(true);
+    }, []);
+
+    const handleRestorePayment = useCallback(
+      async (row: PaymentRecord) => {
+        if (!row.id) return;
+
+        try {
+          await restorePayment(row.id);
+          addToast({
+            id: crypto.randomUUID(),
+            message: 'Płatność została przywrócona',
+            severity: 'success'
+          });
+          setPaymentRefreshKey((key) => key + 1);
+        } catch (error) {
+          const apiError = error as ApiError;
+          addToast({
+            id: crypto.randomUUID(),
+            message: apiError?.message || 'Nie udało się przywrócić płatności',
+            severity: 'error'
+          });
+        }
+      },
+      [addToast]
+    );
+
+    const handlePaymentSuccess = useCallback(() => {
+      setPaymentRefreshKey((key) => key + 1);
+    }, []);
+
+    const handlers = useMemo(
+      () => ({
+        'view-payments': handleViewPayment,
+        'edit-payments': handleEditPayment,
+        'archive-payments': handleArchivePayment,
+        'delete-payments': handleForceDeletePayment,
+        'restore-payments': handleRestorePayment
+      }),
+      [
+        handleViewPayment,
+        handleEditPayment,
+        handleArchivePayment,
+        handleForceDeletePayment,
+        handleRestorePayment
+      ]
+    );
+
+    return (
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <GenericListView<PaymentRecord>
+          title="Zestawienie płatności składek"
+          fetcher={paymentsFetcher}
+          handlers={handlers}
+          rowKey={(row) => String(row.id || row.payment_date)}
+          initialPerPage={10}
+          refreshKey={paymentRefreshKey}
+          stateKey={`/app/policies/${policyId}/payments`}
+          mobileTitle="Płatności składek"
+          disabledColumns={disabledPaymentColumns}
+          disabledFilters={disabledPaymentFilters}
+          disabledGeneralActions={['payments-create']}
+          filterTooltips={{
+            payment_total: 'Filtruje płatności po wysokości raty - wpisz kwoty w PLN (np. 1000,59)'
+          }}
+          filterTransformers={{
+            payment_total: (val) =>
+              val
+                .split(',')
+                .map((part) => {
+                  const n = parseFloat(part.replace(',', '.'));
+                  return isNaN(n) ? '' : String(Math.round(n * 100));
+                })
+                .join(',')
+          }}
+        />
+
+        <ViewPaymentDialog
+          open={viewPaymentDialogOpen}
+          onClose={() => {
+            setViewPaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+        />
+        <EditPaymentDialog
+          open={editPaymentDialogOpen}
+          onClose={() => {
+            setEditPaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+        <ArchivePaymentDialog
+          open={archivePaymentDialogOpen}
+          onClose={() => {
+            setArchivePaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+        <ForceDeletePaymentDialog
+          open={forceDeletePaymentDialogOpen}
+          onClose={() => {
+            setForceDeletePaymentDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+          payment={selectedPayment}
+          onSuccess={handlePaymentSuccess}
+        />
+      </Box>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
   // Szkody tab content
   // ---------------------------------------------------------------------------
 
@@ -713,7 +1082,7 @@ const PolicyDetailsPage: React.FC = () => {
     );
 
     const hasBackendAction = (row: ClaimRecord, handler: string) =>
-      row.actions?.some((action) => action.handler === handler) ?? false;
+      normalizeActions(row.actions).some((action) => action.handler === handler);
 
     const isArchived = (row: ClaimRecord) =>
       Boolean(row.deleted_at) || hasBackendAction(row, 'restore-claim');
@@ -1163,20 +1532,42 @@ const PolicyDetailsPage: React.FC = () => {
               py: 1,
               display: 'flex',
               alignItems: 'center',
-              gap: 0.75
+              justifyContent: 'space-between',
+              gap: 1
             }}
           >
-            <PersonOutlineIcon sx={{ fontSize: 20, color: '#7A5D51' }} />
-            <Typography
-              sx={{
-                color: '#7A5D51',
-                fontSize: '16px',
-                lineHeight: 1.75,
-                letterSpacing: '0.15px'
-              }}
-            >
-              Dane klienta
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
+              <PersonOutlineIcon sx={{ fontSize: 20, color: '#7A5D51', flexShrink: 0 }} />
+              <Typography
+                sx={{
+                  color: '#7A5D51',
+                  fontSize: '16px',
+                  lineHeight: 1.75,
+                  letterSpacing: '0.15px'
+                }}
+              >
+                Dane klienta
+              </Typography>
+            </Stack>
+            {canEditClient && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setEditClientDialogOpen(true)}
+                sx={{
+                  borderColor: '#494B54',
+                  color: '#494B54',
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontSize: '12px',
+                  py: 0.5,
+                  flexShrink: 0
+                }}
+              >
+                Edytuj
+              </Button>
+            )}
           </Box>
         </Box>
 
@@ -1239,6 +1630,24 @@ const PolicyDetailsPage: React.FC = () => {
             </Stack>
           </Card>
         </Box>
+
+        <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
+            onClick={handleArchive}
+            sx={{
+              borderColor: '#D0D5DD',
+              color: '#1E1F21',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 500,
+              textTransform: 'none'
+            }}
+          >
+            Usuń polisę
+          </Button>
+        </Stack>
       </>
     );
   };
@@ -1752,7 +2161,8 @@ const PolicyDetailsPage: React.FC = () => {
         spacing={2}
         sx={{
           bgcolor: 'white',
-          borderRadius: 4,
+          border: '1px solid #E5E7EB',
+          borderRadius: '12px',
           pb: 2,
           height: '100%',
           overflow: 'auto'
@@ -1836,33 +2246,44 @@ const PolicyDetailsPage: React.FC = () => {
           <ClientDataMobile />
         ) : activeTab === 2 ? (
           <PolicyDataMobile />
+        ) : activeTab === 3 ? (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <PolicyDocumentListContent
+              category="insurance_subject"
+              title="Przedmioty ubezpieczenia"
+              policyId={policyId}
+              refreshKey={docRefreshKey}
+              onCreate={handleCreateDocument}
+              onEdit={handleEditDocument}
+              onArchive={handleArchiveDocument}
+              onForceDelete={handleForceDeleteDocument}
+              onRefresh={handleDocumentSuccess}
+            />
+          </Box>
+        ) : activeTab === 4 ? (
+          <Box sx={{ px: 2, py: 2 }}>
+            <PaymentsTabContent />
+          </Box>
         ) : activeTab === 7 ? (
           <Box sx={{ px: 2, py: 2 }}>
             <ClaimsTabContent />
           </Box>
+        ) : activeTab === 8 ? (
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <PolicyDocumentListContent
+              category="policy_documents"
+              title="Dokumenty polisy"
+              policyId={policyId}
+              refreshKey={docRefreshKey}
+              onCreate={handleCreateDocument}
+              onEdit={handleEditDocument}
+              onArchive={handleArchiveDocument}
+              onForceDelete={handleForceDeleteDocument}
+              onRefresh={handleDocumentSuccess}
+            />
+          </Box>
         ) : (
           <UnavailableTabContent />
-        )}
-
-        {/* Mobile action buttons */}
-        {activeTab === 0 && (
-          <Stack direction="row" spacing={2} sx={{ px: 2, mt: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<DeleteOutlineIcon sx={{ fontSize: 18 }} />}
-              onClick={handleArchive}
-              sx={{
-                borderColor: '#D0D5DD',
-                color: '#1E1F21',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 500,
-                textTransform: 'none'
-              }}
-            >
-              Usuń polisę
-            </Button>
-          </Stack>
         )}
 
         {/* Dialogs */}
@@ -1885,6 +2306,47 @@ const PolicyDetailsPage: React.FC = () => {
           onClose={() => setEditPolicyDialogOpen(false)}
           policy={policyRecord}
           onSuccess={handlePolicyUpdated}
+        />
+
+        {policyId && (
+          <AddDocumentDialog
+            open={addDocDialogOpen}
+            onClose={() => setAddDocDialogOpen(false)}
+            clientId={policyData?.client_id ? Number(policyData.client_id) : undefined}
+            policyId={Number(policyId)}
+            collection={docCategory}
+            onSuccess={handleDocumentSuccess}
+          />
+        )}
+        <EditDocumentDialog
+          open={editDocDialogOpen}
+          onClose={() => {
+            setEditDocDialogOpen(false);
+            setSelectedDocument(null);
+          }}
+          document={selectedDocument}
+          collection={docCategory}
+          onSuccess={handleDocumentSuccess}
+        />
+        <ArchiveDocumentDialog
+          open={archiveDocDialogOpen}
+          onClose={() => {
+            setArchiveDocDialogOpen(false);
+            setSelectedDocument(null);
+          }}
+          document={selectedDocument}
+          collection={docCategory}
+          onSuccess={handleDocumentSuccess}
+        />
+        <ForceDeleteDocumentDialog
+          open={forceDeleteDocDialogOpen}
+          onClose={() => {
+            setForceDeleteDocDialogOpen(false);
+            setSelectedDocument(null);
+          }}
+          document={selectedDocument}
+          collection={docCategory}
+          onSuccess={handleDocumentSuccess}
         />
       </Stack>
     );
@@ -2015,7 +2477,13 @@ const PolicyDetailsPage: React.FC = () => {
       </Box>
 
       {/* Tab content */}
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+      <Box
+        sx={
+          activeTab === 3 || activeTab === 4 || activeTab === 7 || activeTab === 8
+            ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }
+            : { flex: 1, minHeight: 0, overflow: 'auto' }
+        }
+      >
         {activeTab === 0 ? (
           <Stack spacing={3}>
             <ClientDataDesktop />
@@ -2024,8 +2492,34 @@ const PolicyDetailsPage: React.FC = () => {
           <Stack spacing={3}>
             <PolicyDataDesktop />
           </Stack>
+        ) : activeTab === 3 ? (
+          <PolicyDocumentListContent
+            category="insurance_subject"
+            title="Przedmioty ubezpieczenia"
+            policyId={policyId}
+            refreshKey={docRefreshKey}
+            onCreate={handleCreateDocument}
+            onEdit={handleEditDocument}
+            onArchive={handleArchiveDocument}
+            onForceDelete={handleForceDeleteDocument}
+            onRefresh={handleDocumentSuccess}
+          />
+        ) : activeTab === 4 ? (
+          <PaymentsTabContent />
         ) : activeTab === 7 ? (
           <ClaimsTabContent />
+        ) : activeTab === 8 ? (
+          <PolicyDocumentListContent
+            category="policy_documents"
+            title="Dokumenty polisy"
+            policyId={policyId}
+            refreshKey={docRefreshKey}
+            onCreate={handleCreateDocument}
+            onEdit={handleEditDocument}
+            onArchive={handleArchiveDocument}
+            onForceDelete={handleForceDeleteDocument}
+            onRefresh={handleDocumentSuccess}
+          />
         ) : (
           <UnavailableTabContent />
         )}
@@ -2054,6 +2548,47 @@ const PolicyDetailsPage: React.FC = () => {
           onSuccess={handlePolicyUpdated}
         />
       )}
+
+      {policyId && (
+        <AddDocumentDialog
+          open={addDocDialogOpen}
+          onClose={() => setAddDocDialogOpen(false)}
+          clientId={policyData?.client_id ? Number(policyData.client_id) : undefined}
+          policyId={Number(policyId)}
+          collection={docCategory}
+          onSuccess={handleDocumentSuccess}
+        />
+      )}
+      <EditDocumentDialog
+        open={editDocDialogOpen}
+        onClose={() => {
+          setEditDocDialogOpen(false);
+          setSelectedDocument(null);
+        }}
+        document={selectedDocument}
+        collection={docCategory}
+        onSuccess={handleDocumentSuccess}
+      />
+      <ArchiveDocumentDialog
+        open={archiveDocDialogOpen}
+        onClose={() => {
+          setArchiveDocDialogOpen(false);
+          setSelectedDocument(null);
+        }}
+        document={selectedDocument}
+        collection={docCategory}
+        onSuccess={handleDocumentSuccess}
+      />
+      <ForceDeleteDocumentDialog
+        open={forceDeleteDocDialogOpen}
+        onClose={() => {
+          setForceDeleteDocDialogOpen(false);
+          setSelectedDocument(null);
+        }}
+        document={selectedDocument}
+        collection={docCategory}
+        onSuccess={handleDocumentSuccess}
+      />
     </Stack>
   );
 };

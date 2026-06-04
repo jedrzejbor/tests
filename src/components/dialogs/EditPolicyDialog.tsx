@@ -153,9 +153,9 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
   );
   const remainingAmount = Math.round((paymentTotalNum - paymentDetailsSum) * 100) / 100;
 
-  const selectedTypeLabel =
-    policyTypeOptions.find((o) => o.value === Number(watchedPolicyTypeId))?.label || '';
-  const isCarType = /pojazd|komunikacyj|oc|ac|autocasco/i.test(selectedTypeLabel);
+  const isCarType = policyTypeOptions.find(
+    (o) => o.value === Number(watchedPolicyTypeId)
+  )?.is_car_type;
 
   // Clear / re-show sum-check errors on all payment_details amount fields
   useEffect(() => {
@@ -233,7 +233,7 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
           date_signed_at: toDateInput(p.date_signed_at),
           date_from: toDateInput(p.date_from),
           date_to: toDateInput(p.date_to),
-          city: p.city || '',
+          city: '',
           payment_total: totalPln,
           margin_percent: parseFloat(p.margin_percent) || 0,
           payments_count: p.payments_count || paymentDetails.length,
@@ -274,8 +274,7 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
     'number',
     'date_signed_at',
     'date_from',
-    'date_to',
-    'city'
+    'date_to'
   ];
 
   const handleNext = async () => {
@@ -367,8 +366,7 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
           'number',
           'date_signed_at',
           'date_from',
-          'date_to',
-          'city'
+          'date_to'
         ];
         const errorKeys = Object.keys(apiError.errors);
         if (errorKeys.some((k) => step1Keys.includes(k))) {
@@ -599,7 +597,7 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
 
         {isCarType && (
           <TextField
-            label="Nr. rejestracyjny"
+            label="Nr rejestracyjny"
             {...register('car_plates')}
             error={Boolean(errors.car_plates)}
             helperText={errors.car_plates?.message}
@@ -651,15 +649,6 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
             InputLabelProps={{ shrink: true }}
           />
         </Stack>
-
-        <TextField
-          label="Miasto"
-          {...register('city')}
-          error={Boolean(errors.city)}
-          helperText={errors.city?.message}
-          fullWidth
-          size="medium"
-        />
       </Stack>
 
       <Stack direction="row" justifyContent="space-between" sx={{ mt: 4 }}>
@@ -1057,8 +1046,7 @@ const EditPolicyDialog: React.FC<EditPolicyDialogProps> = ({
       'number',
       'date_signed_at',
       'date_from',
-      'date_to',
-      'city'
+      'date_to'
     ];
     const errorKeys = Object.keys(fieldErrors);
     if (errorKeys.some((k) => step1Keys.includes(k))) {

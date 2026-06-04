@@ -8,9 +8,14 @@ import ViewPaymentDialog from '@/components/dialogs/ViewPaymentDialog';
 import { fetchPaymentsTable, restorePayment, type PaymentRecord } from '@/services/paymentsService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
+import { isClientRole } from '@/utils/roles';
 
 const PaymentsPage: React.FC = () => {
   const { addToast } = useUiStore();
+  const currentUserRole = useAuthStore((state) => state.user?.role);
+  const hideCommissionFields = isClientRole(currentUserRole);
+  const disabledPaymentColumns = hideCommissionFields ? ['margin', 'margin_percent'] : undefined;
 
   const [viewPaymentDialogOpen, setViewPaymentDialogOpen] = useState(false);
   const [editPaymentDialogOpen, setEditPaymentDialogOpen] = useState(false);
@@ -95,6 +100,9 @@ const PaymentsPage: React.FC = () => {
         refreshKey={refreshKey}
         stateKey="/app/payments"
         disabledGeneralActions={['payments-create']}
+        disabledColumns={disabledPaymentColumns}
+        disabledFilters={disabledPaymentColumns}
+        moveArchiveToBottom="archived"
       />
 
       <ViewPaymentDialog

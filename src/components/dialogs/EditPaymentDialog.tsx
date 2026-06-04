@@ -27,6 +27,8 @@ import {
 } from '@/services/paymentsService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
+import { isClientRole } from '@/utils/roles';
 
 export interface EditPaymentDialogProps {
   open: boolean;
@@ -45,6 +47,8 @@ const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { addToast } = useUiStore();
+  const currentUserRole = useAuthStore((state) => state.user?.role);
+  const hideCommissionFields = isClientRole(currentUserRole);
 
   const [loading, setLoading] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(false);
@@ -161,7 +165,9 @@ const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
         policy_id: Number(data.policy_id),
         payment_date: data.payment_date,
         payment_total: Number(data.payment_total),
-        margin_percent: Number(data.margin_percent),
+        margin_percent: hideCommissionFields
+          ? Number(payment.margin_percent || 0)
+          : Number(data.margin_percent),
         status: data.status as string
       });
       addToast({
@@ -324,17 +330,18 @@ const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
             size="medium"
           />
 
-          {/* Procent prowizji */}
-          <TextField
-            label="Procent prowizji (%)"
-            type="number"
-            inputProps={{ step: '0.01', min: '0', max: '100' }}
-            {...register('margin_percent')}
-            error={Boolean(errors.margin_percent)}
-            helperText={errors.margin_percent?.message}
-            fullWidth
-            size="medium"
-          />
+          {!hideCommissionFields && (
+            <TextField
+              label="Procent prowizji (%)"
+              type="number"
+              inputProps={{ step: '0.01', min: '0', max: '100' }}
+              {...register('margin_percent')}
+              error={Boolean(errors.margin_percent)}
+              helperText={errors.margin_percent?.message}
+              fullWidth
+              size="medium"
+            />
+          )}
 
           {/* Status */}
           <Controller

@@ -29,6 +29,10 @@ export interface AddDocumentDialogProps {
   onClose: () => void;
   /** ID klienta do którego przypisany jest dokument */
   clientId: number;
+  /** ID polisy do której przypisany jest dokument */
+  policyId?: number;
+  /** Kolekcja (np. insurance_subject, policy_documents) */
+  collection: string;
   onSuccess?: () => void;
 }
 
@@ -36,6 +40,8 @@ const AddDocumentDialog: React.FC<AddDocumentDialogProps> = ({
   open,
   onClose,
   clientId,
+  policyId,
+  collection,
   onSuccess
 }) => {
   const theme = useTheme();
@@ -75,6 +81,8 @@ const AddDocumentDialog: React.FC<AddDocumentDialogProps> = ({
     try {
       await createDocument({
         client_id: clientId,
+        policy_id: policyId,
+        collection: collection,
         name: data.name,
         description: data.description ?? '',
         date: data.date,

@@ -35,6 +35,7 @@ export interface EditDocumentDialogProps {
   onClose: () => void;
   /** Document record from the list (has id, name, date, etc.) */
   document: DocumentRecord | null;
+  collection: string;
   onSuccess?: () => void;
 }
 
@@ -42,6 +43,7 @@ const EditDocumentDialog: React.FC<EditDocumentDialogProps> = ({
   open,
   onClose,
   document: docRecord,
+  collection,
   onSuccess
 }) => {
   const theme = useTheme();
@@ -80,7 +82,7 @@ const EditDocumentDialog: React.FC<EditDocumentDialogProps> = ({
     if (!docRecord?.id) return;
     setDetailsLoading(true);
     try {
-      const response = await getDocumentDetails(docRecord.id);
+      const response = await getDocumentDetails(docRecord.id, collection);
       const doc: DocumentDetailsApiDocument = response.document;
       setValue('name', doc.name || '');
       setValue('description', doc.description || '');
@@ -120,6 +122,7 @@ const EditDocumentDialog: React.FC<EditDocumentDialogProps> = ({
     setLoading(true);
     try {
       await updateDocument(docRecord.id, {
+        collection,
         name: data.name,
         description: data.description || '',
         date: data.date,

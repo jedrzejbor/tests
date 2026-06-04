@@ -14,6 +14,8 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import type { PaymentRecord } from '@/services/paymentsService';
+import { useAuthStore } from '@/store/authStore';
+import { isClientRole } from '@/utils/roles';
 
 interface ViewPaymentDialogProps {
   open: boolean;
@@ -53,6 +55,8 @@ const InfoRow: React.FC<{ label: string; value: string | number | null | undefin
 const ViewPaymentDialog: React.FC<ViewPaymentDialogProps> = ({ open, onClose, payment }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const currentUserRole = useAuthStore((state) => state.user?.role);
+  const hideCommissionFields = isClientRole(currentUserRole);
 
   const formatDate = (dateStr: string | null | undefined): string => {
     if (!dateStr) return '-';
@@ -98,11 +102,15 @@ const ViewPaymentDialog: React.FC<ViewPaymentDialogProps> = ({ open, onClose, pa
           <InfoRow label="Numer polisy" value={payment?.policy_number} />
           <InfoRow label="Data przelewu" value={formatDate(payment?.payment_date)} />
           <InfoRow label="Kwota raty" value={payment?.payment_total} />
-          <InfoRow label="Prowizja" value={payment?.margin} />
-          <InfoRow
-            label="Procent prowizji"
-            value={payment?.margin_percent ? `${payment.margin_percent}%` : undefined}
-          />
+          {!hideCommissionFields && (
+            <>
+              <InfoRow label="Prowizja" value={payment?.margin} />
+              <InfoRow
+                label="Procent prowizji"
+                value={payment?.margin_percent ? `${payment.margin_percent}%` : undefined}
+              />
+            </>
+          )}
           <Stack
             direction="row"
             justifyContent="space-between"

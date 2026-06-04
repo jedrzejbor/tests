@@ -13,7 +13,13 @@ import {
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import type { ColumnDef, GenericRecord, ActionDef, ExtraRowAction } from '@/types/genericList';
+import {
+  normalizeActions,
+  type ColumnDef,
+  type GenericRecord,
+  type ActionDef,
+  type ExtraRowAction
+} from '@/types/genericList';
 
 /**
  * Extract tooltip items from row meta for a given column property.
@@ -33,6 +39,32 @@ const getTooltipItems = (row: GenericRecord, property: string | null): string[] 
     );
   }
   return [];
+};
+
+const stringifyBelowContent = (content: unknown): string => {
+  if (content === undefined || content === null) return '';
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => stringifyBelowContent(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  if (typeof content === 'object') {
+    return Object.values(content as Record<string, unknown>)
+      .map((item) => stringifyBelowContent(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  return String(content).trim();
+};
+
+const getColumnBelowContent = (row: GenericRecord, property: string | null): string => {
+  if (!property) return '';
+  const meta = row.meta as
+    | { columns?: Record<string, { below?: { content?: unknown } }> }
+    | undefined;
+
+  return stringifyBelowContent(meta?.columns?.[property]?.below?.content);
 };
 
 interface MobileCardListRendererProps<T extends GenericRecord = GenericRecord> {
@@ -96,6 +128,18 @@ const getStatusChipStyles = (status: string) => {
 const getStringValue = (row: GenericRecord, property: string): string => {
   const value = row[property];
   return value === undefined || value === null ? '' : String(value).trim();
+};
+
+const DATE_ONLY_PROPERTIES = new Set(['claim_date', 'reported_date']);
+
+const formatDateOnly = (value: string): string => {
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : value;
+};
+
+const getDisplayValue = (row: GenericRecord, property: string): string => {
+  const value = getStringValue(row, property);
+  return DATE_ONLY_PROPERTIES.has(property) ? formatDateOnly(value) : value;
 };
 
 const formatDateToken = (value: string): string => {
@@ -236,7 +280,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
       >
         {data.map((row, index) => {
           const rowId = getRowId(row);
-          const rowActions = (row.actions as ActionDef[]) || [];
+          const rowActions = normalizeActions(row.actions);
           const visibleExtraActions = extraRowActions.filter((ea) => !ea.show || ea.show(row));
           const isLast = index === data.length - 1;
           const rowClickable = Boolean(onRowClick && (!isRowClickable || isRowClickable(row)));
@@ -261,6 +305,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
             const insuranceCompany = getStringValue(row, 'insurance_company');
             const city = getStringValue(row, 'city');
             const number = getStringValue(row, 'number');
+            const numberBelowContent = getColumnBelowContent(row, 'number');
             const status = getStringValue(row, 'status');
             const hasActions = rowActions.length > 0 || visibleExtraActions.length > 0;
 
@@ -339,21 +384,37 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                   </Stack>
 
                   {number && (
-                    <Typography
-                      sx={{
-                        color: '#1E1F21',
-                        fontSize: '16px',
-                        fontWeight: 600,
-                        lineHeight: 1.5,
-                        letterSpacing: '0.15px',
-                        mt: 0.5,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      Nr. polisy {number}
-                    </Typography>
+                    <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                      <Typography
+                        sx={{
+                          color: '#1E1F21',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          lineHeight: 1.5,
+                          letterSpacing: '0.15px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Nr polisy {number}
+                      </Typography>
+                      {numberBelowContent && (
+                        <Typography
+                          sx={{
+                            color: '#74767F',
+                            fontSize: '13px',
+                            lineHeight: 1.4,
+                            letterSpacing: '0.17px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {numberBelowContent}
+                        </Typography>
+                      )}
+                    </Stack>
                   )}
 
                   {status && (
@@ -404,13 +465,26 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
           }
 
           // Get values
-          const titleValue = titleColumn?.property ? String(row[titleColumn.property] || '') : '';
-          const subtitleValue = subtitleColumn?.property
-            ? String(row[subtitleColumn.property] || '')
+          const titleValue = titleColumn?.property
+            ? getDisplayValue(row, titleColumn.property)
             : '';
-          const emailValue = emailColumn?.property ? String(row[emailColumn.property] || '') : '';
-          const phoneValue = phoneColumn?.property ? String(row[phoneColumn.property] || '') : '';
+          const subtitleValue = subtitleColumn?.property
+            ? getDisplayValue(row, subtitleColumn.property)
+            : '';
+          const emailValue = emailColumn?.property
+            ? getDisplayValue(row, emailColumn.property)
+            : '';
+          const phoneValue = phoneColumn?.property
+            ? getDisplayValue(row, phoneColumn.property)
+            : '';
           const cityValue = row.city ? String(row.city) : '';
+          const policyNumberValue = getStringValue(row, 'policy_number');
+          const isPolicyNumberTitle = titleColumn?.property === 'policy_number';
+          const policyNumberBelowContent = getColumnBelowContent(row, 'policy_number');
+          const titleBelowContent = isPolicyNumberTitle
+            ? getColumnBelowContent(row, titleColumn?.property ?? null)
+            : '';
+          const policyBelowContent = policyNumberBelowContent || titleBelowContent;
           const statusValue = statusColumn?.property
             ? String(row[statusColumn.property] || '')
             : '';
@@ -545,6 +619,49 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                   </Typography>
                 )}
 
+                {(policyNumberValue || policyBelowContent) && !isPolicyNumberTitle && (
+                  <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                    {policyNumberValue && (
+                      <Typography
+                        sx={{
+                          color: '#74767F',
+                          fontSize: '14px',
+                          lineHeight: '20px',
+                          fontWeight: 400
+                        }}
+                      >
+                        Polisa: {policyNumberValue}
+                      </Typography>
+                    )}
+                    {policyBelowContent && (
+                      <Typography
+                        sx={{
+                          color: '#74767F',
+                          fontSize: '13px',
+                          lineHeight: '18px',
+                          fontWeight: 400
+                        }}
+                      >
+                        {policyBelowContent}
+                      </Typography>
+                    )}
+                  </Stack>
+                )}
+
+                {policyBelowContent && isPolicyNumberTitle && (
+                  <Typography
+                    sx={{
+                      color: '#74767F',
+                      fontSize: '13px',
+                      lineHeight: '18px',
+                      fontWeight: 400,
+                      mt: 0.5
+                    }}
+                  >
+                    {policyBelowContent}
+                  </Typography>
+                )}
+
                 {/* Status and Account Type chips */}
                 <Stack
                   direction="row"
@@ -564,8 +681,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                             width: 6,
                             height: 6,
                             borderRadius: '50%',
-                            bgcolor: statusStyles.dotColor,
-                            ml: 1
+                            bgcolor: statusStyles.dotColor
                           }}
                         />
                       }
@@ -577,8 +693,8 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
                         height: '24px',
                         borderRadius: '16px',
                         '& .MuiChip-icon': {
-                          mr: '4px',
-                          ml: 0
+                          ml: '8px',
+                          mr: '4px'
                         },
                         '& .MuiChip-label': {
                           px: 1,
@@ -633,7 +749,7 @@ export const MobileCardListRenderer = <T extends GenericRecord = GenericRecord>(
           }
         }}
       >
-        {menuRow?.actions?.map((action: ActionDef) => (
+        {normalizeActions(menuRow?.actions).map((action: ActionDef) => (
           <MenuItem
             key={action.handler}
             onClick={() => handleMenuAction(action.handler)}

@@ -101,6 +101,20 @@ const commonComponents: ThemeOptions['components'] = {
       }
     }
   },
+  MuiPopover: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        zIndex: theme.zIndex.modal + 300
+      })
+    }
+  },
+  MuiPopper: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        zIndex: theme.zIndex.modal + 300
+      })
+    }
+  },
   MuiCssBaseline: {
     styleOverrides: {
       body: {

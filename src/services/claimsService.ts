@@ -12,6 +12,7 @@ export interface ClaimFormFieldOption {
 
 export interface ClaimFormField {
   key: string;
+  name?: string;
   type: 'text' | 'number' | 'bool' | 'date' | 'datetime' | 'select-single' | 'select-multi';
   label: string;
   required: boolean;
@@ -20,6 +21,35 @@ export interface ClaimFormField {
 
 export interface ClaimFormDefinitionResponse {
   fields: ClaimFormField[];
+}
+
+type ClaimFormFieldApi = Omit<ClaimFormField, 'key'> & {
+  key?: string;
+  name?: string;
+};
+
+interface ClaimFormDefinitionApiResponse {
+  fields: ClaimFormFieldApi[];
+}
+
+export interface ClaimFormSelectOption {
+  value: number;
+  label: string;
+}
+
+export interface ClaimFormDataResponse {
+  clients: ClaimFormSelectOption[];
+  insurance_companies: ClaimFormSelectOption[];
+  policy_types: ClaimFormSelectOption[];
+}
+
+export interface ClaimPolicyNumberOption {
+  id: number;
+  number: string;
+}
+
+export interface ClaimPolicyNumbersResponse {
+  policy_numbers: ClaimPolicyNumberOption[];
 }
 
 // ================== CLAIM SUBMIT TYPES ==================
@@ -55,10 +85,6 @@ export interface ClaimCreatePayload {
   is_vat_payer: boolean;
   is_exclusive_claim: boolean;
   is_transferred: boolean;
-  street: string;
-  street_no: string;
-  city: string;
-  postal: string;
   reported_date?: string;
   number?: string;
   claim_description?: string;
@@ -71,11 +97,12 @@ export interface ClaimCreatePayload {
 
 export type ClaimUpdatePayload = Omit<ClaimCreatePayload, 'policy_id'>;
 
-export interface ClaimAddress {
-  street: string;
-  street_no: string;
-  city: string;
-  postal: string;
+export interface ForeignClaimCreatePayload extends ClaimUpdatePayload {
+  client_id: number;
+  policy_number: string;
+  policy_type_id: number;
+  insurance_company_id: number;
+  policy_id?: number;
 }
 
 export interface ClaimResource {
@@ -94,7 +121,6 @@ export interface ClaimResource {
   transferred_note: string | null;
   payout_account_no: string | null;
   meta: ClaimMeta | null;
-  address?: ClaimAddress | null;
   deleted_at?: string | null;
 }
 
@@ -108,8 +134,53 @@ export interface ClaimDetailsResponse {
  * Pobiera definicję formularza zgłoszenia szkody dla danej polisy.
  * GET /api/policy/form/{policyId}
  */
-export const fetchClaimFormDefinition = (policyId: number): Promise<ClaimFormDefinitionResponse> =>
-  apiClient.get<ClaimFormDefinitionResponse>(`${API_ENDPOINTS.POLICY_CLAIM_FORM}/${policyId}`);
+const normalizeClaimFormDefinition = (
+  response: ClaimFormDefinitionApiResponse
+): ClaimFormDefinitionResponse => ({
+  fields: (response.fields || []).map((field) => ({
+    ...field,
+    key: field.key || field.name || ''
+  }))
+});
+
+export const fetchClaimFormDefinition = async (
+  policyId: number
+): Promise<ClaimFormDefinitionResponse> => {
+  const response = await apiClient.get<ClaimFormDefinitionApiResponse>(
+    `${API_ENDPOINTS.POLICY_CLAIM_FORM}/${policyId}`
+  );
+  return normalizeClaimFormDefinition(response);
+};
+
+/**
+ * Pobiera definicję formularza zgłoszenia szkody dla typu polisy.
+ * GET /api/form/fields/{policyTypeId}
+ */
+export const fetchClaimFormDefinitionByPolicyType = async (
+  policyTypeId: number
+): Promise<ClaimFormDefinitionResponse> => {
+  const response = await apiClient.get<ClaimFormDefinitionApiResponse>(
+    `${API_ENDPOINTS.POLICY_TYPE_CLAIM_FORM}/${policyTypeId}`
+  );
+  return normalizeClaimFormDefinition(response);
+};
+
+export const fetchClaimFormData = (): Promise<ClaimFormDataResponse> =>
+  apiClient.get<ClaimFormDataResponse>(API_ENDPOINTS.CLAIM_FORM_DATA);
+
+export const fetchClaimPolicyNumbers = (
+  clientId: string | number,
+  date: string
+): Promise<ClaimPolicyNumbersResponse> => {
+  const query = new URLSearchParams({
+    client_id: String(clientId),
+    date
+  });
+
+  return apiClient.get<ClaimPolicyNumbersResponse>(
+    `${API_ENDPOINTS.CLAIM_POLICY_NUMBERS}?${query.toString()}`
+  );
+};
 
 /**
  * Tworzy zgłoszenie szkody.
@@ -117,6 +188,9 @@ export const fetchClaimFormDefinition = (policyId: number): Promise<ClaimFormDef
  */
 export const submitClaim = (payload: ClaimCreatePayload): Promise<ClaimResource> =>
   apiClient.post<ClaimResource>(API_ENDPOINTS.CLAIM, payload);
+
+export const submitForeignClaim = (payload: ForeignClaimCreatePayload): Promise<ClaimResource> =>
+  apiClient.post<ClaimResource>(API_ENDPOINTS.CLAIM_FOREIGN, payload);
 
 export const getClaimDetails = (claimId: string | number): Promise<ClaimDetailsResponse> =>
   apiClient.get<ClaimDetailsResponse>(`${API_ENDPOINTS.CLAIM}/${claimId}`);

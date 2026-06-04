@@ -24,6 +24,7 @@ export interface ApiUser {
   phone?: string;
   created_at: string;
   role?: string | null;
+  client_id: number | null;
   permissions?: string[];
 }
 
@@ -50,6 +51,7 @@ export interface AuthUser {
   createdAt: string;
   passwordLastChange?: string | null;
   role?: string | null;
+  clientId: number | null;
   permissions?: string[];
   [key: string]: unknown;
 }
@@ -117,6 +119,7 @@ const mapApiUserToAuthUser = (apiUser: ApiUser, email: string): AuthUser => ({
   phone: apiUser.phone,
   createdAt: apiUser.created_at,
   passwordLastChange: apiUser.password_last_change_at ?? null,
+  clientId: apiUser.client_id ?? null,
   role: apiUser.role ?? null,
   permissions: apiUser.permissions ?? []
 });
@@ -298,6 +301,7 @@ export const mockLogin = async (email: string, password: string): Promise<AuthRe
       firstname: email.includes('anna') ? 'Anna' : 'Alicja',
       lastname: email.includes('anna') ? 'Kowalska' : 'Nowak',
       position: 'Developer',
+      clientId: 1,
       createdAt: new Date().toISOString()
     }
   };

@@ -50,7 +50,7 @@ export interface FilterOption {
 export type RawFilterOptions = FilterOption[] | Record<string, any> | string[];
 
 export interface FilterDef {
-  type: 'select' | 'text' | 'date' | 'date_range' | 'range';
+  type: 'select' | 'text' | 'date' | 'date_range' | 'range' | 'searchable_multiselect';
   key: string;
   label: string;
   options?: RawFilterOptions;
@@ -107,6 +107,7 @@ export type FiltersState = Record<string, string | string[]>;
 export type ActionType =
   | 'button_primary'
   | 'button_secondary'
+  | 'button_download'
   | 'button_delete'
   | 'button_archive'
   | 'button_restore'
@@ -117,6 +118,15 @@ export interface ActionDef {
   label: string;
   handler: string;
   icon?: string;
+}
+
+export type RawActions = ActionDef[] | Record<string, ActionDef> | null | undefined;
+
+export function normalizeActions(actions: RawActions): ActionDef[] {
+  if (!actions) return [];
+  if (Array.isArray(actions)) return actions;
+  if (typeof actions === 'object') return Object.values(actions);
+  return [];
 }
 
 export interface GeneralActionDef {
@@ -148,13 +158,16 @@ export interface ListMeta {
 
 export interface GenericRecord {
   [key: string]: unknown;
-  actions?: ActionDef[];
+  actions?: RawActions;
   meta?: {
     columns?: Record<
       string,
       {
         tooltip?: {
-          content: string[];
+          content: unknown;
+        };
+        below?: {
+          content: unknown;
         };
       }
     >;
@@ -204,6 +217,7 @@ export interface FetcherParams {
   sortProperty: string;
   sortOrder: 'asc' | 'desc';
   filters: FiltersState;
+  collection?: string;
   /** Column properties to exclude from backend response */
   disabledColumns?: string[];
   /** Filter keys to exclude from backend response */
@@ -262,6 +276,12 @@ export interface GenericListViewProps<T extends GenericRecord = GenericRecord> {
    * Key: filter key, value: FilterDef type string.
    */
   filterTypeOverrides?: Record<string, FilterDef['type']>;
+  /**
+   * Override the default order of a filter.
+   * Move the archive filter to the bottom of the list.
+   * Provide a filter key associated with the archive filter.
+   */
+  moveArchiveToBottom?: string;
 }
 
 // ================== CONTROLLER STATE ==================

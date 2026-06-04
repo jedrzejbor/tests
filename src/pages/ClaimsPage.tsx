@@ -19,7 +19,7 @@ import { usePermission } from '@/hooks/usePermission';
 import { useUiStore } from '@/store/uiStore';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
-import type { ExtraRowAction } from '@/types/genericList';
+import { normalizeActions, type ExtraRowAction } from '@/types/genericList';
 
 const ClaimsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -115,7 +115,7 @@ const ClaimsPage: React.FC = () => {
   );
 
   const hasBackendAction = (row: ClaimRecord, handler: string) =>
-    row.actions?.some((action) => action.handler === handler) ?? false;
+    normalizeActions(row.actions).some((action) => action.handler === handler);
 
   const isArchived = (row: ClaimRecord) =>
     Boolean(row.deleted_at) || hasBackendAction(row, 'restore-claim');
@@ -195,6 +195,7 @@ const ClaimsPage: React.FC = () => {
           policy_type_id: 'Typ polisy',
           client_id: 'Nazwa podmiotu'
         }}
+        moveArchiveToBottom="archived"
       />
 
       <ClaimPasswordDialog

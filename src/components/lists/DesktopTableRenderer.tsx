@@ -28,7 +28,13 @@ import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
 import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import type { ColumnDef, GenericRecord, ActionDef, ExtraRowAction } from '@/types/genericList';
+import {
+  normalizeActions,
+  type ColumnDef,
+  type GenericRecord,
+  type ActionDef,
+  type ExtraRowAction
+} from '@/types/genericList';
 
 /**
  * Extract tooltip items from row meta for a given column property.
@@ -49,6 +55,44 @@ const getTooltipItems = (row: GenericRecord, property: string | null): string[] 
     );
   }
   return [];
+};
+
+const stringifyBelowContent = (content: unknown): string => {
+  if (content === undefined || content === null) return '';
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => stringifyBelowContent(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  if (typeof content === 'object') {
+    return Object.values(content as Record<string, unknown>)
+      .map((item) => stringifyBelowContent(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  return String(content).trim();
+};
+
+const getColumnBelowContent = (row: GenericRecord, property: string | null): string => {
+  if (!property) return '';
+  const meta = row.meta as
+    | { columns?: Record<string, { below?: { content?: unknown } }> }
+    | undefined;
+
+  return stringifyBelowContent(meta?.columns?.[property]?.below?.content);
+};
+
+const isPolicyNumberCell = (property: string | null, row: GenericRecord): boolean => {
+  if (property === 'policy_number') return true;
+  return property === 'number' && row.policy_number === undefined;
+};
+
+const DATE_ONLY_PROPERTIES = new Set(['claim_date', 'reported_date']);
+
+const formatDateOnly = (value: string): string => {
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : value;
 };
 
 interface DesktopTableRendererProps<T extends GenericRecord = GenericRecord> {
@@ -118,6 +162,28 @@ const renderCell = <T extends GenericRecord>(column: ColumnDef, row: T) => {
 
   const value = row[column.property];
   const stringValue = value !== null && value !== undefined ? String(value) : '—';
+  const belowContent = getColumnBelowContent(row, column.property);
+
+  if (DATE_ONLY_PROPERTIES.has(column.property)) {
+    return (
+      <Typography sx={{ fontSize: '14px', color: '#32343A', fontWeight: 400 }}>
+        {formatDateOnly(stringValue)}
+      </Typography>
+    );
+  }
+
+  if (isPolicyNumberCell(column.property, row) && belowContent) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        <Typography sx={{ fontSize: '14px', color: '#32343A', fontWeight: 500 }}>
+          {stringValue.length > 50 ? `${stringValue.slice(0, 47)}...` : stringValue}
+        </Typography>
+        <Typography sx={{ fontSize: '12px', color: '#74767F', fontWeight: 400 }}>
+          {belowContent}
+        </Typography>
+      </Box>
+    );
+  }
 
   // ===== CLIENT TABLE CUSTOM RENDERING =====
   // Nazwa Klienta, Podmioty zarządzające, NIP, Miasto → jak email (Link)
@@ -744,7 +810,7 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
           }
         }}
       >
-        {menuRow?.actions?.map((action: ActionDef, index: number) => (
+        {normalizeActions(menuRow?.actions).map((action: ActionDef, index: number) => (
           <React.Fragment key={action.handler}>
             <MenuItem
               onClick={() => handleActionClick(action.handler)}
@@ -805,7 +871,7 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
                 sx={{ m: 0 }}
               />
             </MenuItem>
-            {index < (menuRow.actions?.length || 0) - 1 && (
+            {index < normalizeActions(menuRow?.actions).length - 1 && (
               <Divider
                 sx={{
                   borderColor: 'rgba(0, 0, 0, 0.12)',
@@ -824,7 +890,7 @@ export const DesktopTableRenderer = <T extends GenericRecord = GenericRecord>({
             .map((ea, index) => (
               <React.Fragment key={ea.handler}>
                 {/* Divider before first extra action when backend actions exist */}
-                {index === 0 && (menuRow.actions?.length ?? 0) > 0 && (
+                {index === 0 && normalizeActions(menuRow.actions).length > 0 && (
                   <Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.12)', my: '0 !important', mx: 0 }} />
                 )}
                 <MenuItem

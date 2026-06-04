@@ -17,7 +17,9 @@ import {
   Drawer,
   IconButton,
   Divider,
-  InputLabel
+  InputLabel,
+  Autocomplete,
+  Chip
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -36,10 +38,9 @@ import type {
   GenericListViewProps,
   RowHandler,
   GeneralHandler,
-  FiltersState,
-  ActionDef
+  FiltersState
 } from '@/types/genericList';
-import { normalizeFilterOptions } from '@/types/genericList';
+import { normalizeActions, normalizeFilterOptions } from '@/types/genericList';
 
 export const GenericListView = <T extends GenericRecord = GenericRecord>({
   title,
@@ -61,7 +62,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
   filterLabelOverrides,
   filterTooltips,
   filterTransformers,
-  filterTypeOverrides
+  filterTypeOverrides,
+  moveArchiveToBottom
 }: GenericListViewProps<T>) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -203,7 +205,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
 
   const getRowDetailsActionHandler = useCallback(
     (row: T): string | undefined => {
-      const backendActions = Array.isArray(row.actions) ? (row.actions as ActionDef[]) : [];
+      const backendActions = normalizeActions(row.actions);
       const visibleExtraActions = extraRowActions.filter(
         (action) => !action.show || action.show(row)
       );
@@ -253,6 +255,10 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
     [bulkHandlers, selectedRows, clearSelection]
   );
 
+  const archiveFilterIndex = moveArchiveToBottom
+    ? meta?.filtersDefs.findIndex((filter) => filter.key === moveArchiveToBottom)
+    : -1;
+
   // Memoized pagination info
   const paginationInfo = useMemo(() => {
     if (!meta?.pagination) return null;
@@ -294,7 +300,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
-            minHeight: 0
+            minHeight: 0,
+            overflow: 'hidden'
           }}
         >
           {/* Header section with title and toolbar */}
@@ -662,7 +669,8 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
             </Stack>
 
             {/* Render filter inputs — changes are buffered in draftFilters */}
-            {meta?.filtersDefs.map((filterDef) => {
+            {meta?.filtersDefs.map((filterDef, index) => {
+              if (index === archiveFilterIndex) return null;
               const currentValue = draftFilters[filterDef.key] || (filterDef.is_multiple ? [] : '');
               const label = filterLabelOverrides?.[filterDef.key] ?? filterDef.label;
               const tooltip = filterTooltips?.[filterDef.key];
@@ -797,6 +805,49 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 );
               }
 
+              if (filterDef.type === 'searchable_multiselect') {
+                const optionsArray = normalizeFilterOptions(filterDef.options);
+                const currentArrayValue = Array.isArray(currentValue) ? currentValue : [];
+
+                return (
+                  <Autocomplete
+                    key={filterDef.key}
+                    multiple
+                    options={optionsArray}
+                    getOptionLabel={(option) => option.label}
+                    isOptionEqualToValue={(option, value) => option.value === value.value}
+                    value={optionsArray.filter((opt) => currentArrayValue.includes(opt.value))}
+                    onChange={(_, newValue) =>
+                      setDraftFilters((prev) => ({
+                        ...prev,
+                        [filterDef.key]: newValue.map((v) => v.value)
+                      }))
+                    }
+                    slotProps={{
+                      paper: {
+                        sx: {
+                          bgcolor: 'white',
+                          boxShadow:
+                            '0px 4px 6px -2px rgba(0, 0, 0, 0.05), 0px 10px 15px -3px rgba(0, 0, 0, 0.10)'
+                        }
+                      }
+                    }}
+                    renderInput={(params) => <TextField {...params} label={label} size="small" />}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          label={option.label}
+                          size="small"
+                          {...getTagProps({ index })}
+                          key={option.value}
+                        />
+                      ))
+                    }
+                    sx={{ mb: 2 }}
+                  />
+                );
+              }
+
               // Range filter — two numeric inputs (from, to) joined by comma
               if (filterDef.type === 'range') {
                 const rangeStr = typeof currentValue === 'string' ? currentValue : '';
@@ -883,6 +934,146 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 Zastosuj
               </Button>
             </Stack>
+
+            {archiveFilterIndex !== -1 && meta && (
+              <Box sx={{ mt: 3 }}>
+                <Divider sx={{ mb: 2 }} />
+                {(() => {
+                  const filterDef = meta.filtersDefs[archiveFilterIndex];
+                  const currentValue =
+                    draftFilters[filterDef.key] || (filterDef.is_multiple ? [] : '');
+                  const label = filterLabelOverrides?.[filterDef.key] ?? filterDef.label;
+
+                  if (filterDef.type === 'select') {
+                    const optionsArray = normalizeFilterOptions(filterDef.options);
+                    const canClearSingleSelect =
+                      !filterDef.is_multiple &&
+                      typeof currentValue === 'string' &&
+                      currentValue !== '';
+
+                    return (
+                      <FormControl fullWidth size="small" sx={{ position: 'relative' }}>
+                        <InputLabel>{label}</InputLabel>
+                        <Select
+                          value={currentValue}
+                          label={label}
+                          multiple={filterDef.is_multiple}
+                          onChange={(e) =>
+                            setDraftFilters((prev) => ({
+                              ...prev,
+                              [filterDef.key]: e.target.value as string | string[]
+                            }))
+                          }
+                          MenuProps={{
+                            PaperProps: {
+                              sx: {
+                                bgcolor: 'white',
+                                boxShadow:
+                                  '0px 4px 6px -2px rgba(0, 0, 0, 0.05), 0px 10px 15px -3px rgba(0, 0, 0, 0.10)'
+                              }
+                            }
+                          }}
+                          sx={{
+                            '& .MuiSelect-select': {
+                              pr: canClearSingleSelect ? '64px !important' : undefined
+                            }
+                          }}
+                        >
+                          {optionsArray.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {canClearSingleSelect && (
+                          <IconButton
+                            aria-label={`Wyczyść filtr ${label}`}
+                            size="small"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            }}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setDraftFilters((prev) => ({ ...prev, [filterDef.key]: '' }));
+                            }}
+                            sx={{
+                              position: 'absolute',
+                              right: 28,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              color: '#8E9098',
+                              p: 0.25,
+                              zIndex: 1
+                            }}
+                          >
+                            <CloseIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        )}
+                      </FormControl>
+                    );
+                  }
+
+                  if (filterDef.type === 'searchable_multiselect') {
+                    const optionsArray = normalizeFilterOptions(filterDef.options);
+                    const currentArrayValue = Array.isArray(currentValue) ? currentValue : [];
+
+                    return (
+                      <Autocomplete
+                        key={filterDef.key}
+                        multiple
+                        options={optionsArray}
+                        getOptionLabel={(option) => option.label}
+                        isOptionEqualToValue={(option, value) => option.value === value.value}
+                        value={optionsArray.filter((opt) => currentArrayValue.includes(opt.value))}
+                        onChange={(_, newValue) =>
+                          setDraftFilters((prev) => ({
+                            ...prev,
+                            [filterDef.key]: newValue.map((v) => v.value)
+                          }))
+                        }
+                        slotProps={{
+                          paper: {
+                            sx: {
+                              bgcolor: 'white',
+                              boxShadow:
+                                '0px 4px 6px -2px rgba(0, 0, 0, 0.05), 0px 10px 15px -3px rgba(0, 0, 0, 0.10)'
+                            }
+                          }
+                        }}
+                        renderInput={(params) => (
+                          <TextField {...params} label={label} size="small" />
+                        )}
+                        renderTags={(value, getTagProps) =>
+                          value.map((option, index) => (
+                            <Chip
+                              label={option.label}
+                              size="small"
+                              {...getTagProps({ index })}
+                              key={option.value}
+                            />
+                          ))
+                        }
+                        sx={{ mb: 2 }}
+                      />
+                    );
+                  }
+
+                  return (
+                    <TextField
+                      label={label}
+                      value={currentValue}
+                      onChange={(e) =>
+                        setDraftFilters((prev) => ({ ...prev, [filterDef.key]: e.target.value }))
+                      }
+                      fullWidth
+                      size="small"
+                    />
+                  );
+                })()}
+              </Box>
+            )}
           </Drawer>
         </Box>
       ) : (
@@ -890,6 +1081,9 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
           sx={{
             flex: 1,
             minHeight: 0,
+            bgcolor: '#FFFFFF',
+            border: '1px solid #E5E7EB',
+            borderRadius: '12px',
             overflowY: 'auto',
             overflowX: 'hidden',
             WebkitOverflowScrolling: 'touch'
@@ -899,8 +1093,6 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
           <Box
             sx={{
               bgcolor: '#FFFFFF',
-              borderRadius: isPolicyMobile ? '16px' : '12px',
-              overflow: 'hidden',
               p: 2,
               mb: '76px' /* leave space for bottom navigation on mobile */
             }}
@@ -972,6 +1164,7 @@ export const GenericListView = <T extends GenericRecord = GenericRecord>({
                 activeFiltersCount={activeFiltersCount}
                 onFilterChange={setFilter}
                 onClearFilters={clearFilters}
+                moveArchiveToBottom={moveArchiveToBottom}
                 generalActions={[]} // Don't show general actions in toolbar - we show them above
                 onGeneralAction={handleGeneralAction}
                 bulkActions={bulkActions}

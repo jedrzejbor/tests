@@ -76,10 +76,12 @@ import {
 } from '@/services/claimsService';
 import type { ApiError } from '@/services/apiClient';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 import { usePermission } from '@/hooks/usePermission';
 import ListPlaceholderLayout from '@/components/ListPlaceholderLayout';
 import NoAccessContent from '@/components/NoAccessContent';
-import type { ExtraRowAction } from '@/types/genericList';
+import { normalizeActions, type ExtraRowAction } from '@/types/genericList';
+import { isClientRole } from '@/utils/roles';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,6 +106,7 @@ interface ClientDetailsData {
   parent_client: string;
   child_client: string;
   child_client_names: string[];
+  details: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -210,6 +213,7 @@ const CLIENT_TABS = [
 
 const DOCS_DISABLED_COLUMNS = ['client_name'];
 const DOCS_DISABLED_FILTERS = ['client'];
+const DOCS_COLLECTION = 'attachments';
 
 const ClientDetailsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
@@ -218,9 +222,11 @@ const ClientDetailsPage: React.FC = () => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { addToast } = useUiStore();
+  const currentUserRole = useAuthStore((state) => state.user?.role);
   const { hasPermission } = usePermission();
   const canEditClient = hasPermission('client edit');
   const canArchiveClient = hasPermission('client archive');
+  const hidePaymentCommissionFields = isClientRole(currentUserRole);
 
   // Filter tabs based on user permissions
   const visibleTabs = useMemo(
@@ -296,7 +302,8 @@ const ClientDetailsPage: React.FC = () => {
       status: stateClient.status || '',
       parent_client: stateClient.parent_client || '',
       child_client: stateClient.child_client || '',
-      child_client_names: []
+      child_client_names: [],
+      details: ''
     }),
     [clientId]
   );
@@ -342,7 +349,8 @@ const ClientDetailsPage: React.FC = () => {
         parent_client:
           api.parent_client || api.parent_client_name || stateClient?.parent_client || '',
         child_client: api.child_client || api.child_client_name || stateClient?.child_client || '',
-        child_client_names: childClientNames
+        child_client_names: childClientNames,
+        details: api.details || ''
       };
     },
     [clientId]
@@ -491,7 +499,7 @@ const ClientDetailsPage: React.FC = () => {
     async (row: DocumentRecord) => {
       if (!row.id) return;
       try {
-        await restoreDocument(row.id);
+        await restoreDocument(row.id, DOCS_COLLECTION);
         addToast({
           id: crypto.randomUUID(),
           message: 'Dokument został przywrócony',
@@ -618,8 +626,15 @@ const ClientDetailsPage: React.FC = () => {
     setPaymentRefreshKey((k) => k + 1);
   }, []);
 
-  const PAYMENTS_DISABLED_COLUMNS = React.useMemo(() => ['client_name'], []);
-  const PAYMENTS_DISABLED_FILTERS = React.useMemo(() => ['client'], []);
+  const PAYMENTS_DISABLED_COLUMNS = React.useMemo(
+    () =>
+      hidePaymentCommissionFields ? ['client_name', 'margin', 'margin_percent'] : ['client_name'],
+    [hidePaymentCommissionFields]
+  );
+  const PAYMENTS_DISABLED_FILTERS = React.useMemo(
+    () => (hidePaymentCommissionFields ? ['client', 'margin', 'margin_percent'] : ['client']),
+    [hidePaymentCommissionFields]
+  );
 
   const paymentHandlers: Record<string, (row: PaymentRecord) => void> = React.useMemo(
     () => ({
@@ -650,7 +665,7 @@ const ClientDetailsPage: React.FC = () => {
     [clientId]
   );
 
-  const POLICIES_DISABLED_COLUMNS = React.useMemo(() => ['client'], []);
+  const POLICIES_DISABLED_COLUMNS = React.useMemo(() => ['client', 'city'], []);
   const POLICIES_DISABLED_FILTERS = React.useMemo(() => ['client_id'], []);
 
   const handleCreatePolicy = useCallback(() => {
@@ -789,8 +804,9 @@ const ClientDetailsPage: React.FC = () => {
   );
 
   const handleCreateClaim = useCallback(() => {
-    navigate('/app/damages/new');
-  }, [navigate]);
+    if (!clientId) return;
+    navigate(`/app/damages/new?clientId=${clientId}`);
+  }, [clientId, navigate]);
 
   const handleClaimChanged = useCallback(() => {
     setClaimsRefreshKey((key) => key + 1);
@@ -816,7 +832,7 @@ const ClientDetailsPage: React.FC = () => {
   );
 
   const hasClaimBackendAction = (row: ClaimRecord, handler: string) =>
-    row.actions?.some((action) => action.handler === handler) ?? false;
+    normalizeActions(row.actions).some((action) => action.handler === handler);
 
   const isClaimArchived = (row: ClaimRecord) =>
     Boolean(row.deleted_at) || hasClaimBackendAction(row, 'restore-claim');
@@ -1083,7 +1099,6 @@ const ClientDetailsPage: React.FC = () => {
                   disabledColumns={DOCS_DISABLED_COLUMNS}
                   disabledFilters={DOCS_DISABLED_FILTERS}
                 />
-                {/* <UnavailableTabContent /> */}
               </Box>
             );
           }
@@ -1178,6 +1193,57 @@ const ClientDetailsPage: React.FC = () => {
                     policy_type_id: 'Typ polisy'
                   }}
                 />
+              </Box>
+            );
+          }
+          if (originalIdx === 5) {
+            return (
+              <Box sx={{ px: 1 }}>
+                {canEditClient && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
+                    onClick={handleEditClient}
+                    sx={{
+                      borderColor: '#494B54',
+                      color: '#494B54',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      textTransform: 'none',
+                      mb: 2
+                    }}
+                  >
+                    Edytuj dane klienta
+                  </Button>
+                )}
+                <Card
+                  sx={{
+                    borderRadius: '8px',
+                    boxShadow: 'none',
+                    border: '1px solid rgba(143, 109, 95, 0.12)',
+                    p: 2
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      color: '#74767F',
+                      fontSize: '14px',
+                      mb: 1
+                    }}
+                  >
+                    Dodatkowe informacje
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: '#1E1F21',
+                      fontSize: '14px',
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
+                    {clientData.details || '-'}
+                  </Typography>
+                </Card>
               </Box>
             );
           }
@@ -1390,6 +1456,7 @@ const ClientDetailsPage: React.FC = () => {
             onClose={() => setAddDocDialogOpen(false)}
             clientId={Number(clientData.id)}
             onSuccess={handleDocumentSuccess}
+            collection={DOCS_COLLECTION}
           />
         )}
         <EditDocumentDialog
@@ -1400,6 +1467,7 @@ const ClientDetailsPage: React.FC = () => {
           }}
           document={selectedDocument}
           onSuccess={handleDocumentSuccess}
+          collection={DOCS_COLLECTION}
         />
         <ArchiveDocumentDialog
           open={archiveDocDialogOpen}
@@ -1409,6 +1477,7 @@ const ClientDetailsPage: React.FC = () => {
           }}
           document={selectedDocument}
           onSuccess={handleDocumentSuccess}
+          collection={DOCS_COLLECTION}
         />
         <ForceDeleteDocumentDialog
           open={forceDeleteDocDialogOpen}
@@ -1418,6 +1487,7 @@ const ClientDetailsPage: React.FC = () => {
           }}
           document={selectedDocument}
           onSuccess={handleDocumentSuccess}
+          collection={DOCS_COLLECTION}
         />
 
         {clientData?.id && (
@@ -1667,8 +1737,8 @@ const ClientDetailsPage: React.FC = () => {
                 rowKey={(row) => String(row.id || row.policy_number)}
                 initialPerPage={10}
                 refreshKey={paymentRefreshKey}
-                disabledColumns={['client_name']}
-                disabledFilters={['client']}
+                disabledColumns={PAYMENTS_DISABLED_COLUMNS}
+                disabledFilters={PAYMENTS_DISABLED_FILTERS}
                 disabledGeneralActions={['payments-create']}
               />
               {/* <UnavailableTabContent /> */}
@@ -1707,6 +1777,72 @@ const ClientDetailsPage: React.FC = () => {
                 }}
               />
             </Box>
+          );
+        }
+        if (originalIdx === 5) {
+          return (
+            <>
+              {canEditClient && (
+                <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditOutlinedIcon sx={{ fontSize: 20 }} />}
+                    onClick={handleEditClient}
+                    sx={{
+                      borderColor: '#494B54',
+                      color: '#494B54',
+                      borderRadius: '8px',
+                      px: 2,
+                      py: 1,
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      textTransform: 'none',
+                      '&:hover': {
+                        borderColor: '#32343A',
+                        bgcolor: 'rgba(0, 0, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    Edytuj dane klienta
+                  </Button>
+                </Stack>
+              )}
+              <Card
+                sx={{
+                  borderRadius: 1,
+                  boxShadow: 'none',
+                  border: '1px solid',
+                  borderColor: 'rgba(143, 109, 95, 0.12)',
+                  mt: canEditClient ? 0 : 2
+                }}
+              >
+                <CardContent sx={{ p: 2 }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 400,
+                      color: '#1E1F21',
+                      fontSize: '16px',
+                      mb: 2,
+                      borderBottom: '1px solid',
+                      borderColor: 'rgba(143, 109, 95, 0.12)',
+                      pb: 0.75
+                    }}
+                  >
+                    Dodatkowe informacje:
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: '#1E1F21',
+                      fontSize: '14px',
+                      whiteSpace: 'pre-wrap',
+                      px: 1.5
+                    }}
+                  >
+                    {clientData.details || '-'}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </>
           );
         }
         if (originalIdx !== 0) {
@@ -1976,6 +2112,7 @@ const ClientDetailsPage: React.FC = () => {
           onClose={() => setAddDocDialogOpen(false)}
           clientId={Number(clientData.id)}
           onSuccess={handleDocumentSuccess}
+          collection={DOCS_COLLECTION}
         />
       )}
       <EditDocumentDialog
@@ -1986,6 +2123,7 @@ const ClientDetailsPage: React.FC = () => {
         }}
         document={selectedDocument}
         onSuccess={handleDocumentSuccess}
+        collection={DOCS_COLLECTION}
       />
       <ArchiveDocumentDialog
         open={archiveDocDialogOpen}
@@ -1995,6 +2133,7 @@ const ClientDetailsPage: React.FC = () => {
         }}
         document={selectedDocument}
         onSuccess={handleDocumentSuccess}
+        collection={DOCS_COLLECTION}
       />
       <ForceDeleteDocumentDialog
         open={forceDeleteDocDialogOpen}
@@ -2004,6 +2143,7 @@ const ClientDetailsPage: React.FC = () => {
         }}
         document={selectedDocument}
         onSuccess={handleDocumentSuccess}
+        collection={DOCS_COLLECTION}
       />
 
       {clientData?.id && (

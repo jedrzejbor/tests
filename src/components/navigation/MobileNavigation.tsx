@@ -13,18 +13,20 @@ import {
   useMediaQuery
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getMobileMenuItems, getMoreMenuItems } from '@/config/navigation';
+import { filterAccessibleItems, getMobileMenuItems, getMoreMenuItems } from '@/config/navigation';
 import MoreIcon from '@/components/icons/MoreIcon';
+import { usePermission } from '@/hooks/usePermission';
 
 export const MobileNavigation: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { hasPermission } = usePermission();
   const [moreDrawerOpen, setMoreDrawerOpen] = useState(false);
 
-  const mobileItems = getMobileMenuItems();
-  const moreItems = getMoreMenuItems();
+  const mobileItems = filterAccessibleItems(getMobileMenuItems(), hasPermission);
+  const moreItems = filterAccessibleItems(getMoreMenuItems(), hasPermission);
   const drawerItems = [...mobileItems, ...moreItems];
 
   // Find current route in mobile items

@@ -68,6 +68,7 @@ interface ListToolbarProps {
   /** Transform display value to backend value before sending (e.g. PLN → grosze) */
   filterTransformers?: Record<string, (displayValue: string) => string>;
   mobileVariant?: 'default' | 'policy';
+  moveArchiveToBottom?: string;
 }
 
 export const ListToolbar = ({
@@ -90,7 +91,8 @@ export const ListToolbar = ({
   filterLabelOverrides,
   filterTooltips,
   filterTransformers,
-  mobileVariant = 'default'
+  mobileVariant = 'default',
+  moveArchiveToBottom
 }: ListToolbarProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -140,161 +142,176 @@ export const ListToolbar = ({
   const isDateRangeFilter = (filterDef: FilterDef) =>
     filterDef.type === 'date_range' || (filterDef.type === 'range' && /date/i.test(filterDef.key));
 
-  // Render filter inputs based on filtersDefs
-  const renderFilterInputs = () => {
-    return filtersDefs.map((filterDef) => {
-      const currentValue = filters[filterDef.key] || (filterDef.is_multiple ? [] : '');
-      const label = filterLabelOverrides?.[filterDef.key] ?? filterDef.label;
-
-      // Date range filter — two date inputs
-      if (isDateRangeFilter(filterDef)) {
-        const rangeStr = typeof currentValue === 'string' ? currentValue : '';
-        const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
-        const updateRange = (from: string, to: string) => {
-          const val = from || to ? `${from},${to}` : '';
-          onFilterChange(filterDef.key, val);
-        };
-        return (
-          <Box key={filterDef.key} sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-              {renderFilterLabel(filterDef)}
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              <TextField
-                label="Od"
-                value={rangeFrom}
-                onChange={(e) => updateRange(e.target.value, rangeTo)}
-                type="date"
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                label="Do"
-                value={rangeTo}
-                onChange={(e) => updateRange(rangeFrom, e.target.value)}
-                type="date"
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true }}
-              />
-            </Stack>
-          </Box>
-        );
+  const filterSelectMenuProps = {
+    sx: {
+      zIndex: (theme) => theme.zIndex.modal + 300
+    },
+    PaperProps: {
+      sx: {
+        bgcolor: '#FFFFFF',
+        boxShadow: '0px 4px 6px -2px rgba(0, 0, 0, 0.05), 0px 10px 15px -3px rgba(0, 0, 0, 0.10)'
       }
+    }
+  };
 
-      if (filterDef.type === 'select') {
-        // Normalize options from any backend format
-        const optionsArray = normalizeFilterOptions(filterDef.options);
-        const canClearSingleSelect =
-          !filterDef.is_multiple && typeof currentValue === 'string' && currentValue !== '';
+  // Render filter inputs based on filtersDefs
+  const renderFilterInputs = (excludeKey?: string) => {
+    return filtersDefs
+      .filter((fd) => fd.key !== excludeKey)
+      .map((filterDef) => {
+        const currentValue = filters[filterDef.key] || (filterDef.is_multiple ? [] : '');
+        const label = filterLabelOverrides?.[filterDef.key] ?? filterDef.label;
 
-        return (
-          <FormControl
-            key={filterDef.key}
-            fullWidth
-            size="small"
-            sx={{ mb: 2, position: 'relative' }}
-          >
-            <InputLabel>{label}</InputLabel>
-            <Select
-              value={currentValue}
-              label={label}
-              multiple={filterDef.is_multiple}
-              onChange={(e) => onFilterChange(filterDef.key, e.target.value as string | string[])}
-              sx={{
-                '& .MuiSelect-select': {
-                  pr: canClearSingleSelect ? '64px !important' : undefined
-                }
-              }}
+        // Date range filter — two date inputs
+        if (isDateRangeFilter(filterDef)) {
+          const rangeStr = typeof currentValue === 'string' ? currentValue : '';
+          const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+          const updateRange = (from: string, to: string) => {
+            const val = from || to ? `${from},${to}` : '';
+            onFilterChange(filterDef.key, val);
+          };
+          return (
+            <Box key={filterDef.key} sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                {renderFilterLabel(filterDef)}
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  label="Od"
+                  value={rangeFrom}
+                  onChange={(e) => updateRange(e.target.value, rangeTo)}
+                  type="date"
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label="Do"
+                  value={rangeTo}
+                  onChange={(e) => updateRange(rangeFrom, e.target.value)}
+                  type="date"
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Stack>
+            </Box>
+          );
+        }
+
+        if (filterDef.type === 'select' || filterDef.type === 'searchable_multiselect') {
+          // Normalize options from any backend format
+          const optionsArray = normalizeFilterOptions(filterDef.options);
+          const canClearSingleSelect =
+            !filterDef.is_multiple && typeof currentValue === 'string' && currentValue !== '';
+
+          return (
+            <FormControl
+              key={filterDef.key}
+              fullWidth
+              size="small"
+              sx={{ mb: 2, position: 'relative' }}
             >
-              {optionsArray.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-            {canClearSingleSelect && (
-              <IconButton
-                aria-label={`Wyczyść filtr ${label}`}
-                size="small"
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onFilterChange(filterDef.key, '');
-                }}
+              <InputLabel>{label}</InputLabel>
+              <Select
+                value={currentValue}
+                label={label}
+                multiple={filterDef.is_multiple}
+                onChange={(e) => onFilterChange(filterDef.key, e.target.value as string | string[])}
+                MenuProps={filterSelectMenuProps}
                 sx={{
-                  position: 'absolute',
-                  right: 28,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#8E9098',
-                  p: 0.25,
-                  zIndex: 1
+                  '& .MuiSelect-select': {
+                    pr: canClearSingleSelect ? '64px !important' : undefined
+                  }
                 }}
               >
-                <CloseIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            )}
-          </FormControl>
-        );
-      }
+                {optionsArray.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+              {canClearSingleSelect && (
+                <IconButton
+                  aria-label={`Wyczyść filtr ${label}`}
+                  size="small"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onFilterChange(filterDef.key, '');
+                  }}
+                  sx={{
+                    position: 'absolute',
+                    right: 28,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#8E9098',
+                    p: 0.25,
+                    zIndex: 1
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              )}
+            </FormControl>
+          );
+        }
 
-      // Range filter — two numeric inputs (from, to) joined by comma
-      if (filterDef.type === 'range') {
-        const rangeStr = typeof currentValue === 'string' ? currentValue : '';
-        const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
-        const hasTransformer = !!filterTransformers?.[filterDef.key];
-        const updateRange = (from: string, to: string) => {
-          const val = from || to ? `${from},${to}` : '';
-          onFilterChange(filterDef.key, val);
-        };
+        // Range filter — two numeric inputs (from, to) joined by comma
+        if (filterDef.type === 'range') {
+          const rangeStr = typeof currentValue === 'string' ? currentValue : '';
+          const [rangeFrom = '', rangeTo = ''] = rangeStr.split(',');
+          const hasTransformer = !!filterTransformers?.[filterDef.key];
+          const updateRange = (from: string, to: string) => {
+            const val = from || to ? `${from},${to}` : '';
+            onFilterChange(filterDef.key, val);
+          };
+          return (
+            <Box key={filterDef.key} sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                {renderFilterLabel(filterDef)}
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  label="Od"
+                  value={rangeFrom}
+                  onChange={(e) => updateRange(e.target.value, rangeTo)}
+                  type="number"
+                  fullWidth
+                  size="small"
+                  inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
+                />
+                <TextField
+                  label="Do"
+                  value={rangeTo}
+                  onChange={(e) => updateRange(rangeFrom, e.target.value)}
+                  type="number"
+                  fullWidth
+                  size="small"
+                  inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
+                />
+              </Stack>
+            </Box>
+          );
+        }
+
+        // Default text input
         return (
-          <Box key={filterDef.key} sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-              {renderFilterLabel(filterDef)}
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              <TextField
-                label="Od"
-                value={rangeFrom}
-                onChange={(e) => updateRange(e.target.value, rangeTo)}
-                type="number"
-                fullWidth
-                size="small"
-                inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
-              />
-              <TextField
-                label="Do"
-                value={rangeTo}
-                onChange={(e) => updateRange(rangeFrom, e.target.value)}
-                type="number"
-                fullWidth
-                size="small"
-                inputProps={hasTransformer ? { step: '0.01', min: '0' } : undefined}
-              />
-            </Stack>
-          </Box>
+          <TextField
+            key={filterDef.key}
+            label={label}
+            value={currentValue}
+            onChange={(e) => onFilterChange(filterDef.key, e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+          />
         );
-      }
-
-      // Default text input
-      return (
-        <TextField
-          key={filterDef.key}
-          label={label}
-          value={currentValue}
-          onChange={(e) => onFilterChange(filterDef.key, e.target.value)}
-          fullWidth
-          size="small"
-          sx={{ mb: 2 }}
-        />
-      );
-    });
+      });
   };
 
   // Mobile layout
@@ -544,7 +561,9 @@ export const ListToolbar = ({
               bgcolor: '#FFFFFF',
               borderRadius: '20px 20px 0 0',
               p: 3,
-              maxHeight: '80vh'
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              overflowX: 'hidden'
             }
           }}
         >
@@ -555,7 +574,7 @@ export const ListToolbar = ({
             </IconButton>
           </Stack>
 
-          {renderFilterInputs()}
+          {renderFilterInputs(moveArchiveToBottom)}
 
           <Divider sx={{ my: 2 }} />
 
@@ -567,6 +586,15 @@ export const ListToolbar = ({
               Zastosuj
             </Button>
           </Stack>
+
+          {moveArchiveToBottom && filtersDefs.find((f) => f.key === moveArchiveToBottom) && (
+            <Box sx={{ mt: 3 }}>
+              <Divider sx={{ mb: 2 }} />
+              {renderFilterInputs().find(
+                (el) => (el as React.ReactElement).key === moveArchiveToBottom
+              )}
+            </Box>
+          )}
         </Drawer>
       </Box>
     );
@@ -857,7 +885,7 @@ export const ListToolbar = ({
           </IconButton>
         </Stack>
 
-        {renderFilterInputs()}
+        {renderFilterInputs(moveArchiveToBottom)}
 
         <Divider sx={{ my: 2 }} />
 
@@ -869,6 +897,15 @@ export const ListToolbar = ({
             Zastosuj
           </Button>
         </Stack>
+
+        {moveArchiveToBottom && filtersDefs.find((f) => f.key === moveArchiveToBottom) && (
+          <Box sx={{ mt: 3 }}>
+            <Divider sx={{ mb: 2 }} />
+            {renderFilterInputs().find(
+              (el) => (el as React.ReactElement).key === moveArchiveToBottom
+            )}
+          </Box>
+        )}
       </Drawer>
     </Box>
   );
